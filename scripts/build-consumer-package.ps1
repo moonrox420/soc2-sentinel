@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path $PSScriptRoot -Parent
-$Version = "2.3.0"
+$Version = "2.4.0"
 $DistDir = Join-Path $Root "dist"
 $StageName = "SOC2-Sentinel-Toolkit-v$Version-Windows"
 $StageDir = Join-Path $DistDir $StageName
@@ -39,7 +39,7 @@ function Copy-Stage {
     $include = @(
         "bin", "data", "docs", "policies", "scripts", "sentinel", "tests\fixtures",
         "README.md", "QUICKSTART-BUYER.md", "LICENSE", "pyproject.toml",
-        "run-demo.bat", "setup.ps1"
+        "sentinel.yaml.example", "run-demo.bat", "setup.ps1"
     )
 
     foreach ($item in $include) {

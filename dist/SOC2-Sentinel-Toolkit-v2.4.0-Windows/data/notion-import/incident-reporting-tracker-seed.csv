@@ -1,0 +1,3 @@
+Incident ID,Detection Date,Incident Type,Severity,DFARS 7012 Applicable,CUI Compromised,Status,Reporting Deadline,External Report Submitted,Lead Responder,Related NIST Controls,Notes
+INC-2026-001,2026-03-14,Unauthorized API key usage,Medium,Yes,No,Closed,2026-03-15 09:00 UTC,Yes (DIBNET placeholder),Security Engineering,3.6.1; 3.6.2; 3.14.7,Revoked exposed key within 2h; root cause was committed credential in CI artifact. Tabletop follow-up scheduled.
+INC-2026-002,2026-05-02,Phishing attempt — credential harvest,Low,No,No,Monitoring,—,No,IT Operations,3.2.1; 3.6.1,User reported suspicious email; no credential compromise confirmed. Added to awareness training case study.
