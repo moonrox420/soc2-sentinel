@@ -1,0 +1,3 @@
+username,active_keys,inactive_days,orphaned,privileged
+alice,1,12,False,False
+bob,0,120,True,False

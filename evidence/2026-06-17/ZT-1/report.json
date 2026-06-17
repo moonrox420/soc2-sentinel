@@ -1,0 +1,31 @@
+{
+  "control_id": "ZT-1",
+  "collection_timestamp": "2026-06-17T15:00:49Z",
+  "status": "green",
+  "metrics": {
+    "checks_passed": 5,
+    "checks_total": 5,
+    "orphaned_accounts": 2,
+    "unencrypted_resources": 0,
+    "privileged_standing_count": 3,
+    "mfa_enforcement_percent": 100.0,
+    "issues": 0
+  },
+  "evidence_artifacts": [
+    "zt_verification.json"
+  ],
+  "findings": [],
+  "notes": "Zero Trust continuous verification composite gate (Identity + Data pillars).",
+  "provider": "mock",
+  "composite_checks": {
+    "iam_review_current": true,
+    "encryption_green": true,
+    "mfa_enforced": true,
+    "orphaned_within_threshold": true,
+    "session_timeout_compliant": true
+  },
+  "attck_tags": [
+    "T1078",
+    "T1550"
+  ]
+}

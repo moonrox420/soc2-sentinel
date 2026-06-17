@@ -1,0 +1,16 @@
+Sentinel Component,Collector Module,ATT&CK Tactic,ATT&CK Technique ID,ATT&CK Technique Name,Detection Value,Related NIST 800-171,Related SOC2 Control,Notes
+IAM Access Review,iam_access_review,Persistence,T1078,Valid Accounts,Detects orphaned accounts and standing privilege that enable adversary persistence,3.1.1; 3.1.5; 3.5.1,CC6.1; CC6.3,Quarterly export flags accounts without recent activity or excessive permissions
+IAM Access Review,iam_access_review,Privilege Escalation,T1078.004,Cloud Accounts,Identifies over-privileged cloud IAM roles and policy drift,3.1.5; 3.1.7,CC6.3,Maps to AC-6 least privilege and privileged account review
+IAM Access Review,iam_access_review,Initial Access,T1078.002,Domain Accounts,Surfaces stale or shared domain-linked accounts in federated environments,3.5.1; 3.5.6,CC6.1,Complements IdP conditional access policies
+Config Drift Scanner,config_drift,Defense Evasion,T1562.001,Disable or Modify Tools,Detects disabled logging MFA or weakened TLS that adversaries exploit,3.4.2; 3.5.3; 3.13.8,CC6.2; CC8.1,Continuous baseline comparison against hardened configuration
+Config Drift Scanner,config_drift,Credential Access,T1556,Modify Authentication Process,Flags authentication policy downgrades (MFA bypass password-only paths),3.5.2; 3.5.3,CC6.2,Aligns with IA family controls
+Config Drift Scanner,config_drift,Impact,T1565.001,Stored Data Manipulation,Detects encryption or integrity control removal on data stores,3.13.16; 3.8.9,C1.2,Encryption-at-rest drift is high-severity finding
+Log Aggregator,log_aggregator,Discovery,T1087,Account Discovery,Audit logs reveal enumeration patterns when correlated in SIEM,3.3.1; 3.3.2,CC7.1,Completeness metrics ensure logs exist for investigation
+Log Aggregator,log_aggregator,Command and Control,T1071,Application Layer Protocol,Network and application logs support C2 traffic identification,3.14.6; 3.14.7,CC7.1,VPC flow and CloudTrail coverage validated
+Log Aggregator,log_aggregator,Exfiltration,T1567,Exfiltration Over Web Service,Outbound transfer anomalies detectable when logging is complete,3.14.6,C1.1,Requires SIEM rules beyond Sentinel scope
+Encryption Status,encryption_status,Exfiltration,T1530,Data from Cloud Storage,Object,Detects unencrypted CUI stores that increase exfiltration impact,3.13.8; 3.13.11; 3.13.16,C1.2; C1.3,Prevention control — reduces blast radius
+Encryption Status,encryption_status,Impact,T1486,Data Encrypted for Impact,Validates backup encryption protecting against ransomware impact,3.8.9,A1.2,Backup bucket encryption is critical recovery control
+Retention Check,retention_check,Impact,T1485,Data Destruction,Validates lifecycle policies prevent indefinite CUI retention,3.8.3; 3.8.9,C1.4,Supports secure disposal and backup hygiene
+Retention Check,retention_check,Collection,T1119,Automated Collection,Retention gaps may indicate incomplete log/data collection for forensics,3.3.1,CC7.1,Log bucket lifecycle rules validated
+Self Assessment Report,self_assessment_report,Reconnaissance,T1595,Active Scanning,Aggregated control scores surface systemic exposure patterns,3.12.1; 3.12.3,CC7.2,Governance layer — not real-time detection
+Self Assessment Report,self_assessment_report,Resource Development,T1588,Obtain Capabilities,Gap analysis informs security investment prioritization,3.11.1; 3.12.2,CC9.1,Feeds POA&M and risk register updates

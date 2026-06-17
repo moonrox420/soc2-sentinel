@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+from sentinel.output import write_evidence
+from sentinel.providers.base import Provider
+from sentinel.schema import utc_now_iso
+from sentinel.status import resolve_status
+
+
+def collect_log_aggregator(
+    provider: Provider,
+    *,
+    control_id: str = "CC7.1",
+    base: Path | None = None,
+) -> Path:
+    snap = provider.log_monitoring_snapshot()
+    cui_events = snap.get("cui_relevant_events", [])
+    metrics = {
+        "active_trails": snap.get("active_trails", 0),
+        "log_coverage_percent": snap.get("log_coverage_percent", 0),
+        "max_gap_hours": snap.get("max_gap_hours", 0),
+        "critical_control_failures_30d": snap.get("critical_control_failures_30d", 0),
+        "config_recorder_all_supported": snap.get("config_recorder_all_supported", False),
+        "cui_events_captured": len(cui_events),
+        "cui_retention_days": snap.get("cui_retention_days", 0),
+    }
+    findings = [{**f, "severity": "high"} for f in snap.get("findings", [])]
+    artifacts = ["log_completeness.json"]
+    extra: dict[str, str] = {"log_completeness.json": json.dumps(snap, indent=2)}
+    if cui_events:
+        artifacts.append("cui_events_export.json")
+        extra["cui_events_export.json"] = json.dumps(
+            {"events": cui_events, "attck_summary": snap.get("attck_summary", {})},
+            indent=2,
+        )
+
+    payload: dict[str, Any] = {
+        "control_id": control_id,
+        "collection_timestamp": utc_now_iso(),
+        "status": resolve_status(control_id, metrics),
+        "metrics": metrics,
+        "evidence_artifacts": artifacts,
+        "findings": findings,
+        "notes": "Log completeness, CUI-relevant events, and DFARS 7012 detection evidence.",
+        "provider": provider.name,
+        "cui_scoped": len(cui_events) > 0,
+        "attck_tags": list(snap.get("attck_summary", {}).keys()),
+    }
+    return write_evidence(payload, base=base, extra_files=extra)

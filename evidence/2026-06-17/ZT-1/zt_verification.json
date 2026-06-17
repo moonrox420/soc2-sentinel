@@ -1,0 +1,28 @@
+{
+  "iam_review_days_ago": 30,
+  "encryption_status": "green",
+  "orphaned_accounts": 2,
+  "unencrypted_resources": 0,
+  "mfa_enforcement_percent": 100.0,
+  "jit_recommendations": [
+    "Convert 3 standing privileged accounts to time-bound JIT access"
+  ],
+  "session_timeout_compliant": true,
+  "privileged_standing_count": 3,
+  "pillar_scores": {
+    "Identity": "Managed",
+    "Device": "Initial",
+    "Network": "Managed",
+    "Application": "Initial",
+    "Data": "Optimized",
+    "Analytics": "Managed",
+    "Governance": "Managed"
+  },
+  "checks": {
+    "iam_review_current": true,
+    "encryption_green": true,
+    "mfa_enforced": true,
+    "orphaned_within_threshold": true,
+    "session_timeout_compliant": true
+  }
+}

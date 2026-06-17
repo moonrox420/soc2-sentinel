@@ -1,0 +1,75 @@
+# PyInstaller spec — builds bin/sentinel.exe for the consumer zip.
+# Run via: scripts/build-consumer-package.ps1
+
+import sys
+from pathlib import Path
+
+root = Path(SPECPATH).resolve().parent
+
+a = Analysis(
+    [str(root / "sentinel" / "cli.py")],
+    pathex=[str(root)],
+    binaries=[],
+    datas=[],
+    hiddenimports=[
+        "sentinel",
+        "sentinel.cli",
+        "sentinel.collectors",
+        "sentinel.collectors.config_drift",
+        "sentinel.collectors.encryption_status",
+        "sentinel.collectors.iam_access_review",
+        "sentinel.collectors.log_aggregator",
+        "sentinel.collectors.resilience_testing",
+        "sentinel.collectors.retention_check",
+        "sentinel.collectors.self_assessment_report",
+        "sentinel.collectors.zt_continuous_verification",
+        "sentinel.providers",
+        "sentinel.providers.aws",
+        "sentinel.providers.azure",
+        "sentinel.providers.gcp",
+        "sentinel.providers.mock",
+        "sentinel.schema",
+        "sentinel.output",
+        "sentinel.status",
+        "sentinel.paths",
+        "boto3",
+        "botocore",
+        "jsonschema",
+        "google.cloud.storage",
+        "google.cloud.iam",
+        "google.cloud.logging",
+        "azure.identity",
+        "azure.mgmt.storage",
+        "azure.mgmt.monitor",
+        "azure.mgmt.resource",
+    ],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=["pytest", "setuptools", "pip"],
+    noarchive=False,
+    optimize=0,
+)
+
+pyz = PYZ(a.pure)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.datas,
+    [],
+    name="sentinel",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)

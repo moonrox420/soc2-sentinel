@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SOC2SentinelEvidence",
+  "type": "object",
+  "required": [
+    "control_id",
+    "collection_timestamp",
+    "status",
+    "metrics",
+    "evidence_artifacts",
+    "findings",
+    "notes",
+    "provider"
+  ],
+  "properties": {
+    "control_id": { "type": "string", "minLength": 1 },
+    "collection_timestamp": { "type": "string" },
+    "status": { "enum": ["green", "yellow", "red"] },
+    "metrics": { "type": "object" },
+    "evidence_artifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["issue"],
+        "properties": {
+          "resource": { "type": "string" },
+          "issue": { "type": "string" },
+          "severity": { "enum": ["low", "medium", "high", "critical"] }
+        }
+      }
+    },
+    "notes": { "type": "string" },
+    "provider": { "enum": ["aws", "gcp", "azure", "mock"] },
+    "attck_tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "cui_scoped": { "type": "boolean" },
+    "composite_checks": { "type": "object" }
+  },
+  "additionalProperties": false
+}

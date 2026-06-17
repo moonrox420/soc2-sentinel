@@ -1,0 +1,22 @@
+{
+  "control_id": "A1.2",
+  "collection_timestamp": "2026-06-17T15:00:49Z",
+  "status": "green",
+  "metrics": {
+    "last_backup_hours_ago": 18,
+    "last_restore_test_days_ago": 45,
+    "rto_target_hours": 4,
+    "rpo_target_hours": 1,
+    "failover_test_days_ago": 60,
+    "failover_test_passed": true,
+    "backup_jobs_success_30d": 28,
+    "backup_jobs_failed_30d": 0,
+    "issues": 0
+  },
+  "evidence_artifacts": [
+    "resilience_report.json"
+  ],
+  "findings": [],
+  "notes": "Backup, restore, and failover resilience evidence for A1.2/A1.3.",
+  "provider": "mock"
+}

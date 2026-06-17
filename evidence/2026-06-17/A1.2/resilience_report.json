@@ -1,0 +1,10 @@
+{
+  "last_backup_hours_ago": 18,
+  "last_restore_test_days_ago": 45,
+  "rto_target_hours": 4,
+  "rpo_target_hours": 1,
+  "failover_test_days_ago": 60,
+  "failover_test_passed": true,
+  "backup_jobs_success_30d": 28,
+  "backup_jobs_failed_30d": 0
+}

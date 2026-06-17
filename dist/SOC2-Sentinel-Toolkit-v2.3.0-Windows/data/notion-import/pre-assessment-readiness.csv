@@ -1,0 +1,9 @@
+Gate ID,Gate Name,Phase,Target Date,Status,Owner,Evidence Required,Pass Criteria,Blocker Notes
+GATE-01,Assessment Boundary Defined,Foundation,2026-07-01,Complete,Compliance Lead,System boundary diagram + data flow for CUI,Written boundary approved by AO/CISO,—
+GATE-02,SSP Draft Complete,Foundation,2026-07-15,In Progress,Compliance Lead,SSP v0.9 covering all 14 NIST families,All 110 practices addressed Met/Not Met/N/A,3.2 AT and 3.9 PS sections need HR input
+GATE-03,Automated Evidence Baseline,Foundation,2026-07-31,Complete,Security Engineering,First full sentinel run-all evidence bundle,≥20 automated controls Met with Strong/Adequate evidence,—
+GATE-04,POA&M Current and Owned,Remediation,2026-08-15,In Progress,Compliance Lead,POA&M with owners dates and residual risk,Zero critical items without owner or target date,2 medium POA&M items open (CC8.1 CC9.1)
+GATE-05,Manual Evidence Package,Remediation,2026-08-31,Not Started,HR + Facilities,Training records BG checks physical access logs,90-day evidence window complete for AT PS PE,Training LMS export pending
+GATE-06,Internal Mock Assessment,Validation,2026-09-15,Not Started,CISO,Mock interview scripts + sampled evidence walkthrough,No critical findings unresolved >30 days,Schedule after GATE-04 closes
+GATE-07,Vendor Inheritance Documented,Validation,2026-09-30,In Progress,Procurement,Cloud SOC 2 + FedRAMP inheritance matrix,All CUI-touching vendors assessed,AWS inheritance draft complete; 2 SaaS vendors pending
+GATE-08,C3PAO Engagement Ready,Certification,2026-10-15,Not Started,Executive Sponsor,Signed engagement letter + evidence index,≥85% Met excluding justified N/A; SSP v1.0,Target C3PAO RFP responses due August

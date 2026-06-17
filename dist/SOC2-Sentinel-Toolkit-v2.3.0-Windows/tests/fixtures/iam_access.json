@@ -1,0 +1,16 @@
+{
+  "users": [
+    {"username": "alice", "active_keys": 1, "inactive_days": 12, "orphaned": false, "privileged": false},
+    {"username": "bob", "active_keys": 0, "inactive_days": 120, "orphaned": true, "privileged": false}
+  ],
+  "total_identities": 147,
+  "orphaned_accounts": 2,
+  "privileged_count": 8,
+  "days_since_last_review": 45,
+  "session_timeout_compliant": true,
+  "jit_recommendations": [
+    "Convert admin-breakglass to 4-hour JIT elevation with approval workflow",
+    "Remove unused access keys for service account svc-backup"
+  ],
+  "csv": "username,active_keys,inactive_days,orphaned,privileged\nalice,1,12,False,False\nbob,0,120,True,False\n"
+}

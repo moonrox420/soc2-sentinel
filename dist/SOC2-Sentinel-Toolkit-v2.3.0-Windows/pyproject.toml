@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "soc2-sentinel"
+version = "2.3.0"
+description = "SOC2 Sentinel Toolkit — evidence automation for SOC2, NIST 800-171/172, CMMC L2/L3, DFARS, ATT&CK, and Zero Trust"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+  "boto3>=1.34",
+  "jsonschema>=4.21",
+  "google-cloud-storage>=2.14",
+  "google-cloud-iam>=2.15",
+  "google-cloud-logging>=3.9",
+  "azure-identity>=1.15",
+  "azure-mgmt-storage>=21.0",
+  "azure-mgmt-monitor>=6.0",
+  "azure-mgmt-resource>=23.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+sentinel = "sentinel.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sentinel*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

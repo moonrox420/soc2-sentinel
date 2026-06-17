@@ -1,0 +1,21 @@
+{
+  "control_id": "CC6.2",
+  "collection_timestamp": "2026-06-17T15:00:49Z",
+  "status": "green",
+  "metrics": {
+    "mfa_enforcement_percent": 100.0,
+    "weak_auth_methods": 0,
+    "open_http_listeners": 0,
+    "weak_tls_listeners": 0,
+    "unapproved_changes": 0,
+    "changes_missing_rollback_test": 0,
+    "issues": 0,
+    "warnings": 0
+  },
+  "evidence_artifacts": [
+    "config_drift_report.json"
+  ],
+  "findings": [],
+  "notes": "Authentication and configuration drift snapshot.",
+  "provider": "mock"
+}

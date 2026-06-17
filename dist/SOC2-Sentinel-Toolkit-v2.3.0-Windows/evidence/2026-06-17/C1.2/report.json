@@ -1,0 +1,20 @@
+{
+  "control_id": "C1.2",
+  "collection_timestamp": "2026-06-17T15:06:14Z",
+  "status": "green",
+  "metrics": {
+    "total_confidential_resources": 87,
+    "encrypted_at_rest": 87,
+    "unencrypted_cui_count": 0,
+    "fips_compliant_keys": 12,
+    "keys_pending_rotation": 0,
+    "tls_endpoints_checked": 24,
+    "weak_cipher_endpoints": 0
+  },
+  "evidence_artifacts": [
+    "encryption_status_report.json"
+  ],
+  "findings": [],
+  "notes": "Encryption at rest and key management evidence for C1.1/C1.2.",
+  "provider": "mock"
+}

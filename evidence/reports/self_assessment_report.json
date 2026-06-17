@@ -1,0 +1,17 @@
+{
+  "generated": "2026-06-17T14:43:35Z",
+  "overall_score_percent": 78.6,
+  "total_controls": 14,
+  "met": 11,
+  "not_met": 3,
+  "not_applicable": 0,
+  "poam_count": 3,
+  "family_breakdown": {
+    "Other": {
+      "met": 11,
+      "total": 14,
+      "percent": 78.6
+    }
+  },
+  "recommendation": "Complete POA&M items before affirmation or C3PAO"
+}

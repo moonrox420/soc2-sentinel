@@ -1,0 +1,28 @@
+{
+  "events": [
+    {
+      "timestamp": "2026-06-17T02:14:00Z",
+      "resource": "s3://cui-data-prod",
+      "action": "GetObject",
+      "principal": "arn:aws:iam::123456789012:user/alice",
+      "attck_tags": [
+        "T1078",
+        "T1005"
+      ]
+    },
+    {
+      "timestamp": "2026-06-17T03:22:00Z",
+      "resource": "s3://cui-data-prod",
+      "action": "ListBucket",
+      "principal": "arn:aws:iam::123456789012:role/backup-service",
+      "attck_tags": [
+        "T1087"
+      ]
+    }
+  ],
+  "attck_summary": {
+    "T1078": 1,
+    "T1005": 1,
+    "T1087": 1
+  }
+}

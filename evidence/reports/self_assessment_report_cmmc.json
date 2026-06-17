@@ -1,0 +1,83 @@
+{
+  "generated": "2026-06-17T15:00:50Z",
+  "mode": "cmmc",
+  "overall_score_percent": 20.0,
+  "total_controls": 110,
+  "met": 22,
+  "not_met": 88,
+  "not_applicable": 0,
+  "poam_count": 0,
+  "family_breakdown": {
+    "Access Control": {
+      "met": 4,
+      "total": 22,
+      "percent": 18.2
+    },
+    "Awareness and Training": {
+      "met": 0,
+      "total": 3,
+      "percent": 0.0
+    },
+    "Audit and Accountability": {
+      "met": 4,
+      "total": 9,
+      "percent": 44.4
+    },
+    "Configuration Management": {
+      "met": 3,
+      "total": 9,
+      "percent": 33.3
+    },
+    "Identification and Authentication": {
+      "met": 4,
+      "total": 11,
+      "percent": 36.4
+    },
+    "Incident Response": {
+      "met": 0,
+      "total": 3,
+      "percent": 0.0
+    },
+    "Maintenance": {
+      "met": 0,
+      "total": 6,
+      "percent": 0.0
+    },
+    "Media Protection": {
+      "met": 1,
+      "total": 9,
+      "percent": 11.1
+    },
+    "Personnel Security": {
+      "met": 0,
+      "total": 2,
+      "percent": 0.0
+    },
+    "Physical Protection": {
+      "met": 0,
+      "total": 6,
+      "percent": 0.0
+    },
+    "Risk Assessment": {
+      "met": 0,
+      "total": 3,
+      "percent": 0.0
+    },
+    "Security Assessment": {
+      "met": 1,
+      "total": 4,
+      "percent": 25.0
+    },
+    "System and Communications Protection": {
+      "met": 3,
+      "total": 16,
+      "percent": 18.8
+    },
+    "System and Information Integrity": {
+      "met": 2,
+      "total": 7,
+      "percent": 28.6
+    }
+  },
+  "recommendation": "Complete POA&M items before affirmation or C3PAO"
+}
