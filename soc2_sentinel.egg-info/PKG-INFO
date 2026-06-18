@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: soc2-sentinel
-Version: 2.4.0
+Version: 2.5.0
 Summary: SOC2 Sentinel Toolkit — evidence automation for SOC2, NIST 800-171/172, CMMC L2/L3, DFARS, ATT&CK, and Zero Trust
 License: MIT
 Requires-Python: >=3.10
@@ -11,12 +11,21 @@ Requires-Dist: jsonschema<5,>=4.21
 Requires-Dist: google-cloud-storage<3,>=2.14
 Requires-Dist: google-cloud-iam<3,>=2.15
 Requires-Dist: google-cloud-logging<4,>=3.9
+Requires-Dist: google-cloud-asset<4,>=3.19
+Requires-Dist: google-cloud-kms<3,>=2.21
+Requires-Dist: google-cloud-org-policy<2,>=1.9
+Requires-Dist: google-cloud-compute<2,>=1.19
+Requires-Dist: google-api-python-client<3,>=2.120
 Requires-Dist: azure-identity<2,>=1.15
 Requires-Dist: azure-mgmt-storage<22,>=21.0
 Requires-Dist: azure-mgmt-monitor<7,>=6.0
 Requires-Dist: azure-mgmt-resource<24,>=23.0
+Requires-Dist: azure-mgmt-resourcegraph<9,>=8.0
+Requires-Dist: azure-mgmt-recoveryservicesbackup<10,>=9.0
 Requires-Dist: cryptography<44,>=42.0
 Requires-Dist: pyyaml<7,>=6.0
+Requires-Dist: portalocker<4,>=2.8
+Requires-Dist: requests<3,>=2.31
 Provides-Extra: dev
 Requires-Dist: pytest>=8.0; extra == "dev"
 Requires-Dist: pytest-cov>=5.0; extra == "dev"
@@ -24,9 +33,10 @@ Requires-Dist: mypy>=1.10; extra == "dev"
 Requires-Dist: bandit>=1.7; extra == "dev"
 Requires-Dist: ruff>=0.4; extra == "dev"
 Requires-Dist: pip-tools>=7.4; extra == "dev"
+Requires-Dist: moto>=5.0; extra == "dev"
 Dynamic: license-file
 
-# SOC2 Sentinel Toolkit v2.3
+# SOC2 Sentinel Toolkit v2.4
 
 Defense-grade compliance accelerator for **SOC2 Type II**, **NIST 800-171/172**, **CMMC L2/L3 self-assessment**, **C3PAO prep**, **DFARS 7012**, **MITRE ATT&CK**, and **Zero Trust** documentation workflows.
 

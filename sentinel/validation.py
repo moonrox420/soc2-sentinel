@@ -3,10 +3,13 @@ from __future__ import annotations
 import csv
 import logging
 import re
+import threading
 from pathlib import Path
 
 from sentinel.errors import ValidationError
 from sentinel.paths import install_root
+
+_write_probe_lock = threading.Lock()
 
 logger = logging.getLogger("sentinel")
 
@@ -36,12 +39,28 @@ def _load_known_controls() -> set[str]:
                 cid = (row.get("Practice ID") or row.get("practice_id") or "").strip()
                 if cid:
                     known.add(cid)
-    known.update({"CC6.1", "CC6.2", "CC6.3", "CC7.1", "CC7.2", "CC8.1", "C1.1", "C1.2", "C1.3", "C1.4", "A1.2", "A1.3", "ZT-1"})
+    known.update(
+        {
+            "CC6.1",
+            "CC6.2",
+            "CC6.3",
+            "CC7.1",
+            "CC7.2",
+            "CC8.1",
+            "C1.1",
+            "C1.2",
+            "C1.3",
+            "C1.4",
+            "A1.2",
+            "A1.3",
+            "ZT-1",
+        }
+    )
     _known_controls = known
     return known
 
 
-def sanitize_control_id(control_id: str, *, strict_allowlist: bool = False) -> str:
+def sanitize_control_id(control_id: str, *, strict_allowlist: bool = True) -> str:
     value = (control_id or "").strip()
     if not value:
         raise ValidationError("control_id is required")
@@ -80,9 +99,10 @@ def resolve_safe_output_base(base: Path | None) -> Path:
     if not root.is_dir():
         raise ValidationError(f"output base is not a directory: {root}")
     probe = root / ".sentinel_write_probe"
-    try:
-        probe.write_text("ok", encoding="utf-8")
-        probe.unlink(missing_ok=True)
-    except OSError as exc:
-        raise ValidationError(f"output base is not writable: {root}") from exc
+    with _write_probe_lock:
+        try:
+            probe.write_text("ok", encoding="utf-8")
+            probe.unlink(missing_ok=True)
+        except OSError as exc:
+            raise ValidationError(f"output base is not writable: {root}") from exc
     return root

@@ -20,13 +20,23 @@
       "Resource": "*"
     },
     {
+      "Sid": "SOC2SentinelIAMCredentialReport",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GenerateCredentialReport",
+        "iam:GetCredentialReport"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "SOC2SentinelCloudTrailReadOnly",
       "Effect": "Allow",
       "Action": [
         "cloudtrail:DescribeTrails",
         "cloudtrail:GetTrailStatus",
         "cloudtrail:GetEventSelectors",
-        "cloudtrail:ListTrails"
+        "cloudtrail:ListTrails",
+        "cloudtrail:LookupEvents"
       ],
       "Resource": "*"
     },
@@ -37,7 +47,28 @@
         "config:DescribeConfigurationRecorders",
         "config:DescribeConfigurationRecorderStatus",
         "config:DescribeDeliveryChannels",
-        "config:GetComplianceSummaryByConfigRule"
+        "config:GetComplianceSummaryByConfigRule",
+        "config:DescribeConfigRules",
+        "config:GetComplianceDetailsByConfigRule"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SOC2SentinelConfigCompliance",
+      "Effect": "Allow",
+      "Action": [
+        "config:GetComplianceSummaryByConfigRule",
+        "config:DescribeConfigRules",
+        "config:GetComplianceDetailsByConfigRule"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SOC2SentinelCloudWatchLogsReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogGroups",
+        "logs:GetRetentionPolicy"
       ],
       "Resource": "*"
     },
@@ -63,6 +94,15 @@
       "Resource": "*"
     },
     {
+      "Sid": "SOC2SentinelACMReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "acm:ListCertificates",
+        "acm:DescribeCertificate"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "SOC2SentinelS3ReadOnly",
       "Effect": "Allow",
       "Action": [
@@ -82,6 +122,7 @@
       "Action": [
         "rds:DescribeDBInstances",
         "rds:DescribeDBClusters",
+        "rds:DescribeDBSnapshots",
         "rds:ListTagsForResource"
       ],
       "Resource": "*"
@@ -94,6 +135,17 @@
         "kms:DescribeKey",
         "kms:GetKeyRotationStatus",
         "kms:ListAliases"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SOC2SentinelBackupReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "backup:ListBackupJobs",
+        "backup:ListRestoreJobs",
+        "backup:ListRecoveryPointsByBackupVault",
+        "backup:ListBackupVaults"
       ],
       "Resource": "*"
     }

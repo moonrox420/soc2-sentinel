@@ -1,0 +1,25 @@
+# Copy to sentinel.yaml and customize.
+
+evidence:
+  encrypt: false          # requires SENTINEL_EVIDENCE_KEY when true
+  redact_pii: false
+  manifest_backup: true   # copy manifest.json to evidence/<date>/manifests/
+
+validation:
+  strict_allowlist: true  # use --allow-unknown-control to bypass
+
+logging:
+  file: null              # optional structured JSON log path
+
+thresholds:
+  orphaned_accounts_red: 7
+  orphaned_accounts_yellow: 3
+  iam_review_days_red: 90
+
+provider:
+  aws_region: us-east-1
+  gcp_project_id: null
+  azure_subscription_id: null
+
+run_all:
+  continue_on_error: false

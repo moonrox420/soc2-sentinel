@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Any
 
 from sentinel.collectors._helpers import (
-    apply_partial_metadata,
+    apply_collection_metadata,
     fetch_snapshot,
+    log_collection_done,
     worst_status,
     write_failure_evidence,
 )
@@ -71,7 +72,8 @@ def collect_config_drift(
         "notes": snap.get("notes", "Authentication and configuration drift snapshot."),
         "provider": provider.name,
     }
-    apply_partial_metadata(payload, snap)
+    apply_collection_metadata(payload, snap)
+    log_collection_done(collector="config_drift", provider=provider.name, control_id=control_id, snap=snap)
     return write_evidence(
         payload,
         base=base,

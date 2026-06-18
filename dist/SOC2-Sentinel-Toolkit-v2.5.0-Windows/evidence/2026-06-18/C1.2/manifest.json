@@ -1,0 +1,9 @@
+{
+  "control_id": "C1.2",
+  "generated_at": "2026-06-18T06:02:27Z",
+  "toolkit_version": "2.5.0",
+  "artifacts": {
+    "encryption_status_report.json": "684af9d6f675f8cefcffac386c001b97c2a603bec476f2678e94223de95df665",
+    "report.json": "0d6a643e869c24271ba280699b8141ac9fc60e8d1bdddb1f68c6b62a126c3c81"
+  }
+}

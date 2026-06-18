@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 import jsonschema
@@ -18,6 +17,27 @@ def load_schema() -> dict[str, Any]:
     return json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
 
 
+def _enforce_collection_quality_rules(payload: dict[str, Any]) -> None:
+    quality = payload.get("collection_quality")
+    errors = payload.get("errors") or []
+    artifacts = payload.get("evidence_artifacts") or []
+    findings = payload.get("findings") or []
+
+    critical_errors = [e for e in errors if e.get("severity") == "critical"]
+    if quality == "complete":
+        if critical_errors:
+            raise ValidationError("collection_quality complete but critical errors present")
+        if not artifacts:
+            raise ValidationError("collection_quality complete requires evidence_artifacts")
+    if quality == "failed" and artifacts and critical_errors:
+        pass  # allowed — partial artifact write on hard failure
+
+    if findings:
+        for finding in findings:
+            if "severity" not in finding:
+                raise ValidationError("findings require severity when non-empty")
+
+
 def validate_evidence(payload: dict[str, Any]) -> None:
     schema = load_schema()
     try:
@@ -28,6 +48,7 @@ def validate_evidence(payload: dict[str, Any]) -> None:
             f"evidence schema validation failed at {path}: {exc.message}",
             details={"path": path, "validator": exc.validator},
         ) from exc
+    _enforce_collection_quality_rules(payload)
 
 
 def utc_now_iso() -> str:

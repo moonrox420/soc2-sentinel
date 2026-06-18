@@ -1,0 +1,81 @@
+# SOC2 Sentinel Toolkit v2.4
+
+Defense-grade compliance accelerator for **SOC2 Type II**, **NIST 800-171/172**, **CMMC L2/L3 self-assessment**, **C3PAO prep**, **DFARS 7012**, **MITRE ATT&CK**, and **Zero Trust** documentation workflows.
+
+## Disclaimer
+
+This toolkit provides policy templates, operational procedures, and evidence automation scripts. It is **not legal advice** and does **not** guarantee certification, audit pass, C3PAO approval, or DFARS reporting compliance. SOC2 Sentinel does not file DIBNet reports or detect live intrusions. Buyers are responsible for accurate implementation and assessor relationships.
+
+## Quick start (30 minutes)
+
+```powershell
+cd C:\Users\droxa\soc2-sentinel
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+
+# Demo without cloud credentials
+sentinel run-all --provider mock
+
+# Single collector
+sentinel run encryption_status --provider mock
+
+# CMMC L2 roll-up (110 practices)
+sentinel report --input data/cmmc-l2-controls-110.csv --mode cmmc
+
+# Zero Trust maturity
+sentinel report --input data/zero-trust-pillars.csv --mode zt
+```
+
+Evidence writes to `evidence/<YYYY-MM-DD>/<control_id>/report.json`.
+
+## Cloud providers
+
+| Provider | Command | Setup |
+|----------|---------|-------|
+| Mock (demo) | `--provider mock` | None |
+| AWS (full) | `--provider aws` | [docs/AWS_IAM_POLICY.json](docs/AWS_IAM_POLICY.json) |
+| GCP | `--provider gcp` | [docs/GCP_SETUP.md](docs/GCP_SETUP.md) |
+| Azure | `--provider azure` | [docs/AZURE_SETUP.md](docs/AZURE_SETUP.md) |
+
+## What's included (v2.3)
+
+- **7 collectors** — IAM, logs, config/MFA, encryption, retention, resilience, ZT verification
+- **17 policy templates** — [policies/](policies/) including IR, micro-segmentation, continuous verification, supply chain
+- **110 CMMC L2 practices** — [data/cmmc-l2-controls-110.csv](data/cmmc-l2-controls-110.csv)
+- **4 operational templates** — [docs/templates/](docs/templates/) (DIBNet, tabletop, threat hunting, vendor questionnaire)
+- **Notion import pack** — 6 CSVs + [docs/NOTION_SETUP.md](docs/NOTION_SETUP.md)
+- **Compliance playbooks** — CMMC L2/L3, 800-171/172 crosswalks, DFARS 7012, ATT&CK, Zero Trust, Executive Summary
+- **Master index** — [docs/MASTER_REFERENCE_v2.3.md](docs/MASTER_REFERENCE_v2.3.md)
+- **Sales assets** — [sales/](sales/) for Gumroad + Carrd
+
+## Key documentation
+
+| Topic | Document |
+|-------|----------|
+| Full index | [docs/MASTER_REFERENCE_v2.3.md](docs/MASTER_REFERENCE_v2.3.md) |
+| CMMC 110 practices | [docs/CMMC_L2_CONTROLS_REFERENCE.md](docs/CMMC_L2_CONTROLS_REFERENCE.md) |
+| DFARS 72h IR | [docs/DFARS_7012_INCIDENT_PROCEDURE.md](docs/DFARS_7012_INCIDENT_PROCEDURE.md) |
+| ATT&CK mapping | [docs/MITRE_ATTCK_COVERAGE.md](docs/MITRE_ATTCK_COVERAGE.md) |
+| Zero Trust | [docs/ZERO_TRUST_FRAMEWORK.md](docs/ZERO_TRUST_FRAMEWORK.md) |
+| Notion setup | [docs/NOTION_SETUP.md](docs/NOTION_SETUP.md) |
+
+## Notion setup
+
+1. Duplicate workspace structure per [docs/NOTION_SETUP.md](docs/NOTION_SETUP.md)
+2. Import CSVs from [data/notion-import/](data/notion-import/)
+3. Upload evidence JSON from `evidence/` after each `sentinel run-all`
+
+## Tests
+
+```powershell
+pytest
+```
+
+## Resale
+
+See [sales/whats-inside.md](sales/whats-inside.md) and [sales/gumroad-description.md](sales/gumroad-description.md). Suggested price: **$497** one-time.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

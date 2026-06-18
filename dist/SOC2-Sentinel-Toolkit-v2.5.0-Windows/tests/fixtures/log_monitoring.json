@@ -1,0 +1,38 @@
+{
+  "active_trails": 3,
+  "multi_region_trails": 2,
+  "config_recorder_all_supported": true,
+  "log_coverage_percent": 97.5,
+  "max_gap_hours": 0,
+  "critical_control_failures_30d": 0,
+  "findings": [],
+  "cui_relevant_events": [
+    {
+      "timestamp": "2026-06-17T02:14:00Z",
+      "resource": "s3://cui-data-prod",
+      "action": "GetObject",
+      "principal": "arn:aws:iam::123456789012:user/alice",
+      "attck_tags": [
+        "T1078",
+        "T1005"
+      ]
+    },
+    {
+      "timestamp": "2026-06-17T03:22:00Z",
+      "resource": "s3://cui-data-prod",
+      "action": "ListBucket",
+      "principal": "arn:aws:iam::123456789012:role/backup-service",
+      "attck_tags": [
+        "T1087"
+      ]
+    }
+  ],
+  "cui_retention_days": 365,
+  "attck_summary": {
+    "T1078": 1,
+    "T1005": 1,
+    "T1087": 1
+  },
+  "errors": [],
+  "collection_quality": "complete"
+}

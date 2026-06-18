@@ -3,12 +3,21 @@ jsonschema<5,>=4.21
 google-cloud-storage<3,>=2.14
 google-cloud-iam<3,>=2.15
 google-cloud-logging<4,>=3.9
+google-cloud-asset<4,>=3.19
+google-cloud-kms<3,>=2.21
+google-cloud-org-policy<2,>=1.9
+google-cloud-compute<2,>=1.19
+google-api-python-client<3,>=2.120
 azure-identity<2,>=1.15
 azure-mgmt-storage<22,>=21.0
 azure-mgmt-monitor<7,>=6.0
 azure-mgmt-resource<24,>=23.0
+azure-mgmt-resourcegraph<9,>=8.0
+azure-mgmt-recoveryservicesbackup<10,>=9.0
 cryptography<44,>=42.0
 pyyaml<7,>=6.0
+portalocker<4,>=2.8
+requests<3,>=2.31
 
 [dev]
 pytest>=8.0
@@ -17,3 +26,4 @@ mypy>=1.10
 bandit>=1.7
 ruff>=0.4
 pip-tools>=7.4
+moto>=5.0

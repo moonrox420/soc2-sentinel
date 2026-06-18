@@ -1,0 +1,25 @@
+{
+  "resources": [
+    {
+      "resource": "s3://cui-data",
+      "encrypted": true,
+      "type": "S3"
+    },
+    {
+      "resource": "prod-db",
+      "encrypted": true,
+      "type": "RDS"
+    }
+  ],
+  "total_confidential_resources": 87,
+  "encrypted_at_rest": 87,
+  "unencrypted_cui_count": 0,
+  "fips_compliant_keys": 12,
+  "keys_pending_rotation": 0,
+  "tls_endpoints_checked": 24,
+  "weak_cipher_endpoints": 0,
+  "findings": [],
+  "errors": [],
+  "collection_quality": "complete",
+  "partial": false
+}

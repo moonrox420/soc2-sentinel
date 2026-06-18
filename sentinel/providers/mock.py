@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 from sentinel.errors import ProviderError
@@ -35,6 +34,7 @@ class MockProvider(Provider):
     def _with_meta(self, data: dict[str, Any]) -> dict[str, Any]:
         merged = dict(data)
         merged.setdefault("errors", [])
+        merged.setdefault("collection_quality", "complete")
         merged.setdefault("partial", False)
         return merged
 

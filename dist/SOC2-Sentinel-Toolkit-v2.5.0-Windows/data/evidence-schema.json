@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SOC2SentinelEvidence",
+  "type": "object",
+  "required": [
+    "control_id",
+    "collection_timestamp",
+    "status",
+    "collection_quality",
+    "metrics",
+    "evidence_artifacts",
+    "findings",
+    "errors",
+    "notes",
+    "provider"
+  ],
+  "properties": {
+    "control_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "collection_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": { "enum": ["green", "yellow", "red"] },
+    "collection_quality": { "enum": ["complete", "partial", "failed"] },
+    "metrics": { "type": "object" },
+    "evidence_artifacts": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "service": { "type": "string" },
+          "retryable": { "type": "boolean" },
+          "severity": { "enum": ["low", "medium", "high", "critical"] }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["issue"],
+        "properties": {
+          "resource": { "type": "string" },
+          "issue": { "type": "string" },
+          "severity": { "enum": ["low", "medium", "high", "critical"] }
+        }
+      }
+    },
+    "notes": { "type": "string" },
+    "provider": { "enum": ["aws", "gcp", "azure", "mock"] },
+    "attck_tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "cui_scoped": { "type": "boolean" },
+    "composite_checks": { "type": "object" }
+  },
+  "additionalProperties": false
+}

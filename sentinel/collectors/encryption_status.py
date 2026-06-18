@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Any
 
 from sentinel.collectors._helpers import (
-    apply_partial_metadata,
+    apply_collection_metadata,
     fetch_snapshot,
+    log_collection_done,
     write_failure_evidence,
 )
 from sentinel.config import SentinelConfig
@@ -57,7 +58,8 @@ def collect_encryption_status(
         "notes": "Encryption at rest and key management evidence for C1.1/C1.2.",
         "provider": provider.name,
     }
-    apply_partial_metadata(payload, snap)
+    apply_collection_metadata(payload, snap)
+    log_collection_done(collector="encryption_status", provider=provider.name, control_id=control_id, snap=snap)
     return write_evidence(
         payload,
         base=base,

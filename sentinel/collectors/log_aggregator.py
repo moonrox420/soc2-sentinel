@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Any
 
 from sentinel.collectors._helpers import (
-    apply_partial_metadata,
+    apply_collection_metadata,
     fetch_snapshot,
+    log_collection_done,
     write_failure_evidence,
 )
 from sentinel.config import SentinelConfig
@@ -67,5 +68,6 @@ def collect_log_aggregator(
         "cui_scoped": len(cui_events) > 0,
         "attck_tags": list(snap.get("attck_summary", {}).keys()),
     }
-    apply_partial_metadata(payload, snap)
+    apply_collection_metadata(payload, snap)
+    log_collection_done(collector="log_aggregator", provider=provider.name, control_id=control_id, snap=snap)
     return write_evidence(payload, base=base, extra_files=extra, config=cfg)

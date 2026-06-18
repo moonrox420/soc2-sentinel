@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path $PSScriptRoot -Parent
-$Version = "2.4.0"
+$Version = "2.5.0"
 $DistDir = Join-Path $Root "dist"
 $StageName = "SOC2-Sentinel-Toolkit-v$Version-Windows"
 $StageDir = Join-Path $DistDir $StageName

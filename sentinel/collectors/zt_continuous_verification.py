@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Any
 
 from sentinel.collectors._helpers import (
-    apply_partial_metadata,
+    apply_collection_metadata,
     fetch_snapshot,
+    log_collection_done,
     write_failure_evidence,
 )
 from sentinel.config import SentinelConfig
@@ -37,7 +38,7 @@ def collect_zt_continuous_verification(
         )
 
     checks = {
-        "iam_review_current": snap.get("iam_review_days_ago", 999) <= 90,
+        "iam_review_current": (snap.get("iam_review_days_ago") or 0) <= 90,
         "encryption_green": snap.get("encryption_status") == "green",
         "mfa_enforced": snap.get("mfa_enforcement_percent", 0) >= 100,
         "orphaned_within_threshold": snap.get("orphaned_accounts", 99) <= 7,
@@ -68,7 +69,13 @@ def collect_zt_continuous_verification(
         "composite_checks": checks,
         "attck_tags": ["T1078", "T1550"],
     }
-    apply_partial_metadata(payload, snap)
+    apply_collection_metadata(payload, snap)
+    log_collection_done(
+        collector="zt_continuous_verification",
+        provider=provider.name,
+        control_id=control_id,
+        snap=snap,
+    )
     export = {**snap, "checks": checks, "pillar_scores": pillar_scores}
     return write_evidence(
         payload,

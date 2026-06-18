@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Any
 
 from sentinel.collectors._helpers import (
-    apply_partial_metadata,
+    apply_collection_metadata,
     fetch_snapshot,
+    log_collection_done,
     write_failure_evidence,
 )
 from sentinel.config import SentinelConfig
@@ -73,7 +74,8 @@ def collect_iam_access_review(
         "provider": provider.name,
         "composite_checks": {"jit_recommendations": jit_recommendations},
     }
-    apply_partial_metadata(payload, snap)
+    apply_collection_metadata(payload, snap)
+    log_collection_done(collector="iam_access_review", provider=provider.name, control_id=control_id, snap=snap)
 
     csv_content = snap.get("csv", "")
     if cfg.evidence.redact_pii and csv_content:

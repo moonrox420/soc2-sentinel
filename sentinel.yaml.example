@@ -3,6 +3,13 @@
 evidence:
   encrypt: false          # requires SENTINEL_EVIDENCE_KEY when true
   redact_pii: false
+  manifest_backup: true   # copy manifest.json to evidence/<date>/manifests/
+
+validation:
+  strict_allowlist: true  # use --allow-unknown-control to bypass
+
+logging:
+  file: null              # optional structured JSON log path
 
 thresholds:
   orphaned_accounts_red: 7

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,8 @@ from sentinel.errors import ProviderError
 from sentinel.output import write_evidence
 from sentinel.schema import utc_now_iso
 from sentinel.security import redact_pii, sanitize_csv_cell
+
+logger = logging.getLogger("sentinel.collectors")
 
 
 def fetch_snapshot(fn: Callable[[], dict[str, Any]], *, collector: str) -> dict[str, Any]:
@@ -20,16 +23,19 @@ def fetch_snapshot(fn: Callable[[], dict[str, Any]], *, collector: str) -> dict[
         raise ProviderError(f"{collector} snapshot failed: {exc}") from exc
 
 
-def apply_partial_metadata(payload: dict[str, Any], snap: dict[str, Any]) -> None:
-    if not snap.get("partial"):
-        return
-    if payload.get("status") == "green":
-        payload["status"] = "yellow"
+def apply_collection_metadata(payload: dict[str, Any], snap: dict[str, Any]) -> None:
+    """Map provider snapshot errors and collection_quality into evidence payload."""
     errors = snap.get("errors") or []
-    if errors:
-        note = payload.get("notes", "")
-        suffix = " Partial collection: " + "; ".join(errors)
-        payload["notes"] = (note + suffix).strip()
+    if errors and isinstance(errors[0], str):
+        errors = [{"code": "ProviderError", "message": e, "severity": "high"} for e in errors]
+    payload["errors"] = list(errors)
+    quality = snap.get("collection_quality", "complete")
+    payload["collection_quality"] = quality
+
+    if quality == "failed":
+        payload["status"] = "red"
+    elif quality == "partial" and payload.get("status") == "green":
+        payload["status"] = "yellow"
 
 
 def worst_status(*statuses: str) -> str:
@@ -51,9 +57,11 @@ def failure_payload(
         "control_id": control_id,
         "collection_timestamp": utc_now_iso(),
         "status": "red",
+        "collection_quality": "failed",
         "metrics": {"collection_failed": True},
         "evidence_artifacts": [],
         "findings": [{"issue": error, "severity": "critical", "resource": collector}],
+        "errors": [{"code": "CollectionFailed", "message": error, "severity": "critical"}],
         "notes": f"{collector} failed: {error}",
         "provider": provider_name,
     }
@@ -92,3 +100,23 @@ def sanitize_csv_export(rows: list[dict[str, Any]], *, redact: bool = False) -> 
             cells.append(text)
         lines.append(",".join(cells))
     return "\n".join(lines) + "\n"
+
+
+def log_collection_done(
+    *,
+    collector: str,
+    provider: str,
+    control_id: str,
+    snap: dict[str, Any],
+) -> None:
+    errors = snap.get("errors") or []
+    logger.info(
+        "collection complete",
+        extra={
+            "collector": collector,
+            "provider": provider,
+            "control_id": control_id,
+            "collection_quality": snap.get("collection_quality", "complete"),
+            "error_count": len(errors),
+        },
+    )

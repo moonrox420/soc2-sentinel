@@ -1,0 +1,3 @@
+POA&M ID,Related Control,Weakness Description,Planned Remediation,Resources Required,Target Completion,Current Status,Residual Risk
+POAM-001,CC8.1,Change tickets missing rollback test evidence,Add rollback test checklist to CAB workflow,Engineering lead 4h/quarter,2026-09-30,In Progress,Medium
+POAM-002,CC9.1,Vulnerability scan evidence not automated,Integrate scanner export parser in Sentinel v1.7,Security engineer 8h,2026-12-31,Open,Medium

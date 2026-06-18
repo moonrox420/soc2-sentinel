@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import stat
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ from sentinel.errors import ValidationError
 class EvidenceConfig:
     encrypt: bool = False
     redact_pii: bool = False
+    manifest_backup: bool = True
 
 
 @dataclass
@@ -19,6 +21,16 @@ class ThresholdConfig:
     orphaned_accounts_red: int = 7
     orphaned_accounts_yellow: int = 3
     iam_review_days_red: int = 90
+
+
+@dataclass
+class ValidationConfig:
+    strict_allowlist: bool = True
+
+
+@dataclass
+class LoggingConfig:
+    file: str | None = None
 
 
 @dataclass
@@ -37,9 +49,48 @@ class RunAllConfig:
 class SentinelConfig:
     evidence: EvidenceConfig = field(default_factory=EvidenceConfig)
     thresholds: ThresholdConfig = field(default_factory=ThresholdConfig)
+    validation: ValidationConfig = field(default_factory=ValidationConfig)
+    logging: LoggingConfig = field(default_factory=LoggingConfig)
     provider: ProviderConfig = field(default_factory=ProviderConfig)
     run_all: RunAllConfig = field(default_factory=RunAllConfig)
     source_path: Path | None = None
+
+    def validate(self) -> list[str]:
+        """Startup validation. Raises ValidationError on hard failures; returns warnings."""
+        warnings: list[str] = []
+
+        if self.evidence.encrypt:
+            key = os.environ.get("SENTINEL_EVIDENCE_KEY", "").strip()
+            key_file = os.environ.get("SENTINEL_EVIDENCE_KEY_FILE", "").strip()
+            if not key and not key_file:
+                raise ValidationError(
+                    "evidence.encrypt is true but SENTINEL_EVIDENCE_KEY or "
+                    "SENTINEL_EVIDENCE_KEY_FILE is not set"
+                )
+            if key_file and not Path(key_file).is_file():
+                raise ValidationError(f"SENTINEL_EVIDENCE_KEY_FILE not found: {key_file}")
+
+        yellow = self.thresholds.orphaned_accounts_yellow
+        red = self.thresholds.orphaned_accounts_red
+        if yellow < 0 or red < 0 or self.thresholds.iam_review_days_red < 0:
+            raise ValidationError("threshold values must be non-negative integers")
+        if yellow >= red:
+            raise ValidationError(
+                f"orphaned_accounts_yellow ({yellow}) must be less than "
+                f"orphaned_accounts_red ({red})"
+            )
+
+        if self.source_path and self.source_path.exists() and os.name != "nt":
+            mode = self.source_path.stat().st_mode
+            if mode & stat.S_IROTH or mode & stat.S_IWOTH:
+                warnings.append(
+                    f"sentinel.yaml is world-readable ({oct(mode & 0o777)}); "
+                    "recommend chmod 600"
+                )
+            if self.source_path.stat().st_uid != os.getuid():
+                warnings.append("sentinel.yaml is not owned by the current user")
+
+        return warnings
 
 
 def _coerce_bool(value: Any) -> bool:
@@ -48,6 +99,15 @@ def _coerce_bool(value: Any) -> bool:
     if isinstance(value, str):
         return value.strip().lower() in {"1", "true", "yes", "on"}
     return bool(value)
+
+
+def _safe_int(value: Any, *, field_name: str, default: int) -> int:
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError(f"thresholds.{field_name} must be an integer") from exc
 
 
 def _merge_dict(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -90,6 +150,8 @@ def load_config(path: Path | None = None) -> SentinelConfig:
 
     evidence_raw = data.get("evidence", {})
     thresholds_raw = data.get("thresholds", {})
+    validation_raw = data.get("validation", {})
+    logging_raw = data.get("logging", {})
     provider_raw = data.get("provider", {})
     run_all_raw = data.get("run_all", {})
 
@@ -97,11 +159,26 @@ def load_config(path: Path | None = None) -> SentinelConfig:
         evidence=EvidenceConfig(
             encrypt=_coerce_bool(evidence_raw.get("encrypt", False)),
             redact_pii=_coerce_bool(evidence_raw.get("redact_pii", False)),
+            manifest_backup=_coerce_bool(evidence_raw.get("manifest_backup", True)),
         ),
         thresholds=ThresholdConfig(
-            orphaned_accounts_red=int(thresholds_raw.get("orphaned_accounts_red", 7)),
-            orphaned_accounts_yellow=int(thresholds_raw.get("orphaned_accounts_yellow", 3)),
-            iam_review_days_red=int(thresholds_raw.get("iam_review_days_red", 90)),
+            orphaned_accounts_red=_safe_int(
+                thresholds_raw.get("orphaned_accounts_red"), field_name="orphaned_accounts_red", default=7
+            ),
+            orphaned_accounts_yellow=_safe_int(
+                thresholds_raw.get("orphaned_accounts_yellow"),
+                field_name="orphaned_accounts_yellow",
+                default=3,
+            ),
+            iam_review_days_red=_safe_int(
+                thresholds_raw.get("iam_review_days_red"), field_name="iam_review_days_red", default=90
+            ),
+        ),
+        validation=ValidationConfig(
+            strict_allowlist=_coerce_bool(validation_raw.get("strict_allowlist", True)),
+        ),
+        logging=LoggingConfig(
+            file=logging_raw.get("file"),
         ),
         provider=ProviderConfig(
             aws_region=provider_raw.get("aws_region") or os.environ.get("AWS_REGION"),

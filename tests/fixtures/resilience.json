@@ -6,5 +6,7 @@
   "failover_test_days_ago": 60,
   "failover_test_passed": true,
   "backup_jobs_success_30d": 28,
-  "backup_jobs_failed_30d": 0
+  "backup_jobs_failed_30d": 0,
+  "errors": [],
+  "collection_quality": "complete"
 }

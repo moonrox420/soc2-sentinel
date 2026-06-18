@@ -1,7 +1,6 @@
 import json
-from pathlib import Path
 
-from sentinel.integrity import build_manifest, verify_manifest
+from sentinel.integrity import verify_manifest
 from sentinel.output import write_evidence
 from sentinel.schema import utc_now_iso
 

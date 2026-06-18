@@ -47,12 +47,25 @@ $env:GOOGLE_CLOUD_PROJECT = "your-project-id"
    - Name: `soc2-sentinel-readonly`
 2. Grant roles (read-only):
 
+Custom role `soc2SentinelViewer` (v2.5) — minimum permissions:
+
+| Permission area | APIs / permissions |
+|-----------------|-------------------|
+| IAM | `cloudasset.assets.searchAllIamPolicies`, `iam.serviceAccounts.list`, `iam.serviceAccountKeys.list` |
+| Logging | `logging.sinks.list`, `logging.buckets.list`, `logging.entries.list` |
+| Org policy | `orgpolicy.policy.get` |
+| Encryption | `storage.buckets.get`, `cloudkms.cryptoKeys.list` |
+| Backup | `compute.snapshots.list`, `sql.backupRuns.list` |
+
+Or use bundled roles:
+
 | Role | Purpose |
 |------|---------|
 | `roles/storage.objectViewer` | Bucket encryption and lifecycle |
 | `roles/logging.viewer` | Log sinks and metrics |
 | `roles/cloudasset.viewer` | IAM policy export |
-| `roles/viewer` | Resource enumeration (optional, broad) |
+| `roles/cloudkms.viewer` | KMS rotation status |
+| `roles/compute.viewer` | Compute snapshots |
 
 3. Create JSON key **only if** your security policy allows key-based auth; prefer Workload Identity Federation for CI.
 
@@ -68,6 +81,7 @@ Use federation instead of long-lived keys. Document the federation binding in yo
 ## Verify installation
 
 ```bash
+sentinel validate --provider gcp
 sentinel run log_aggregator --provider gcp
 sentinel run encryption_status --provider gcp
 sentinel run-all --provider gcp
@@ -79,11 +93,12 @@ Evidence writes to `evidence/<date>/<control_id>/report.json`.
 
 | Collector | GCP data source | Notes |
 |-----------|-----------------|-------|
-| `iam_access_review` | Cloud Asset IAM export | Lightweight snapshot without Asset API; enable API for full CSV |
-| `log_aggregator` | Logging sinks | Flags missing sinks |
-| `config_drift` | Placeholder metrics | Supplement with Org Policy / SCC manual evidence |
-| `encryption_status` | GCS buckets | Checks CMEK / default encryption signals |
-| `retention_check` | GCS lifecycle | Validates expiration rules |
+| `iam_access_review` | Cloud Asset IAM + SA keys | Live principals; orphaned = keys >90d |
+| `log_aggregator` | Sinks, buckets, `entries.list` | Real coverage via Asset inventory |
+| `config_drift` | Org Policy + firewall rules | No fabricated MFA % |
+| `encryption_status` | GCS + Cloud KMS | Uniform access / CMEK; KMS rotation |
+| `retention_check` | GCS lifecycle | `buckets_missing_lifecycle` metric |
+| `resilience_testing` | Compute snapshots + SQL backups | Fails honestly without backup evidence |
 
 ## Security recommendations
 

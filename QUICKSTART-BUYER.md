@@ -1,4 +1,4 @@
-# SOC2 Sentinel Toolkit v2.4 — Quick Start (Windows)
+# SOC2 Sentinel Toolkit v2.5 — Quick Start (Windows)
 
 No Python install required. Unzip anywhere (e.g. `C:\SOC2-Sentinel`).
 
@@ -25,15 +25,23 @@ Evidence appears under `evidence\<today>\<control_id>\report.json`.
 .\bin\sentinel.exe report --input data\zero-trust-pillars.csv --mode zt
 ```
 
-## 3. AWS (when ready)
+## 3. Validate before first cloud run
+
+```powershell
+.\bin\sentinel.exe validate --provider mock
+.\bin\sentinel.exe validate --provider aws   # after credentials configured
+```
+
+## 4. AWS (when ready)
 
 1. Create a read-only IAM role per `docs\AWS_IAM_POLICY.json`
 2. Set credentials (`AWS_PROFILE` or env vars)
 3. Run: `.\bin\sentinel.exe run-all --provider aws`
+4. Verify integrity: `.\bin\sentinel.exe verify evidence\<date>\`
 
 GCP and Azure: see `docs\GCP_SETUP.md` and `docs\AZURE_SETUP.md`.
 
-## 4. Configuration (optional)
+## 5. Configuration (optional)
 
 Copy `sentinel.yaml.example` to `sentinel.yaml` to tune thresholds, opt-in encryption, or continue-on-error for `run-all`.
 

@@ -17,5 +17,7 @@
     "Data": "Optimized",
     "Analytics": "Managed",
     "Governance": "Managed"
-  }
+  },
+  "errors": [],
+  "collection_quality": "complete"
 }

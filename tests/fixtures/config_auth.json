@@ -6,5 +6,7 @@
   "unapproved_changes": 0,
   "changes_missing_rollback_test": 0,
   "issues": 0,
-  "warnings": 0
+  "warnings": 0,
+  "errors": [],
+  "collection_quality": "complete"
 }

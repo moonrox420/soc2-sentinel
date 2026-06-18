@@ -6,9 +6,11 @@
     "control_id",
     "collection_timestamp",
     "status",
+    "collection_quality",
     "metrics",
     "evidence_artifacts",
     "findings",
+    "errors",
     "notes",
     "provider"
   ],
@@ -24,10 +26,25 @@
       "format": "date-time"
     },
     "status": { "enum": ["green", "yellow", "red"] },
+    "collection_quality": { "enum": ["complete", "partial", "failed"] },
     "metrics": { "type": "object" },
     "evidence_artifacts": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "service": { "type": "string" },
+          "retryable": { "type": "boolean" },
+          "severity": { "enum": ["low", "medium", "high", "critical"] }
+        }
+      }
     },
     "findings": {
       "type": "array",

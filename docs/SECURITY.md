@@ -1,47 +1,56 @@
-# SOC2 Sentinel Security Model (v2.4)
+# SOC2 Sentinel Security Model (v2.5)
 
 ## Threat model
 
-SOC2 Sentinel runs on operator workstations with read-only cloud credentials. Primary risks:
-
-- Path traversal via malicious `control_id` or artifact names
-- Plaintext evidence containing IAM identities or resource metadata
-- Tampering with evidence after collection
-- Cloud API failures producing incomplete audit artifacts
+| Threat | Impact | v2.5 mitigation |
+|--------|--------|-----------------|
+| Insider modifies evidence post-collection | Audit failure | SHA-256 manifest + optional HMAC; `sentinel verify` |
+| Replay of stale evidence | False compliance | Manifest includes `toolkit_version` + `collection_timestamp` |
+| Concurrent runs corrupt evidence | Data loss | `portalocker` per control directory |
+| Compromised cloud credentials | Data exfiltration | Read-only IAM; credential preflight; audit JSONL |
+| Path traversal in control IDs | Arbitrary file write | Strict sanitization + allowlist (default on) |
+| Plaintext PII on disk | Privacy breach | Optional encryption (HKDF + AES-GCM); PII redaction |
+| Manifest deletion | Integrity loss | Backup copy under `evidence/<date>/manifests/` |
+| API partial failure buried in notes | False green status | Structured `errors[]` + `collection_quality` |
 
 ## Controls implemented
 
 | Control | Module |
 |---------|--------|
-| Path sanitization | `sentinel/validation.py` |
-| Atomic evidence writes | `sentinel/output.py` |
-| Restrictive file modes (Unix) | `sentinel/security.py` |
-| Optional AES-256-GCM encryption | `SENTINEL_EVIDENCE_KEY` + config |
-| SHA-256 manifest per run | `sentinel/integrity.py` |
-| Optional HMAC tamper tag | `SENTINEL_HMAC_KEY` |
-| Audit JSONL trail | `evidence/.sentinel-audit.jsonl` |
-| CSV formula injection guard | `sentinel/security.py` |
-| Provider credential preflight | AWS/GCP/Azure providers |
+| Path sanitization + strict allowlist | `sentinel/validation.py` |
+| Startup config validation | `sentinel/config.py` → `validate()` |
+| Atomic evidence writes + file lock | `sentinel/output.py` |
+| HKDF key derivation (SSENC2) | `sentinel/security.py` |
+| HMAC-enforced decrypt | `SENTINEL_HMAC_KEY` + manifest |
+| Audit JSONL with quality metrics | `sentinel/audit.py` |
+| Provider credential preflight | `sentinel/providers/` |
 | Retry/timeouts for cloud APIs | `sentinel/cloud.py` |
 
 ## Key management
 
-- `SENTINEL_EVIDENCE_KEY` — 32+ character secret for encryption-at-rest (opt-in)
-- `SENTINEL_HMAC_KEY` — separate secret for manifest HMAC (recommended for regulated buyers)
+| Variable | Purpose |
+|----------|---------|
+| `SENTINEL_EVIDENCE_KEY` | AES-GCM encryption secret (opt-in) |
+| `SENTINEL_EVIDENCE_KEY_ID` | Key rotation identifier embedded in SSENC2 header |
+| `SENTINEL_EVIDENCE_KEY_FILE` | Alternative to env var (path to secret file) |
+| `SENTINEL_HMAC_KEY` | Manifest HMAC (recommended for regulated buyers) |
 
-Do not commit keys. Use environment variables or a team vault.
+Store secrets in AWS Secrets Manager, Azure Key Vault, or GCP Secret Manager — never in `sentinel.yaml`.
 
-## Chain of custody
+## Permission matrix
 
-Each collector run writes:
+- **AWS:** `docs/AWS_IAM_POLICY.json` — Backup, ACM, Config compliance, credential report
+- **GCP:** `docs/GCP_SETUP.md` — custom role `soc2SentinelViewer`
+- **Azure:** `docs/AZURE_SETUP.md` — Graph app + Resource Graph Reader
 
-1. `report.json` (or `.enc` when encryption enabled)
-2. Supporting artifacts listed only if actually written
-3. `manifest.json` with SHA-256 per file
-4. Audit event in `.sentinel-audit.jsonl`
+## Log shipping
 
-## Future hooks (not in v2.4)
+Use `--log-file` for structured JSON logs. Forward to CloudWatch, Azure Monitor, or syslog per your SIEM runbook.
 
-- Scheduled evidence rolls (cron / CI)
-- SIEM and incident tracker integrations
+## Future hooks (documented only — no stubs)
+
 - Jira/ServiceNow POA&M sync
+- Scheduled cron evidence rolls
+- Live SIEM webhooks
+- Multi-signature evidence
+- `sentinel access-log` (OS-level access auditing)

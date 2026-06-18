@@ -1,0 +1,1 @@
+{"ts": "2026-06-18T06:02:27.373352Z", "actor": "droxa", "command": "run", "provider": "mock", "control_id": "C1.2", "collector": "encryption_status", "outcome": "success", "duration_ms": 46, "details": {}}

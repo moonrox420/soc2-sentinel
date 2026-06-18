@@ -54,19 +54,30 @@ Built-in **Reader** role on the target subscription covers:
 - Storage account encryption settings (`encryption_status`)
 - Resource enumeration
 
-For enhanced evidence, add:
+App registration (v2.5 Graph collectors):
 
-| Role / Permission | Purpose |
-|-------------------|---------|
-| `Microsoft.Authorization/roleAssignments/read` | IAM-style reviews |
-| Log Analytics Reader | `log_aggregator` workspace queries |
-| Security Reader | Defender alerts (manual correlation) |
+| Graph application permission | Purpose |
+|------------------------------|---------|
+| `Directory.Read.All` | Directory role assignments |
+| `Policy.Read.All` | Conditional access policies |
+| `AuditLog.Read.All` | Sign-in activity |
+| `RoleManagement.Read.Directory` | Privileged role detection |
+| `UserAuthenticationMethod.Read.All` | MFA registration (`authenticationMethods/userRegistrationDetails`) |
+
+ARM + Resource Graph:
+
+| Permission | Purpose |
+|------------|---------|
+| Reader on subscription | Storage, Recovery Services |
+| `Microsoft.ResourceGraph/resources/read` | NSG port 80, diagnostic coverage % |
+| `Microsoft.Resources/deployments/read` | Change management queries |
 
 Create a custom role if Reader is too broad for your governance model.
 
 ## Verify
 
 ```bash
+sentinel validate --provider azure
 sentinel run encryption_status --provider azure
 sentinel run log_aggregator --provider azure
 sentinel run-all --provider azure
@@ -76,22 +87,12 @@ sentinel run-all --provider azure
 
 | Collector | Azure data source | Notes |
 |-----------|-------------------|-------|
-| `iam_access_review` | Placeholder export | Use Microsoft Graph for full Entra ID role evidence |
-| `log_aggregator` | Activity Log / diagnostic settings | Supplement with Log Analytics queries |
-| `config_drift` | Baseline metrics | Pair with Azure Policy compliance export |
-| `encryption_status` | Storage account encryption | Blob service encryption flag |
-| `retention_check` | Storage lifecycle management | Manual policy review may be needed |
-
-## Microsoft Graph supplement (recommended)
-
-For CC6.1-quality IAM evidence:
-
-1. Register app in Entra ID
-2. Grant **Application** permissions: `Directory.Read.All`, `RoleManagement.Read.Directory` (admin consent)
-3. Export role assignments quarterly
-4. Store alongside Sentinel `iam_access_review` output
-
-This step is manual in v1.6.0; Graph export is documented for honest completeness.
+| `iam_access_review` | Microsoft Graph | Directory roles + sign-in activity |
+| `log_aggregator` | Resource Graph diagnostics | Real `log_coverage_percent` |
+| `config_drift` | Resource Graph NSG + Graph MFA | No hardcoded 100% MFA |
+| `encryption_status` | Storage + disk encryption sets | Resource Graph disk query |
+| `retention_check` | Storage management policies | `accounts_missing_lifecycle` |
+| `resilience_testing` | Recovery Services backup jobs | No fabricated backup hours |
 
 ## Troubleshooting
 
