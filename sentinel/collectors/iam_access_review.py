@@ -51,8 +51,10 @@ def collect_iam_access_review(
         "privileged_count": snap.get("privileged_count", 0),
         "privileged_standing_count": privileged_standing,
         "days_since_last_review": snap.get("days_since_last_review"),
-        "session_timeout_compliant": snap.get("session_timeout_compliant", True),
+        "session_timeout_compliant": snap.get("session_timeout_compliant"),
         "jit_recommendations_count": len(jit_recommendations),
+        "max_credential_age_days": snap.get("max_credential_age_days"),
+        "stale_service_account_keys": snap.get("stale_service_account_keys"),
     }
     findings = [
         {
