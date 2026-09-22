@@ -24,7 +24,7 @@ def test_azure_logging_resource_graph():
             mock_mon.return_value.diagnostic_settings.list.return_value = [MagicMock()]
             with patch("sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()):
                 snap = log_monitoring_snapshot(ctx)
-    assert snap["log_coverage_percent"] == 80.0
+    assert snap["log_coverage_percent"] is None\n    assert snap["subscription_diagnostic_settings_count"] == 1\n    assert any(e["code"] == "CoverageUnavailable" for e in snap["errors"])
 
 
 def test_azure_encryption_storage():
@@ -64,4 +64,4 @@ def test_azure_config_mfa():
         with patch.object(ctx, "graph_get", return_value=mfa):
             with patch("sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()):
                 snap = config_and_auth_snapshot(ctx)
-    assert snap["mfa_enforcement_percent"] == 50.0
+    assert snap["mfa_enforcement_percent"] is None\n    assert snap["mfa_registered_percent"] == 50.0
