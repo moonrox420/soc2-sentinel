@@ -13,35 +13,8 @@ logger = logging.getLogger("sentinel.providers.azure.logging")
 def log_monitoring_snapshot(ctx: AzureContext) -> dict[str, Any]:
     logger.info("collecting Azure log monitoring snapshot")
     findings: list[dict[str, str]] = []
-    with_diagnostics = 0
-    total_resources = 0
+    subscription_diagnostic_settings = 0
     coverage: float | None = None
-
-    try:
-        from azure.mgmt.resourcegraph import ResourceGraphClient
-        from azure.mgmt.resourcegraph.models import QueryRequest
-
-        rg_client = ResourceGraphClient(ctx.credential)
-        query = QueryRequest(
-            subscriptions=[ctx.subscription_id],
-            query="""
-            Resources
-            | summarize total=count(), withDiag=countif(isnotempty(properties.diagnosticSettings))
-            """,
-        )
-        ctx.attempt()
-        result = call_with_retry(
-            lambda: rg_client.resources(query),
-            operation="azure_resource_graph_diagnostics",
-        )
-        ctx.succeed()
-        for row in result.data:
-            total_resources = int(row.get("total", 0))
-            with_diagnostics = int(row.get("withDiag", 0))
-        if total_resources > 0:
-            coverage = round((with_diagnostics / total_resources) * 100, 1)
-    except Exception as exc:
-        ctx.record_error("resourcegraph", exc)
 
     try:
         from azure.mgmt.monitor import MonitorManagementClient
@@ -53,29 +26,31 @@ def log_monitoring_snapshot(ctx: AzureContext) -> dict[str, Any]:
             operation="azure_subscription_diagnostics",
         )
         ctx.succeed()
+        subscription_diagnostic_settings = len(settings)
         if not settings:
             findings.append({"resource": "subscription", "issue": "no subscription diagnostic settings"})
     except Exception as exc:
         ctx.record_error("monitor", exc)
 
     data: dict[str, Any] = {
-        "active_trails": with_diagnostics,
+        "active_trails": subscription_diagnostic_settings,
         "multi_region_trails": 0,
-        "config_recorder_all_supported": with_diagnostics > 0,
+        "config_recorder_all_supported": subscription_diagnostic_settings > 0,
         "log_coverage_percent": coverage,
-        "max_gap_hours": 0 if with_diagnostics else None,
+        "max_gap_hours": None,
         "critical_control_failures_30d": len(findings),
         "findings": findings,
         "cui_relevant_events": [],
-        "cui_retention_days": 365,
+        "cui_retention_days": None,
         "attck_summary": {},
-        "resources_checked": total_resources,
+        "subscription_diagnostic_settings_count": subscription_diagnostic_settings,
+        "resources_checked": None,
     }
     if coverage is None:
         ctx.errors.append(
             api_error(
                 "CoverageUnavailable",
-                "Could not compute log_coverage_percent from Resource Graph",
+                "Subscription diagnostic settings do not prove per-resource logging coverage",
                 service="monitor",
                 severity="high",
             )
