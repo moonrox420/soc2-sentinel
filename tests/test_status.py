@@ -38,3 +38,21 @@ def test_retention_and_generic():
     assert status_retention({"objects_past_retention": 1}) == "red"
     assert status_generic_pass({"issues": 0, "warnings": 1}) == "yellow"
     assert resolve_status("CC6.1", {"orphaned_accounts": 0, "days_since_last_review": 10}) == "green"
+
+def test_unknown_evidence_does_not_pass_green():
+    assert status_iam_access_review(
+        {"orphaned_accounts": None, "days_since_last_review": None}
+    ) == "yellow"
+    assert status_logging(
+        {
+            "log_coverage_percent": None,
+            "max_gap_hours": None,
+            "critical_control_failures_30d": 0,
+        }
+    ) == "yellow"
+    assert status_config_mfa(
+        {"mfa_enforcement_percent": None, "weak_auth_methods": 0}
+    ) == "yellow"
+    assert status_change_management(
+        {"unapproved_changes": None, "changes_missing_rollback_test": None}
+    ) == "yellow"
