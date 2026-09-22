@@ -39,28 +39,35 @@ def collect_resilience_testing(
         )
 
     issues = 0
-    if snap.get("last_restore_test_days_ago", 999) > 90:
+    restore_age = snap.get("last_restore_test_days_ago")
+    failover_passed = snap.get("failover_test_passed")
+    if restore_age is None or restore_age > 90:
         issues += 1
-    if not snap.get("failover_test_passed", False):
+    if failover_passed is not True:
         issues += 1
     if snap.get("backup_jobs_failed_30d", 0) > 0:
         issues += 1
 
     metrics = {
         "last_backup_hours_ago": snap.get("last_backup_hours_ago"),
-        "last_restore_test_days_ago": snap.get("last_restore_test_days_ago"),
+        "last_restore_test_days_ago": restore_age,
+        "last_successful_restore_days_ago": snap.get("last_successful_restore_days_ago"),
         "rto_target_hours": snap.get("rto_target_hours"),
         "rpo_target_hours": snap.get("rpo_target_hours"),
         "failover_test_days_ago": snap.get("failover_test_days_ago"),
-        "failover_test_passed": snap.get("failover_test_passed", False),
+        "failover_test_passed": failover_passed,
         "backup_jobs_success_30d": snap.get("backup_jobs_success_30d", 0),
         "backup_jobs_failed_30d": snap.get("backup_jobs_failed_30d", 0),
         "issues": issues,
     }
     findings = []
-    if metrics["last_restore_test_days_ago"] and metrics["last_restore_test_days_ago"] > 90:
+    if metrics["last_restore_test_days_ago"] is None:
+        findings.append({"issue": "restore-test evidence unavailable", "severity": "high"})
+    elif metrics["last_restore_test_days_ago"] > 90:
         findings.append({"issue": "restore test overdue (>90 days)", "severity": "high"})
-    if not metrics["failover_test_passed"]:
+    if metrics["failover_test_passed"] is None:
+        findings.append({"issue": "failover-test evidence unavailable", "severity": "high"})
+    elif metrics["failover_test_passed"] is False:
         findings.append({"issue": "failover test not passed", "severity": "medium"})
 
     payload: dict[str, Any] = {
