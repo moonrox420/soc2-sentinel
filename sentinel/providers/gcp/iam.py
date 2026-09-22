@@ -17,7 +17,7 @@ def iam_access_snapshot(ctx: GcpContext) -> dict[str, Any]:
     logger.info("collecting GCP IAM access snapshot")
     users: list[dict[str, Any]] = []
     principals: set[str] = set()
-    orphaned = 0
+    stale_service_account_keys = 0
     privileged = 0
 
     try:
@@ -81,14 +81,15 @@ def iam_access_snapshot(ctx: GcpContext) -> dict[str, Any]:
                 if valid:
                     age = (datetime.now(timezone.utc) - valid.replace(tzinfo=timezone.utc)).days
                     if age > 90:
-                        orphaned += 1
+                        stale_service_account_keys += 1
                         users.append(
                             {
                                 "username": sa.email,
                                 "role": "serviceAccountKey",
-                                "orphaned": True,
+                                "orphaned": False,
                                 "privileged": False,
                                 "inactive_days": age,
+                                "stale_credential": True,
                             }
                         )
     except Exception as exc:
@@ -108,7 +109,8 @@ def iam_access_snapshot(ctx: GcpContext) -> dict[str, Any]:
         {
             "users": users,
             "total_identities": len(principals) or len(users),
-            "orphaned_accounts": orphaned,
+            "orphaned_accounts": None,
+            "stale_service_account_keys": stale_service_account_keys,
             "privileged_count": privileged,
             "days_since_last_review": None,
             "csv": csv_buf.getvalue() or "principal,role,binding\n",
