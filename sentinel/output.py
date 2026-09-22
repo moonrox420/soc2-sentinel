@@ -114,36 +114,36 @@ def write_evidence(
                 artifacts_written.append(actual_name)
 
         report_name = "report.json"
-        artifacts_written.append(report_name)
+        declared_report_name = report_name + ".enc" if do_encrypt else report_name
+        artifacts_written.append(declared_report_name)
         payload["evidence_artifacts"] = list(artifacts_written)
+        validate_evidence(payload)
+
         report_path = out_dir / report_name
         report_content = json.dumps(payload, indent=2)
         report_written = _atomic_write_text(
             report_path, report_content, encrypt=do_encrypt, secret=secret
         )
         written_files.append(report_written)
-        validate_evidence(payload)
 
         _verify_artifacts_exist(out_dir, artifacts_written)
-
-        validate_evidence(payload)
-
-        manifest = build_manifest(out_dir, control_id=control_id, written_files=written_files)
-        write_manifest(out_dir, manifest)
-        written_files.append("manifest.json")
-
-        if cfg.evidence.manifest_backup:
-            _backup_manifest(out_dir, run_day=run_day, safe_base=safe_base, control_id=control_id)
 
         if do_encrypt:
             stub = {
                 "encrypted": True,
                 "control_id": control_id,
-                "artifacts": written_files,
+                "artifacts": list(written_files),
                 "manifest": "manifest.json",
             }
             stub_path = out_dir / "report.meta.json"
             stub_path.write_text(json.dumps(stub, indent=2), encoding="utf-8")
             safe_file_mode(stub_path)
+            written_files.append(stub_path.name)
+
+        manifest = build_manifest(out_dir, control_id=control_id, written_files=written_files)
+        write_manifest(out_dir, manifest)
+
+        if cfg.evidence.manifest_backup:
+            _backup_manifest(out_dir, run_day=run_day, safe_base=safe_base, control_id=control_id)
 
     return out_dir / report_written
