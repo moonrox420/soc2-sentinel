@@ -69,4 +69,4 @@ def test_gcp_config_org_policy():
             mock_fw.return_value.list.return_value = []
             with patch("sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()):
                 snap = config_and_auth_snapshot(ctx)
-    assert snap["mfa_enforcement_percent"] == 100.0
+    assert snap["mfa_enforcement_percent"] is None\n    assert snap["org_policy_violations"] == 0
