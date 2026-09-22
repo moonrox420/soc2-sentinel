@@ -61,12 +61,14 @@ def log_monitoring_snapshot(ctx: AwsClients) -> dict[str, Any]:
 
     log_groups_with_retention = 0
     log_groups_total = 0
+    log_group_retention_days: list[int] = []
     lg_resp = ctx.call("logs", "aws_describe_log_groups", lambda: logs.describe_log_groups(limit=50))
     if lg_resp:
         for group in lg_resp.get("logGroups", []):
             log_groups_total += 1
             if group.get("retentionInDays"):
                 log_groups_with_retention += 1
+                log_group_retention_days.append(int(group["retentionInDays"]))
 
     total_trails = len(trail_list)
     if total_trails == 0:
@@ -87,7 +89,8 @@ def log_monitoring_snapshot(ctx: AwsClients) -> dict[str, Any]:
         "critical_control_failures_30d": len(findings),
         "findings": findings,
         "cui_relevant_events": cui_events,
-        "cui_retention_days": 365,
+        "cui_retention_days": None,
+        "log_group_retention_days_observed": sorted(set(log_group_retention_days)),
         "attck_summary": _attck_summary(cui_events),
     }
     if coverage is None:
