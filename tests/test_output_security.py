@@ -1,8 +1,10 @@
 import json
 
 from sentinel.config import SentinelConfig
+from sentinel.integrity import verify_manifest
 from sentinel.output import write_evidence
 from sentinel.schema import utc_now_iso, validate_evidence
+from sentinel.security import decrypt_bytes
 
 
 def _payload(control_id: str = "CC6.1") -> dict:
@@ -50,3 +52,30 @@ def test_empty_extra_file_not_listed(tmp_path):
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert "empty.csv" not in payload["evidence_artifacts"]
     assert "report.json" in payload["evidence_artifacts"]
+
+def test_write_evidence_encrypted_artifacts_are_real_and_manifested(tmp_path, monkeypatch):
+    monkeypatch.setenv("SENTINEL_EVIDENCE_KEY", "test-encryption-key")
+    cfg = SentinelConfig()
+    cfg.evidence.encrypt = True
+
+    path = write_evidence(
+        _payload(),
+        base=tmp_path,
+        extra_files={"artifact.txt": "hello"},
+        config=cfg,
+    )
+
+    assert path.name == "report.json.enc"
+    assert path.exists()
+    assert (path.parent / "artifact.txt.enc").exists()
+
+    decrypted = json.loads(decrypt_bytes(path.read_bytes(), secret="test-encryption-key"))
+    assert decrypted["evidence_artifacts"] == ["artifact.txt.enc", "report.json.enc"]
+
+    manifest = json.loads((path.parent / "manifest.json").read_text(encoding="utf-8"))
+    assert "report.json.enc" in manifest["artifacts"]
+    assert "artifact.txt.enc" in manifest["artifacts"]
+    assert "report.meta.json" in manifest["artifacts"]
+
+    ok, issues = verify_manifest(path.parent)
+    assert ok, issues
