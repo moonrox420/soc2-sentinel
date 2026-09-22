@@ -22,4 +22,4 @@ def test_mfa_counts_from_users():
         with patch("sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()):
             snap = config_and_auth_snapshot(ctx)
     assert snap["weak_auth_methods"] >= 1
-    assert snap["mfa_enforcement_percent"] < 100.0
+    assert snap["mfa_enforcement_percent"] is None\n    assert snap["mfa_registered_percent"] < 100.0
