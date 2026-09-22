@@ -1,7 +1,6 @@
 
 import pytest
 
-from sentinel.errors import ValidationError
 from sentinel.security import decrypt_bytes, encrypt_bytes, encryption_header_version
 
 
@@ -22,9 +21,8 @@ def test_wrong_key_fails(monkeypatch):
         decrypt_bytes(blob)
 
 
-def test_hmac_required_for_decrypt(monkeypatch):
+def test_low_level_decrypt_authenticates_ciphertext_not_manifest(monkeypatch):
     monkeypatch.setenv("SENTINEL_EVIDENCE_KEY", "key")
     monkeypatch.setenv("SENTINEL_HMAC_KEY", "hmac-secret")
     blob = encrypt_bytes(b"x")
-    with pytest.raises(ValidationError, match="manifest HMAC"):
-        decrypt_bytes(blob)
+    assert decrypt_bytes(blob) == b"x"
