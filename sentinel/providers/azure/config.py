@@ -62,12 +62,13 @@ def config_and_auth_snapshot(ctx: AzureContext) -> dict[str, Any]:
 
     return finalize_snapshot(
         {
-            "mfa_enforcement_percent": mfa_pct if mfa_pct is not None else 0.0,
+            "mfa_enforcement_percent": None,
+            "mfa_registered_percent": mfa_pct,
             "weak_auth_methods": mfa_total - mfa_registered if mfa_total else 0,
             "open_http_listeners": open_http,
             "weak_tls_listeners": weak_tls,
-            "unapproved_changes": 0,
-            "changes_missing_rollback_test": 0,
+            "unapproved_changes": None,
+            "changes_missing_rollback_test": None,
             "issues": open_http + weak_tls,
             "warnings": 0 if mfa_pct == 100.0 else 1,
         },
