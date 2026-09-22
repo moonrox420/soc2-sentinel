@@ -35,25 +35,13 @@ def log_monitoring_snapshot(ctx: GcpContext) -> dict[str, Any]:
         findings.append({"resource": "logging", "issue": "no log sinks configured"})
 
     coverage: float | None = None
-    try:
-        from google.cloud import asset_v1
-
-        asset_client = asset_v1.AssetServiceClient()
-        scope = f"projects/{ctx.project_id}"
-        ctx.attempt()
-        assets = call_with_retry(
-            lambda: list(asset_client.search_all_resources(request={"scope": scope, "page_size": 200})),
-            operation="gcp_asset_count",
-        )
-        ctx.succeed()
-        total_resources = len(assets)
-        if total_resources > 0:
-            covered = len(sinks) + len(buckets)
-            coverage = round(min(100.0, (covered / total_resources) * 100), 1)
-    except Exception as exc:
-        ctx.record_error("cloudasset", exc)
-        if sinks:
-            coverage = 100.0 if required_sink else 50.0
+    bucket_retention_days = sorted(
+        {
+            int(days)
+            for bucket in buckets
+            if (days := getattr(bucket, "retention_days", None)) is not None
+        }
+    )
 
     try:
         from google.cloud import logging as cloud_logging
@@ -93,14 +81,18 @@ def log_monitoring_snapshot(ctx: GcpContext) -> dict[str, Any]:
         "critical_control_failures_30d": len(findings),
         "findings": findings,
         "cui_relevant_events": cui_events,
-        "cui_retention_days": 365,
+        "cui_retention_days": None,
+        "logging_sinks_count": len(sinks),
+        "logging_buckets_count": len(buckets),
+        "required_sink_present": required_sink,
+        "log_bucket_retention_days": bucket_retention_days,
         "attck_summary": {},
     }
     if coverage is None:
         ctx.errors.append(
             api_error(
                 "CoverageUnavailable",
-                "Could not compute log_coverage_percent from Asset Inventory",
+                "Log sink and bucket counts do not prove per-resource logging coverage",
                 service="logging",
                 severity="high",
             )
