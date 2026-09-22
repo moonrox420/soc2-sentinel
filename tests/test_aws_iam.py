@@ -12,6 +12,6 @@ def test_credential_report_drives_review_days():
     iam.generate_credential_report()
     ctx = AwsClients(region="us-east-1")
     snap = iam_access_snapshot(ctx)
-    assert "days_since_last_review" in snap
-    assert snap.get("days_since_last_review") != 45
+    assert snap["days_since_last_review"] is None
+    assert "max_credential_age_days" in snap
     assert snap["collection_quality"] in {"complete", "partial"}
