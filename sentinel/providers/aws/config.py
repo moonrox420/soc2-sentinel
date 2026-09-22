@@ -109,7 +109,8 @@ def config_and_auth_snapshot(ctx: AwsClients) -> dict[str, Any]:
 
     return finalize_snapshot(
         {
-            "mfa_enforcement_percent": mfa_pct if mfa_pct is not None else 0.0,
+            "mfa_enforcement_percent": None,
+            "mfa_registered_percent": mfa_pct,
             "weak_auth_methods": weak_auth,
             "open_http_listeners": open_http,
             "weak_tls_listeners": weak_tls,
