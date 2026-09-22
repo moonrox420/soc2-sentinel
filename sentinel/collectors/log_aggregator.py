@@ -47,6 +47,10 @@ def collect_log_aggregator(
         "config_recorder_all_supported": snap.get("config_recorder_all_supported", False),
         "cui_events_captured": len(cui_events),
         "cui_retention_days": snap.get("cui_retention_days"),
+        "log_group_retention_days_observed": snap.get("log_group_retention_days_observed"),
+        "log_bucket_retention_days": snap.get("log_bucket_retention_days"),
+        "subscription_diagnostic_settings_count": snap.get("subscription_diagnostic_settings_count"),
+        "required_sink_present": snap.get("required_sink_present"),
     }
     findings = [{**f, "severity": "high"} for f in snap.get("findings", [])]
     extra: dict[str, str] = {"log_completeness.json": json.dumps(snap, indent=2)}
