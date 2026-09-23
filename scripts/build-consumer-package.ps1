@@ -1,4 +1,4 @@
-# Builds bin\sentinel.exe and dist\SOC2-Sentinel-Toolkit-v2.3.0-Windows.zip
+# Builds bin\sentinel.exe and dist\SOC2-Sentinel-Toolkit-v2.5.0-Windows.zip
 param(
     [switch]$SkipExe,
     [switch]$SkipZip
@@ -66,6 +66,9 @@ function Test-StagedExe {
     Push-Location $StageDir
     try {
         & $exe run encryption_status --provider mock | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Collector smoke test failed with exit code $LASTEXITCODE"
+        }
         Write-Host "Smoke test passed: run encryption_status --provider mock"
     } finally {
         Pop-Location
@@ -94,7 +97,10 @@ function Test-StagedLauncher {
 function Build-Zip {
     if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
     New-Item -ItemType Directory -Force -Path $DistDir | Out-Null
-    Compress-Archive -Path $StageDir -DestinationPath $ZipPath -CompressionLevel Optimal
+    # Archive the toolkit contents, not the staging directory itself. Windows'
+    # "Extract All" already creates a folder named after the ZIP, so including
+    # $StageDir here would produce a confusing duplicate nested folder.
+    Compress-Archive -Path (Join-Path $StageDir "*") -DestinationPath $ZipPath -CompressionLevel Optimal
     $sizeMb = [math]::Round((Get-Item $ZipPath).Length / 1MB, 1)
     Write-Host "OK: $ZipPath ($sizeMb MB)"
 }
