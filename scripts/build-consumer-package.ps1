@@ -72,6 +72,25 @@ function Test-StagedExe {
     }
 }
 
+function Test-StagedLauncher {
+    $exe = Join-Path $StageDir "bin\sentinel.exe"
+    if (-not (Test-Path $exe)) { return }
+    Push-Location $StageDir
+    try {
+        $launcherOutput = ("q" | & $exe 2>&1 | Out-String)
+        if ($LASTEXITCODE -ne 0) {
+            throw "Double-click launcher smoke test failed with exit code $LASTEXITCODE"
+        }
+        if ($launcherOutput -notmatch "SOC2 Sentinel Toolkit") {
+            throw "Double-click launcher did not render the interactive menu"
+        }
+        Write-Host "Smoke test passed: no-argument Windows launcher"
+    } finally {
+        Pop-Location
+    }
+}
+
+
 function Build-Zip {
     if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
     New-Item -ItemType Directory -Force -Path $DistDir | Out-Null
@@ -88,6 +107,7 @@ if (-not $SkipExe) {
 
 Copy-Stage
 Test-StagedExe
+Test-StagedLauncher
 
 if (-not $SkipZip) {
     Build-Zip
