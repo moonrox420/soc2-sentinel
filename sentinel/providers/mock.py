@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
 from sentinel.errors import ProviderError
 from sentinel.paths import install_root
@@ -27,7 +27,10 @@ class MockProvider(Provider):
                 f"Missing mock fixture: {path.name}. Re-extract SOC2 Sentinel or run pip install -e ."
             )
         try:
-            return json.loads(path.read_text(encoding="utf-8"))
+            raw: Any = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(raw, dict):
+                raise ProviderError(f"Mock fixture root must be a JSON object: {path.name}")
+            return cast(dict[str, Any], raw)
         except json.JSONDecodeError as exc:
             raise ProviderError(f"Invalid JSON in mock fixture {path.name}: {exc}") from exc
 
