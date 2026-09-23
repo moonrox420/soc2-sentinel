@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from sentinel.cloud import call_with_retry
 from sentinel.providers._snapshot import api_error, finalize_snapshot
@@ -35,7 +35,8 @@ def log_monitoring_snapshot(ctx: AzureContext) -> dict[str, Any]:
             operation="azure_resource_graph_diagnostics",
         )
         ctx.succeed()
-        for row in result.data:
+        rows = cast(list[dict[str, Any]], result.data)
+        for row in rows:
             total_resources = int(row.get("total", 0))
             with_diagnostics = int(row.get("withDiag", 0))
         if total_resources > 0:
