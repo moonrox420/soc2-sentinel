@@ -28,7 +28,10 @@ class GcpProvider(Provider):
         logger.info("GCP credential validation succeeded", extra={"provider": "gcp", "outcome": "ok"})
 
     def _fresh(self) -> GcpContext:
-        return GcpContext(project_id=self._ctx.project_id)
+        return GcpContext(
+            project_id=self._ctx.project_id,
+            credentials=self._ctx.credentials,
+        )
 
     def iam_access_snapshot(self) -> dict[str, Any]:
         return gcp_iam.iam_access_snapshot(self._fresh())
