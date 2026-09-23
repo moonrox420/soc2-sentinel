@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 from sentinel.cloud import call_with_retry
 from sentinel.errors import ProviderError
@@ -22,14 +22,15 @@ except ImportError as exc:  # pragma: no cover
 
 class AzureContext:
     def __init__(self, subscription_id: str | None = None) -> None:
-        self.subscription_id = subscription_id or os.environ.get("AZURE_SUBSCRIPTION_ID")
+        resolved_subscription_id = subscription_id or os.environ.get("AZURE_SUBSCRIPTION_ID")
         self.errors: list[dict[str, Any]] = []
         self._checks_attempted = 0
         self._checks_succeeded = 0
-        if not self.subscription_id:
+        if not resolved_subscription_id:
             raise ProviderError(
                 "Azure provider requires AZURE_SUBSCRIPTION_ID or provider.azure_subscription_id"
             )
+        self.subscription_id: str = resolved_subscription_id
         self.credential = DefaultAzureCredential()
         self.storage = StorageManagementClient(self.credential, self.subscription_id)
         self.resource = ResourceManagementClient(self.credential, self.subscription_id)
@@ -67,7 +68,10 @@ class AzureContext:
                 return None
             resp.raise_for_status()
             self.succeed()
-            return resp.json()
+            data: Any = resp.json()
+            if not isinstance(data, dict):
+                raise ValueError("Microsoft Graph response must be a JSON object")
+            return cast(dict[str, Any], data)
         except Exception as exc:
             self.record_error("graph", exc)
             return None
