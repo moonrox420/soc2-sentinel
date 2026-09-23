@@ -8,7 +8,7 @@ from sentinel.providers.gcp._client import GcpContext
 
 
 def _ctx():
-    return GcpContext(project_id="test-project")
+    return GcpContext(project_id="test-project", credentials=MagicMock())
 
 
 def test_gcp_logging_with_sinks():
@@ -18,12 +18,15 @@ def test_gcp_logging_with_sinks():
     with patch("google.cloud.logging.Client") as mock_log:
         inst = mock_log.return_value
         inst.list_sinks.return_value = [mock_sink]
-        inst.list_buckets.return_value = []
         inst.list_entries.return_value = []
-        with patch("google.cloud.asset_v1.AssetServiceClient") as mock_asset:
-            mock_asset.return_value.search_all_resources.return_value = [MagicMock()] * 10
-            with patch("sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()):
-                snap = log_monitoring_snapshot(ctx)
+        with patch(
+            "google.cloud.logging_v2.services.config_service_v2.ConfigServiceV2Client"
+        ) as mock_config:
+            mock_config.return_value.list_buckets.return_value = []
+            with patch("google.cloud.asset_v1.AssetServiceClient") as mock_asset:
+                mock_asset.return_value.search_all_resources.return_value = [MagicMock()] * 10
+                with patch("sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()):
+                    snap = log_monitoring_snapshot(ctx)
     assert snap["active_trails"] >= 1
 
 

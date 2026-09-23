@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from sentinel.cloud import call_with_retry
 from sentinel.providers._snapshot import finalize_snapshot
@@ -38,7 +38,8 @@ def config_and_auth_snapshot(ctx: AzureContext) -> dict[str, Any]:
             operation="azure_resource_graph_nsg",
         )
         ctx.succeed()
-        for row in result.data:
+        rows = cast(list[dict[str, Any]], result.data)
+        for row in rows:
             open_http = int(row.get("openHttp", 0))
     except Exception as exc:
         ctx.record_error("resourcegraph", exc)

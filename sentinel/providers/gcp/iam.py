@@ -68,9 +68,14 @@ def iam_access_snapshot(ctx: GcpContext) -> dict[str, Any]:
         for sa in accounts:
             ctx.attempt()
             keys = call_with_retry(
-                lambda s=sa: list(
+                lambda: list(
                     iam.list_service_account_keys(
-                        request={"name": s.name, "key_types": [iam_admin_v1.ListServiceAccountKeysRequest.KeyType.USER_MANAGED]}
+                        request={
+                            "name": sa.name,
+                            "key_types": [
+                                iam_admin_v1.ListServiceAccountKeysRequest.KeyType.USER_MANAGED
+                            ],
+                        }
                     )
                 ),
                 operation="gcp_list_sa_keys",

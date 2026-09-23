@@ -5,7 +5,7 @@ from sentinel.providers.base import Provider
 from sentinel.providers.gcp import GcpProvider
 from sentinel.providers.mock import MockProvider
 
-PROVIDERS = {
+PROVIDERS: dict[str, type[Provider]] = {
     "aws": AwsProvider,
     "gcp": GcpProvider,
     "azure": AzureProvider,
@@ -14,18 +14,17 @@ PROVIDERS = {
 
 
 def get_provider(name: str, config: SentinelConfig | ProviderConfig | None = None) -> Provider:
-    try:
-        cls = PROVIDERS[name]
-    except KeyError as exc:
-        raise SystemExit(f"Unknown provider '{name}'. Use: aws, gcp, azure, mock") from exc
+    if name not in PROVIDERS:
+        raise SystemExit(f"Unknown provider '{name}'. Use: aws, gcp, azure, mock")
     provider_cfg = config.provider if isinstance(config, SentinelConfig) else (config or ProviderConfig())
+    instance: Provider
     if name == "aws":
-        instance = cls(region=provider_cfg.aws_region)
+        instance = AwsProvider(region=provider_cfg.aws_region)
     elif name == "gcp":
-        instance = cls(project_id=provider_cfg.gcp_project_id)
+        instance = GcpProvider(project_id=provider_cfg.gcp_project_id)
     elif name == "azure":
-        instance = cls(subscription_id=provider_cfg.azure_subscription_id)
+        instance = AzureProvider(subscription_id=provider_cfg.azure_subscription_id)
     else:
-        instance = cls()
+        instance = MockProvider()
     instance.validate_credentials()
     return instance

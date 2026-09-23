@@ -19,13 +19,23 @@ def log_monitoring_snapshot(ctx: GcpContext) -> dict[str, Any]:
 
     try:
         from google.cloud import logging as cloud_logging
+        from google.cloud.logging_v2.services.config_service_v2 import ConfigServiceV2Client
 
-        client = cloud_logging.Client(project=ctx.project_id)
+        credentials = ctx.get_credentials()
+        client = cloud_logging.Client(project=ctx.project_id, credentials=credentials)
+        config_client = ConfigServiceV2Client(credentials=credentials)
         ctx.attempt()
         sinks = call_with_retry(lambda: list(client.list_sinks()), operation="gcp_list_log_sinks")
         ctx.succeed()
         ctx.attempt()
-        buckets = call_with_retry(lambda: list(client.list_buckets()), operation="gcp_list_log_buckets")
+        buckets = call_with_retry(
+            lambda: list(
+                config_client.list_buckets(
+                    request={"parent": f"projects/{ctx.project_id}/locations/-"}
+                )
+            ),
+            operation="gcp_list_log_buckets",
+        )
         ctx.succeed()
     except Exception as exc:
         ctx.record_error("logging", exc)

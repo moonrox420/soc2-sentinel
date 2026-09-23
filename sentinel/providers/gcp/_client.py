@@ -12,15 +12,16 @@ logger = logging.getLogger("sentinel.providers.gcp")
 
 class GcpContext:
     def __init__(self, project_id: str | None = None, credentials: Any | None = None) -> None:
-        self.project_id = project_id or os.environ.get("GOOGLE_CLOUD_PROJECT")
+        resolved_project_id = project_id or os.environ.get("GOOGLE_CLOUD_PROJECT")
         self.credentials = credentials
         self.errors: list[dict[str, Any]] = []
         self._checks_attempted = 0
         self._checks_succeeded = 0
-        if not self.project_id:
+        if not resolved_project_id:
             raise ProviderError(
                 "GCP provider requires GOOGLE_CLOUD_PROJECT or provider.gcp_project_id in sentinel.yaml"
             )
+        self.project_id: str = resolved_project_id
 
     def get_credentials(self) -> Any:
         if self.credentials is not None:
@@ -28,12 +29,10 @@ class GcpContext:
 
         import google.auth
 
-        credentials, project = google.auth.default()
+        credentials, _ = google.auth.default()
         if not credentials:
             raise ProviderError("GCP Application Default Credentials not found.")
         self.credentials = credentials
-        if not self.project_id and project:
-            self.project_id = project
         return credentials
 
     def validate_credentials(self) -> None:
