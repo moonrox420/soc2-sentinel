@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
-from sentinel.providers.aws.config import config_and_auth_snapshot
 from sentinel.providers.aws._client import AwsClients
+from sentinel.providers.aws.config import config_and_auth_snapshot
 
 
 def test_mfa_counts_from_users():
@@ -17,9 +17,21 @@ def test_mfa_counts_from_users():
         elbv2.get_paginator.return_value.paginate.return_value = []
         cfg = MagicMock()
         cfg.describe_config_rules.return_value = {"ConfigRules": []}
-        cfg.get_compliance_summary_by_config_rule.return_value = {"ComplianceSummaries": []}
-        mock_client.side_effect = lambda s: {"iam": iam, "ec2": ec2, "elbv2": elbv2, "config": cfg}[s]
-        with patch("sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()):
+        cfg.get_compliance_summary_by_config_rule.return_value = {
+            "ComplianceSummaries": []
+        }
+        mock_client.side_effect = lambda service: {
+            "iam": iam,
+            "ec2": ec2,
+            "elbv2": elbv2,
+            "config": cfg,
+        }[service]
+        with patch(
+            "sentinel.cloud.call_with_retry",
+            side_effect=lambda fn, **kw: fn(),
+        ):
             snap = config_and_auth_snapshot(ctx)
+
     assert snap["weak_auth_methods"] >= 1
-    assert snap["mfa_enforcement_percent"] < 100.0
+    assert snap["mfa_enforcement_percent"] is None
+    assert snap["mfa_registered_percent"] < 100.0
