@@ -55,20 +55,15 @@ def config_and_auth_snapshot(ctx: GcpContext) -> dict[str, Any]:
     except Exception as exc:
         ctx.record_error("compute", exc)
 
-    mfa_pct: float | None = None
-    if weak_auth == 0 and not ctx.errors:
-        mfa_pct = 100.0
-    elif weak_auth > 0:
-        mfa_pct = max(0.0, 100.0 - weak_auth * 10)
-
     return finalize_snapshot(
         {
-            "mfa_enforcement_percent": mfa_pct if mfa_pct is not None else 0.0,
+            "mfa_enforcement_percent": None,
             "weak_auth_methods": weak_auth,
             "open_http_listeners": open_http,
             "weak_tls_listeners": 0,
-            "unapproved_changes": policy_violations,
-            "changes_missing_rollback_test": 0,
+            "unapproved_changes": None,
+            "changes_missing_rollback_test": None,
+            "org_policy_violations": policy_violations,
             "issues": open_http + policy_violations,
             "warnings": weak_auth,
         },
