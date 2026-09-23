@@ -114,7 +114,8 @@ def write_evidence(
                 artifacts_written.append(actual_name)
 
         report_name = "report.json"
-        artifacts_written.append(report_name)
+        expected_report_name = f"{report_name}.enc" if do_encrypt else report_name
+        artifacts_written.append(expected_report_name)
         payload["evidence_artifacts"] = list(artifacts_written)
         report_path = out_dir / report_name
         report_content = json.dumps(payload, indent=2)
@@ -125,8 +126,6 @@ def write_evidence(
         validate_evidence(payload)
 
         _verify_artifacts_exist(out_dir, artifacts_written)
-
-        validate_evidence(payload)
 
         manifest = build_manifest(out_dir, control_id=control_id, written_files=written_files)
         write_manifest(out_dir, manifest)
