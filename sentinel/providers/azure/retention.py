@@ -25,7 +25,7 @@ def retention_snapshot(ctx: AzureContext) -> dict[str, Any]:
         for account in accounts:
             rg = account.id.split("/")[4]
             mgmt = call_with_retry(
-                lambda a=account, r=rg: ctx.storage.management_policies.get(r, a.name),
+                lambda: ctx.storage.management_policies.get(rg, account.name),
                 operation="azure_management_policies",
             )
             if not mgmt or not mgmt.policy or not mgmt.policy.rules:
