@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
 import jsonschema
 
@@ -14,7 +14,10 @@ _SCHEMA_PATH = install_root() / "data" / "evidence-schema.json"
 def load_schema() -> dict[str, Any]:
     if not _SCHEMA_PATH.exists():
         raise ValidationError(f"evidence schema not found: {_SCHEMA_PATH}")
-    return json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    raw: Any = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValidationError("evidence schema root must be a JSON object")
+    return cast(dict[str, Any], raw)
 
 
 def _enforce_collection_quality_rules(payload: dict[str, Any]) -> None:
