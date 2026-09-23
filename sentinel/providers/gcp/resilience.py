@@ -60,8 +60,8 @@ def resilience_snapshot(ctx: GcpContext) -> dict[str, Any]:
         for instance in instances.get("items", []):
             name = instance["name"]
             runs = call_with_retry(
-                lambda n=name: service.backupRuns()
-                .list(project=ctx.project_id, instance=n)
+                lambda: service.backupRuns()
+                .list(project=ctx.project_id, instance=name)
                 .execute(),
                 operation="gcp_sql_backup_runs",
             )
