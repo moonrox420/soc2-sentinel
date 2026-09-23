@@ -22,7 +22,7 @@ def resilience_snapshot(ctx: GcpContext) -> dict[str, Any]:
     try:
         from google.cloud import compute_v1
 
-        compute = compute_v1.SnapshotsClient()
+        compute = compute_v1.SnapshotsClient(credentials=ctx.get_credentials())
         ctx.attempt()
         snapshots = call_with_retry(
             lambda: list(compute.list(project=ctx.project_id)),
@@ -44,10 +44,13 @@ def resilience_snapshot(ctx: GcpContext) -> dict[str, Any]:
 
     try:
         from googleapiclient import discovery
-        import google.auth
 
-        credentials, _ = google.auth.default()
-        service = discovery.build("sqladmin", "v1", credentials=credentials, cache_discovery=False)
+        service = discovery.build(
+            "sqladmin",
+            "v1",
+            credentials=ctx.get_credentials(),
+            cache_discovery=False,
+        )
         ctx.attempt()
         instances = call_with_retry(
             lambda: service.instances().list(project=ctx.project_id).execute(),
