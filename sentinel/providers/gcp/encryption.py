@@ -18,9 +18,9 @@ def encryption_snapshot(ctx: GcpContext) -> dict[str, Any]:
     pending_rotation = 0
 
     try:
-        from google.cloud import storage
+        from google.cloud.storage import Client as StorageClient
 
-        client = storage.Client(project=ctx.project_id)
+        client = StorageClient(project=ctx.project_id)
         ctx.attempt()
         buckets = call_with_retry(lambda: list(client.list_buckets()), operation="gcp_list_buckets")
         ctx.succeed()
