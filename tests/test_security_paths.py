@@ -7,7 +7,6 @@ from sentinel.security import (
     encryption_enabled,
     safe_file_mode,
     sanitize_csv_cell,
-    verify_decrypt_hmac,
 )
 
 
@@ -26,12 +25,6 @@ def test_encryption_enabled_no_key():
     enabled, secret = encryption_enabled(config_flag=False)
     assert not enabled
     assert secret is None
-
-
-def test_verify_decrypt_hmac_blocks(monkeypatch):
-    monkeypatch.setenv("SENTINEL_HMAC_KEY", "hmac")
-    with pytest.raises(ValidationError, match="manifest HMAC"):
-        verify_decrypt_hmac("")
 
 
 def test_encrypt_requires_secret(monkeypatch):

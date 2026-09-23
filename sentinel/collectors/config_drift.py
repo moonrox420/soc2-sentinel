@@ -40,12 +40,15 @@ def collect_config_drift(
         )
 
     metrics = {
-        "mfa_enforcement_percent": snap.get("mfa_enforcement_percent", 0),
+        "mfa_enforcement_percent": snap.get("mfa_enforcement_percent"),
+        "mfa_registered_percent": snap.get("mfa_registered_percent"),
         "weak_auth_methods": snap.get("weak_auth_methods", 0),
         "open_http_listeners": snap.get("open_http_listeners", 0),
         "weak_tls_listeners": snap.get("weak_tls_listeners", 0),
-        "unapproved_changes": snap.get("unapproved_changes", 0),
-        "changes_missing_rollback_test": snap.get("changes_missing_rollback_test", 0),
+        "unapproved_changes": snap.get("unapproved_changes"),
+        "changes_missing_rollback_test": snap.get("changes_missing_rollback_test"),
+        "config_noncompliant_resources": snap.get("config_noncompliant_resources"),
+        "org_policy_violations": snap.get("org_policy_violations"),
         "issues": snap.get("issues", 0),
         "warnings": snap.get("warnings", 0),
     }

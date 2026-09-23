@@ -1,6 +1,7 @@
 import json
 
 from sentinel.config import EvidenceConfig, SentinelConfig
+from sentinel.integrity import verify_manifest
 from sentinel.output import write_evidence
 from sentinel.schema import utc_now_iso, validate_evidence
 from sentinel.security import decrypt_bytes
@@ -29,11 +30,14 @@ def test_write_evidence_creates_manifest(tmp_path):
         config=SentinelConfig(),
     )
     assert path.exists()
+
     manifest = path.parent / "manifest.json"
     assert manifest.exists()
+
     payload = json.loads(path.read_text(encoding="utf-8"))
     validate_evidence(payload)
     assert "artifact.txt" in payload["evidence_artifacts"]
+
     backup = tmp_path / "evidence"
     date_dirs = list(backup.iterdir())
     assert date_dirs
@@ -53,7 +57,7 @@ def test_empty_extra_file_not_listed(tmp_path):
     assert "report.json" in payload["evidence_artifacts"]
 
 
-def test_encrypted_write_tracks_encrypted_artifacts(tmp_path, monkeypatch):
+def test_encrypted_write_tracks_and_manifests_real_artifacts(tmp_path, monkeypatch):
     monkeypatch.setenv("SENTINEL_EVIDENCE_KEY", "test-evidence-secret")
     cfg = SentinelConfig(evidence=EvidenceConfig(encrypt=True))
 
@@ -68,14 +72,25 @@ def test_encrypted_write_tracks_encrypted_artifacts(tmp_path, monkeypatch):
     assert path.exists()
     assert not (path.parent / "report.json").exists()
     assert (path.parent / "artifact.txt.enc").exists()
+    assert (path.parent / "report.meta.json").exists()
 
     decrypted = json.loads(
-        decrypt_bytes(path.read_bytes(), secret="test-evidence-secret").decode("utf-8")
+        decrypt_bytes(
+            path.read_bytes(),
+            secret="test-evidence-secret",
+        ).decode("utf-8")
     )
-    assert "report.json.enc" in decrypted["evidence_artifacts"]
-    assert "artifact.txt.enc" in decrypted["evidence_artifacts"]
-    assert "report.json" not in decrypted["evidence_artifacts"]
+    assert decrypted["evidence_artifacts"] == [
+        "artifact.txt.enc",
+        "report.json.enc",
+    ]
 
-    manifest = json.loads((path.parent / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads(
+        (path.parent / "manifest.json").read_text(encoding="utf-8")
+    )
     assert "report.json.enc" in manifest["artifacts"]
     assert "artifact.txt.enc" in manifest["artifacts"]
+    assert "report.meta.json" in manifest["artifacts"]
+
+    ok, issues = verify_manifest(path.parent)
+    assert ok, issues

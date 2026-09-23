@@ -96,11 +96,13 @@ def decrypt_bytes(
     blob: bytes,
     *,
     secret: str | None = None,
-    manifest_hmac: str | None = None,
 ) -> bytes:
-    hmac_key = os.environ.get("SENTINEL_HMAC_KEY", "").strip()
-    if hmac_key and not manifest_hmac:
-        raise ValidationError("decrypt requires manifest HMAC when SENTINEL_HMAC_KEY is set")
+    """Decrypt one SSENC blob.
+
+    This is the low-level primitive. It authenticates the ciphertext with AES-GCM,
+    but it does not verify the evidence manifest. Use
+    integrity.verify_and_decrypt_artifact() when decrypting evidence from disk.
+    """
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     except ImportError as exc:
@@ -125,15 +127,6 @@ def decrypt_bytes(
         return AESGCM(key).decrypt(nonce, ciphertext, None)
 
     raise ValidationError("invalid encrypted blob header")
-
-
-def verify_decrypt_hmac(expected_hmac: str, *, secret: str | None = None) -> None:
-    """Enforce HMAC match before decrypt when SENTINEL_HMAC_KEY is set."""
-    hmac_key = os.environ.get("SENTINEL_HMAC_KEY", "").strip()
-    if not hmac_key:
-        return
-    if not expected_hmac:
-        raise ValidationError("manifest HMAC required for decrypt when SENTINEL_HMAC_KEY is set")
 
 
 def hmac_sign(content: bytes, *, secret: str) -> str:

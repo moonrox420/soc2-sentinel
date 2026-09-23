@@ -28,15 +28,15 @@ def zt_verification_snapshot(ctx: AwsClients) -> dict[str, Any]:
     orphaned = iam.get("orphaned_accounts", 0)
     unencrypted = enc.get("unencrypted_cui_count", 0)
     mfa_pct = cfg.get("mfa_enforcement_percent")
+    mfa_registered_pct = cfg.get("mfa_registered_percent")
 
     identity_score = 100.0
     if orphaned:
         identity_score -= min(orphaned * 5, 40)
-    if mfa_pct is not None and mfa_pct < 100:
-        identity_score -= 100 - mfa_pct
+    if mfa_registered_pct is not None and mfa_registered_pct < 100:
+        identity_score -= 100 - mfa_registered_pct
 
     data_score = 100.0 if unencrypted == 0 else max(0, 100 - unencrypted * 10)
-    network_score = 100.0 - min(cfg.get("open_http_listeners", 0) * 5, 50)
 
     merged = merge_results(iam, enc, cfg)
     merged.update(
@@ -46,21 +46,52 @@ def zt_verification_snapshot(ctx: AwsClients) -> dict[str, Any]:
             "orphaned_accounts": orphaned,
             "unencrypted_resources": unencrypted,
             "mfa_enforcement_percent": mfa_pct,
+            "mfa_registered_percent": mfa_registered_pct,
             "jit_recommendations": [
                 f"Review {standing} privileged accounts for JIT conversion"
             ]
             if standing
             else [],
-            "session_timeout_compliant": mfa_pct == 100.0 if mfa_pct is not None else False,
+            "session_timeout_compliant": None,
             "privileged_standing_count": standing,
             "pillar_scores": {
                 "Identity": _pillar_level(identity_score),
-                "Device": _pillar_level(mfa_pct or 0),
-                "Network": _pillar_level(network_score),
-                "Application": _pillar_level(100 - cfg.get("weak_tls_listeners", 0) * 10),
+                "Device": "Not Assessed",
+                "Network": "Not Assessed",
+                "Application": "Not Assessed",
                 "Data": _pillar_level(data_score),
-                "Analytics": _pillar_level(75.0),
-                "Governance": _pillar_level(identity_score),
+                "Analytics": "Not Assessed",
+                "Governance": "Not Assessed",
+            },
+            "pillar_provenance": {
+                "Identity": {
+                    "source_metrics": ["orphaned_accounts", "mfa_registered_percent"],
+                    "limitations": "MFA registration and stale-account signals do not prove continuous access-review enforcement.",
+                },
+                "Device": {
+                    "source_metrics": [],
+                    "limitations": "No endpoint/device-posture API is collected.",
+                },
+                "Network": {
+                    "source_metrics": ["open_http_listeners"],
+                    "limitations": "HTTP listener exposure is a signal only and is not sufficient for a Zero Trust network maturity rating.",
+                },
+                "Application": {
+                    "source_metrics": ["weak_tls_listeners"],
+                    "limitations": "TLS policy observations alone are not sufficient for application-pillar maturity.",
+                },
+                "Data": {
+                    "source_metrics": ["unencrypted_cui_count"],
+                    "limitations": "Encryption posture is measured; broader data discovery/classification controls are not.",
+                },
+                "Analytics": {
+                    "source_metrics": [],
+                    "limitations": "No analytics/SIEM maturity evidence is collected by this snapshot.",
+                },
+                "Governance": {
+                    "source_metrics": [],
+                    "limitations": "No governance maturity evidence is collected by this snapshot.",
+                },
             },
         }
     )

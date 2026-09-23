@@ -4,13 +4,19 @@ from typing import Any
 
 
 def status_iam_access_review(metrics: dict[str, Any]) -> str:
-    orphaned = int(metrics.get("orphaned_accounts", 0))
+    orphaned_raw = metrics.get("orphaned_accounts")
     days_since = metrics.get("days_since_last_review")
+
     if days_since is not None and int(days_since) > 90:
         return "red"
-    if orphaned > 7:
-        return "red"
-    if 3 <= orphaned <= 7:
+    if orphaned_raw is not None:
+        orphaned = int(orphaned_raw)
+        if orphaned > 7:
+            return "red"
+        if 3 <= orphaned <= 7:
+            return "yellow"
+
+    if orphaned_raw is None or days_since is None:
         return "yellow"
     return "green"
 
@@ -27,30 +33,44 @@ def status_encryption(metrics: dict[str, Any]) -> str:
 
 
 def status_logging(metrics: dict[str, Any]) -> str:
-    coverage = float(metrics.get("log_coverage_percent", 0))
-    gap_hours = float(metrics.get("max_gap_hours", 0))
+    coverage_raw = metrics.get("log_coverage_percent")
+    gap_raw = metrics.get("max_gap_hours")
     failures = int(metrics.get("critical_control_failures_30d", 0))
-    if coverage < 90 or gap_hours > 24 or failures > 0:
+
+    if failures > 0:
         return "red"
-    if coverage < 95:
+    if coverage_raw is not None and float(coverage_raw) < 90:
+        return "red"
+    if gap_raw is not None and float(gap_raw) > 24:
+        return "red"
+    if coverage_raw is None or gap_raw is None:
+        return "yellow"
+    if float(coverage_raw) < 95:
         return "yellow"
     return "green"
 
 
 def status_config_mfa(metrics: dict[str, Any]) -> str:
-    mfa_pct = float(metrics.get("mfa_enforcement_percent", 0))
+    mfa_raw = metrics.get("mfa_enforcement_percent")
     weak_auth = int(metrics.get("weak_auth_methods", 0))
-    if mfa_pct < 100 or weak_auth > 0:
+    if weak_auth > 0:
+        return "red"
+    if mfa_raw is None:
+        return "yellow"
+    if float(mfa_raw) < 100:
         return "red"
     return "green"
 
 
 def status_change_management(metrics: dict[str, Any]) -> str:
-    unapproved = int(metrics.get("unapproved_changes", 0))
-    if unapproved > 0:
+    unapproved_raw = metrics.get("unapproved_changes")
+    pending_raw = metrics.get("changes_missing_rollback_test")
+
+    if unapproved_raw is not None and int(unapproved_raw) > 0:
         return "red"
-    pending = int(metrics.get("changes_missing_rollback_test", 0))
-    if pending > 0:
+    if pending_raw is not None and int(pending_raw) > 0:
+        return "yellow"
+    if unapproved_raw is None or pending_raw is None:
         return "yellow"
     return "green"
 

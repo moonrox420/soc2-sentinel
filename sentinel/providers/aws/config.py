@@ -22,7 +22,7 @@ def config_and_auth_snapshot(ctx: AwsClients) -> dict[str, Any]:
     open_http = 0
     weak_tls = 0
     unapproved = 0
-    missing_rollback = 0
+    config_noncompliant_resources = 0
 
     pages = ctx.call("iam", "aws_iam_list_users", lambda: list(iam.get_paginator("list_users").paginate()))
     if pages:
@@ -101,7 +101,7 @@ def config_and_auth_snapshot(ctx: AwsClients) -> dict[str, Any]:
             if summary.get("ComplianceSummary", {}).get("NonCompliantResourceCount", {}).get(
                 "CappedCount", 0
             ):
-                missing_rollback += summary["ComplianceSummary"]["NonCompliantResourceCount"][
+                config_noncompliant_resources += summary["ComplianceSummary"]["NonCompliantResourceCount"][
                     "CappedCount"
                 ]
 
@@ -109,12 +109,14 @@ def config_and_auth_snapshot(ctx: AwsClients) -> dict[str, Any]:
 
     return finalize_snapshot(
         {
-            "mfa_enforcement_percent": mfa_pct if mfa_pct is not None else 0.0,
+            "mfa_enforcement_percent": None,
+            "mfa_registered_percent": mfa_pct,
             "weak_auth_methods": weak_auth,
             "open_http_listeners": open_http,
             "weak_tls_listeners": weak_tls,
             "unapproved_changes": unapproved,
-            "changes_missing_rollback_test": missing_rollback,
+            "changes_missing_rollback_test": None,
+            "config_noncompliant_resources": config_noncompliant_resources,
             "issues": open_http + weak_tls + unapproved,
             "warnings": 0 if mfa_pct == 100.0 else 1,
         },

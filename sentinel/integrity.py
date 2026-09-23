@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from sentinel import __version__
+from sentinel.errors import ValidationError
 from sentinel.schema import utc_now_iso
-from sentinel.security import hmac_sign, safe_file_mode
+from sentinel.security import decrypt_bytes, hmac_sign, safe_file_mode
 
 
 def sha256_file(path: Path) -> str:
@@ -80,6 +81,27 @@ def verify_manifest(out_dir: Path) -> tuple[bool, list[str]]:
     elif stored:
         issues.append("manifest has HMAC but SENTINEL_HMAC_KEY not set")
     return len(issues) == 0, issues
+
+
+
+def verify_and_decrypt_artifact(path: Path, *, secret: str | None = None) -> bytes:
+    """Verify the containing manifest, then decrypt an encrypted evidence artifact."""
+    if not path.is_file():
+        raise ValidationError(f"encrypted artifact not found: {path}")
+
+    ok, issues = verify_manifest(path.parent)
+    if not ok:
+        raise ValidationError(
+            "manifest verification failed before decrypt: " + "; ".join(issues)
+        )
+
+    manifest_path = path.parent / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    artifacts = manifest.get("artifacts", {})
+    if path.name not in artifacts:
+        raise ValidationError(f"artifact is not covered by manifest: {path.name}")
+
+    return decrypt_bytes(path.read_bytes(), secret=secret)
 
 
 def verify_evidence_tree(evidence_dir: Path) -> dict[str, Any]:
