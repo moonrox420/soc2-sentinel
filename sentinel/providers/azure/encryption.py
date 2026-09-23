@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from sentinel.cloud import call_with_retry
 from sentinel.providers._snapshot import finalize_snapshot
@@ -54,7 +54,8 @@ def encryption_snapshot(ctx: AzureContext) -> dict[str, Any]:
             operation="azure_resource_graph_disks",
         )
         ctx.succeed()
-        for row in result.data:
+        rows = cast(list[dict[str, Any]], result.data)
+        for row in rows:
             enc = str(row.get("encrypted", "")).lower() == "true"
             resources.append({"resource": row.get("name", "disk"), "encrypted": enc, "type": "Disk"})
             if not enc:
