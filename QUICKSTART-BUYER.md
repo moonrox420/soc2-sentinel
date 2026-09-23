@@ -2,9 +2,20 @@
 
 No Python install required. Unzip anywhere (e.g. `C:\SOC2-Sentinel`).
 
-## 1. Run the demo (2 minutes)
+## 1. Launch the software
 
-Double-click **`run-demo.bat`** or open PowerShell in this folder:
+Double-click **`bin\sentinel.exe`**. The Windows executable opens an interactive menu where you can:
+
+- Run the built-in mock demo
+- Validate AWS, GCP, Azure, or mock credentials
+- Run all evidence collectors
+- View command-line help
+
+The executable stays open until you choose Exit.
+
+For a one-click mock run, `run-demo.bat` is also included as an optional convenience.
+
+From PowerShell, the same executable can be used directly:
 
 ```powershell
 .\bin\sentinel.exe run-all --provider mock
