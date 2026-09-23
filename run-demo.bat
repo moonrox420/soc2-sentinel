@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-echo SOC2 Sentinel v2.4 — mock evidence run
+echo SOC2 Sentinel v2.5 — mock evidence run
 echo.
 bin\sentinel.exe run-all --provider mock
 if errorlevel 1 (
