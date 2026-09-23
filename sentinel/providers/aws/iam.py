@@ -95,7 +95,7 @@ def iam_access_snapshot(ctx: AwsClients) -> dict[str, Any]:
                     }
                 )
 
-    days_since_review = _credential_report_days(iam, ctx)
+    max_credential_age_days = _credential_report_days(iam, ctx)
 
     csv_buf = io.StringIO()
     writer = csv.DictWriter(
@@ -111,7 +111,8 @@ def iam_access_snapshot(ctx: AwsClients) -> dict[str, Any]:
             "total_identities": len(users),
             "orphaned_accounts": orphaned,
             "privileged_count": privileged,
-            "days_since_last_review": days_since_review,
+            "days_since_last_review": None,
+            "max_credential_age_days": max_credential_age_days,
             "csv": csv_buf.getvalue(),
         },
         ctx.errors,
