@@ -34,8 +34,10 @@ def resilience_snapshot(ctx: AzureContext) -> dict[str, Any]:
             vault_name = vault.name
             rg = vault.id.split("/")[4]
             jobs = call_with_retry(
-                lambda v=vault_name, r=rg: list(
-                    backup_client.backup_jobs.list(r, v, filter="startTime ge 2020-01-01")
+                lambda: list(
+                    backup_client.backup_jobs.list(
+                        rg, vault_name, filter="startTime ge 2020-01-01"
+                    )
                 ),
                 operation="azure_backup_jobs",
             )
@@ -49,9 +51,7 @@ def resilience_snapshot(ctx: AzureContext) -> dict[str, Any]:
                 elif status == "Failed":
                     backup_failed += 1
             protected = call_with_retry(
-                lambda v=vault_name, r=rg: list(
-                    backup_client.backup_protected_items.list(r, v)
-                ),
+                lambda: list(backup_client.backup_protected_items.list(rg, vault_name)),
                 operation="azure_protected_items",
             )
             for item in protected:
