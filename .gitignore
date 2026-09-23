@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# Runtime evidence and reports
+evidence/
+
+# Generated Windows/package artifacts
+bin/
+dist/
+build/*
+!build/sentinel.spec
