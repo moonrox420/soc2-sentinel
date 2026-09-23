@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -76,6 +77,130 @@ def _parser() -> argparse.ArgumentParser:
     report_p.add_argument("--output-dir", type=Path, default=None)
     report_p.add_argument("--mode", default="cmmc", choices=["cmmc", "zt"])
     return parser
+
+
+def _run_interactive_command(args: list[str]) -> int:
+    original_argv = list(sys.argv)
+    try:
+        sys.argv = [original_argv[0], *args]
+        try:
+            main()
+            return 0
+        except SystemExit as exc:
+            return exc.code if isinstance(exc.code, int) else 1
+    finally:
+        sys.argv = original_argv
+
+
+def _prompt_provider() -> str | None:
+    choices = {
+        "1": "mock",
+        "2": "aws",
+        "3": "gcp",
+        "4": "azure",
+        "mock": "mock",
+        "aws": "aws",
+        "gcp": "gcp",
+        "azure": "azure",
+    }
+    while True:
+        print()
+        print("Choose provider:")
+        print("  1. Mock / demo")
+        print("  2. AWS")
+        print("  3. GCP")
+        print("  4. Azure")
+        print("  Q. Back")
+        choice = input("Provider: ").strip().lower()
+        if choice in {"q", "quit", "back"}:
+            return None
+        provider = choices.get(choice)
+        if provider:
+            return provider
+        print("Invalid provider choice.")
+
+
+def _windows_launcher(parser: argparse.ArgumentParser) -> None:
+    root = install_root()
+    previous_cwd = Path.cwd()
+    os.chdir(root)
+    try:
+        while True:
+            print()
+            print("=" * 60)
+            print(f"SOC2 Sentinel Toolkit v{__version__}")
+            print("=" * 60)
+            print("  1. Run demo (mock provider)")
+            print("  2. Validate provider credentials")
+            print("  3. Run all collectors")
+            print("  4. Show command-line help")
+            print("  Q. Exit")
+            print()
+            choice = input("Select an option: ").strip().lower()
+
+            if choice in {"q", "quit", "exit", "0"}:
+                print("Closing SOC2 Sentinel.")
+                return
+
+            if choice == "1":
+                command = [
+                    "run-all",
+                    "--provider",
+                    "mock",
+                    "--output-base",
+                    str(root),
+                    "--continue-on-error",
+                ]
+                exit_code = _run_interactive_command(command)
+            elif choice == "2":
+                provider = _prompt_provider()
+                if provider is None:
+                    continue
+                exit_code = _run_interactive_command(
+                    ["validate", "--provider", provider]
+                )
+            elif choice == "3":
+                provider = _prompt_provider()
+                if provider is None:
+                    continue
+                command = [
+                    "run-all",
+                    "--provider",
+                    provider,
+                    "--output-base",
+                    str(root),
+                    "--continue-on-error",
+                ]
+                exit_code = _run_interactive_command(command)
+            elif choice == "4":
+                parser.print_help()
+                exit_code = 0
+            else:
+                print("Invalid choice.")
+                continue
+
+            print()
+            if exit_code == 0:
+                print("Operation completed.")
+            else:
+                print(f"Operation finished with exit code {exit_code}.")
+            input("Press Enter to return to the menu...")
+    except (EOFError, KeyboardInterrupt):
+        print()
+        print("Closing SOC2 Sentinel.")
+    finally:
+        os.chdir(previous_cwd)
+
+
+def _handle_frozen_windows_no_args(parser: argparse.ArgumentParser) -> bool:
+    """Launch an interactive menu when the packaged Windows EXE is double-clicked."""
+    if len(sys.argv) != 1:
+        return False
+    if sys.platform != "win32" or not getattr(sys, "frozen", False):
+        return False
+
+    _windows_launcher(parser)
+    return True
 
 
 def _apply_cli_overrides(cfg: SentinelConfig, args: argparse.Namespace) -> SentinelConfig:
@@ -155,6 +280,8 @@ def _run_collector(
 
 def main() -> None:
     parser = _parser()
+    if _handle_frozen_windows_no_args(parser):
+        return
     args = parser.parse_args()
 
     try:
