@@ -78,6 +78,28 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _handle_frozen_windows_no_args(parser: argparse.ArgumentParser) -> bool:
+    """Keep the packaged Windows console open when launched by double-click."""
+    if len(sys.argv) != 1:
+        return False
+    if sys.platform != "win32" or not getattr(sys, "frozen", False):
+        return False
+
+    parser.print_help()
+    print()
+    print("Quick examples:")
+    print("  sentinel.exe run-all --provider mock")
+    print("  sentinel.exe validate --provider mock")
+    print("  sentinel.exe run encryption_status --provider mock")
+    print()
+    print("Tip: double-click run-demo.bat in the toolkit root for a guided mock run.")
+    try:
+        input("\nPress Enter to close...")
+    except (EOFError, KeyboardInterrupt):
+        pass
+    return True
+
+
 def _apply_cli_overrides(cfg: SentinelConfig, args: argparse.Namespace) -> SentinelConfig:
     if getattr(args, "redact_pii", False):
         cfg.evidence.redact_pii = True
@@ -155,6 +177,8 @@ def _run_collector(
 
 def main() -> None:
     parser = _parser()
+    if _handle_frozen_windows_no_args(parser):
+        return
     args = parser.parse_args()
 
     try:
