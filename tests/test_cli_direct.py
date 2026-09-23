@@ -65,3 +65,18 @@ def test_main_verify(tmp_path, capsys):
     out = capsys.readouterr().out
     data = json.loads(out)
     assert data.get("verified")
+
+def test_frozen_windows_no_args_shows_help_and_waits(capsys):
+    with (
+        patch.object(sys, "argv", ["sentinel.exe"]),
+        patch.object(sys, "platform", "win32"),
+        patch.object(sys, "frozen", True, create=True),
+        patch("builtins.input", return_value="") as mock_input,
+    ):
+        cli.main()
+
+    out = capsys.readouterr().out
+    assert "SOC2 Sentinel evidence automation" in out
+    assert "sentinel.exe run-all --provider mock" in out
+    assert "run-demo.bat" in out
+    mock_input.assert_called_once()
