@@ -16,17 +16,28 @@ def log_monitoring_snapshot(ctx: GcpContext) -> dict[str, Any]:
     buckets: list[Any] = []
     findings: list[dict[str, str]] = []
     cui_events: list[dict[str, Any]] = []
+    logging_client: Any | None = None
 
     try:
         from google.cloud import logging as cloud_logging
-        from google.cloud.logging_v2.services.config_service_v2 import ConfigServiceV2Client
+        from google.cloud.logging_v2.services.config_service_v2 import (
+            ConfigServiceV2Client,
+        )
 
         credentials = ctx.get_credentials()
-        client = cloud_logging.Client(project=ctx.project_id, credentials=credentials)
+        logging_client = cloud_logging.Client(
+            project=ctx.project_id,
+            credentials=credentials,
+        )
         config_client = ConfigServiceV2Client(credentials=credentials)
+
         ctx.attempt()
-        sinks = call_with_retry(lambda: list(client.list_sinks()), operation="gcp_list_log_sinks")
+        sinks = call_with_retry(
+            lambda: list(logging_client.list_sinks()),
+            operation="gcp_list_log_sinks",
+        )
         ctx.succeed()
+
         ctx.attempt()
         buckets = call_with_retry(
             lambda: list(
@@ -40,39 +51,40 @@ def log_monitoring_snapshot(ctx: GcpContext) -> dict[str, Any]:
     except Exception as exc:
         ctx.record_error("logging", exc)
 
-    required_sink = any(getattr(s, "name", "").endswith("_Default") or "_Required" in getattr(s, "name", "") for s in sinks)
+    required_sink = any(
+        getattr(sink, "name", "").endswith("_Default")
+        or "_Required" in getattr(sink, "name", "")
+        for sink in sinks
+    )
     if not sinks:
-        findings.append({"resource": "logging", "issue": "no log sinks configured"})
-
-    coverage: float | None = None
-    try:
-        from google.cloud import asset_v1
-
-        asset_client = asset_v1.AssetServiceClient()
-        scope = f"projects/{ctx.project_id}"
-        ctx.attempt()
-        assets = call_with_retry(
-            lambda: list(asset_client.search_all_resources(request={"scope": scope, "page_size": 200})),
-            operation="gcp_asset_count",
+        findings.append(
+            {
+                "resource": "logging",
+                "issue": "no log sinks configured",
+            }
         )
-        ctx.succeed()
-        total_resources = len(assets)
-        if total_resources > 0:
-            covered = len(sinks) + len(buckets)
-            coverage = round(min(100.0, (covered / total_resources) * 100), 1)
-    except Exception as exc:
-        ctx.record_error("cloudasset", exc)
-        if sinks:
-            coverage = 100.0 if required_sink else 50.0
+
+    bucket_retention_days = sorted(
+        {
+            int(days)
+            for bucket in buckets
+            if (days := getattr(bucket, "retention_days", None)) is not None
+        }
+    )
 
     try:
         from google.cloud import logging as cloud_logging
 
-        client = cloud_logging.Client(project=ctx.project_id)
+        if logging_client is None:
+            logging_client = cloud_logging.Client(
+                project=ctx.project_id,
+                credentials=ctx.get_credentials(),
+            )
+
         ctx.attempt()
         entries = call_with_retry(
             lambda: list(
-                client.list_entries(
+                logging_client.list_entries(
                     filter_='protoPayload.@type="type.googleapis.com/google.cloud.audit.AuditLog"',
                     max_results=10,
                     page_size=10,
@@ -81,10 +93,13 @@ def log_monitoring_snapshot(ctx: GcpContext) -> dict[str, Any]:
             operation="gcp_list_log_entries",
         )
         ctx.succeed()
+
         for entry in entries:
             cui_events.append(
                 {
-                    "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
+                    "timestamp": (
+                        entry.timestamp.isoformat() if entry.timestamp else None
+                    ),
                     "resource": getattr(entry, "resource", None),
                     "action": getattr(entry, "severity", "unknown"),
                     "principal": getattr(entry, "insert_id", "unknown"),
@@ -96,25 +111,35 @@ def log_monitoring_snapshot(ctx: GcpContext) -> dict[str, Any]:
 
     data: dict[str, Any] = {
         "active_trails": len(sinks),
-        "multi_region_trails": sum(1 for s in sinks if getattr(s, "destination", "").startswith("storage.googleapis.com")),
+        "multi_region_trails": sum(
+            1
+            for sink in sinks
+            if getattr(sink, "destination", "").startswith(
+                "storage.googleapis.com"
+            )
+        ),
         "config_recorder_all_supported": required_sink,
-        "log_coverage_percent": coverage,
-        "max_gap_hours": 0 if required_sink else None,
+        "log_coverage_percent": None,
+        "max_gap_hours": None,
         "critical_control_failures_30d": len(findings),
         "findings": findings,
         "cui_relevant_events": cui_events,
-        "cui_retention_days": 365,
+        "cui_retention_days": None,
+        "logging_sinks_count": len(sinks),
+        "logging_buckets_count": len(buckets),
+        "required_sink_present": required_sink,
+        "log_bucket_retention_days": bucket_retention_days,
         "attck_summary": {},
     }
-    if coverage is None:
-        ctx.errors.append(
-            api_error(
-                "CoverageUnavailable",
-                "Could not compute log_coverage_percent from Asset Inventory",
-                service="logging",
-                severity="high",
-            )
+
+    ctx.errors.append(
+        api_error(
+            "CoverageUnavailable",
+            "Log sink and bucket counts do not prove per-resource logging coverage",
+            service="logging",
+            severity="high",
         )
+    )
 
     return finalize_snapshot(
         data,
