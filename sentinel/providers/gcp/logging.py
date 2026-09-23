@@ -16,7 +16,6 @@ def log_monitoring_snapshot(ctx: GcpContext) -> dict[str, Any]:
     buckets: list[Any] = []
     findings: list[dict[str, str]] = []
     cui_events: list[dict[str, Any]] = []
-    logging_client: Any | None = None
 
     try:
         from google.cloud import logging as cloud_logging
@@ -25,7 +24,7 @@ def log_monitoring_snapshot(ctx: GcpContext) -> dict[str, Any]:
         )
 
         credentials = ctx.get_credentials()
-        logging_client = cloud_logging.Client(
+        sink_client = cloud_logging.Client(
             project=ctx.project_id,
             credentials=credentials,
         )
@@ -33,7 +32,7 @@ def log_monitoring_snapshot(ctx: GcpContext) -> dict[str, Any]:
 
         ctx.attempt()
         sinks = call_with_retry(
-            lambda: list(logging_client.list_sinks()),
+            lambda: list(sink_client.list_sinks()),
             operation="gcp_list_log_sinks",
         )
         ctx.succeed()
@@ -75,16 +74,15 @@ def log_monitoring_snapshot(ctx: GcpContext) -> dict[str, Any]:
     try:
         from google.cloud import logging as cloud_logging
 
-        if logging_client is None:
-            logging_client = cloud_logging.Client(
-                project=ctx.project_id,
-                credentials=ctx.get_credentials(),
-            )
+        entry_client = cloud_logging.Client(
+            project=ctx.project_id,
+            credentials=ctx.get_credentials(),
+        )
 
         ctx.attempt()
         entries = call_with_retry(
             lambda: list(
-                logging_client.list_entries(
+                entry_client.list_entries(
                     filter_='protoPayload.@type="type.googleapis.com/google.cloud.audit.AuditLog"',
                     max_results=10,
                     page_size=10,
