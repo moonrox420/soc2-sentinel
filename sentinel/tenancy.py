@@ -7,7 +7,7 @@ import re
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Generator
 
 from sentinel.errors import ValidationError
 
@@ -69,7 +69,7 @@ def tenant_scope(
     environment: str = "production",
     key_id: str | None = None,
     metadata: dict[str, Any] | None = None,
-) -> Iterator[TenantContext]:
+) -> Generator[TenantContext, None, None]:
     """Context manager for safely executing a code block within an isolated tenant scope."""
     context = TenantContext(
         tenant_id=tenant_id,

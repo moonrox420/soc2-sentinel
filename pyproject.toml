@@ -52,7 +52,7 @@ include = ["sentinel*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-o tmp_path_retention_policy=none"
+addopts = "-o tmp_path_retention_policy=none -o tmp_path_retention_count=0 --basetemp=pytest_tmp_dir"
 
 [tool.coverage.run]
 source = ["sentinel"]

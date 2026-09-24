@@ -45,7 +45,7 @@ Cloud IAM, logging pipelines, encryption configuration, MFA enforcement, resilie
 ### Step 1 — Execute collectors
 
 ```powershell
-cd C:\Users\droxa\soc2-sentinel
+cd /path/to/soc2-sentinel
 .\.venv\Scripts\Activate.ps1
 sentinel run-all --provider aws --output-base .
 ```

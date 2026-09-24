@@ -19,7 +19,6 @@ def resilience_snapshot(ctx: AwsClients) -> dict[str, Any]:
     last_restore_days: int | None = None
     backup_success = 0
     backup_failed = 0
-    failover_passed: bool | None = None
     restore_jobs_found = 0
 
     since = datetime.now(timezone.utc) - timedelta(days=30)
@@ -51,16 +50,16 @@ def resilience_snapshot(ctx: AwsClients) -> dict[str, Any]:
     )
     if restore_resp:
         latest_restore: datetime | None = None
+        restore_test_passed = False
         for job in restore_resp.get("RestoreJobs", []):
             restore_jobs_found += 1
             created = job.get("CreationDate")
             if created and (latest_restore is None or created > latest_restore):
                 latest_restore = created
+            if job.get("State") == "COMPLETED":
+                restore_test_passed = True
         if latest_restore:
             last_restore_days = (datetime.now(timezone.utc) - latest_restore).days
-            failover_passed = any(
-                j.get("State") == "COMPLETED" for j in restore_resp.get("RestoreJobs", [])
-            )
 
     if last_backup_hours is None:
         snap_resp = ctx.call("rds", "aws_rds_snapshots", lambda: rds.describe_db_snapshots())
@@ -81,8 +80,9 @@ def resilience_snapshot(ctx: AwsClients) -> dict[str, Any]:
         "last_restore_test_days_ago": last_restore_days,
         "rto_target_hours": 4,
         "rpo_target_hours": 1,
-        "failover_test_days_ago": last_restore_days,
-        "failover_test_passed": failover_passed,
+        "restore_test_passed": restore_test_passed if restore_jobs_found > 0 else None,
+        "failover_test_days_ago": None,
+        "failover_test_passed": None,
         "backup_jobs_success_30d": backup_success,
         "backup_jobs_failed_30d": backup_failed,
     }
@@ -96,11 +96,11 @@ def resilience_snapshot(ctx: AwsClients) -> dict[str, Any]:
                 severity="critical",
             )
         )
-    if failover_passed is None:
+    if restore_jobs_found == 0:
         ctx.errors.append(
             api_error(
                 "NoRestoreEvidence",
-                "No restore job evidence; failover_test_passed not asserted",
+                "No restore job evidence found in the last 30 days",
                 service="backup",
                 severity="medium",
             )

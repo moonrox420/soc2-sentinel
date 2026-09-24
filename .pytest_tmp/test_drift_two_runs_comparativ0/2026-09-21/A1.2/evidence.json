@@ -1,1 +1,0 @@
-{"collector": "resilience_testing", "control_id": "A1.2", "provider": "mock", "metrics": {"successful_backups_24h": 5}}

@@ -13,7 +13,7 @@ Complete index of the toolkit. Use this page as the navigation hub for policies,
 ## Quick start
 
 ```powershell
-cd C:\Users\droxa\soc2-sentinel
+cd soc2-sentinel
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e ".[dev]"

@@ -1,12 +1,4 @@
-"""SOC2 Sentinel — Enterprise Public & Auditor Trust Center Engine.
-
-Provides real-time security posture reporting, live compliance certifications,
-verified subprocessor registries (CC9.2), continuous uptime SLA badges, and
-security whitepaper downloads for customer vendor risk reviews.
-"""
-
-from __future__ import annotations
-
+import html
 import logging
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -23,10 +15,10 @@ logger = logging.getLogger("sentinel.trust_center")
 class TrustBadge:
     name: str
     standard: str
-    status: str  # "ATTESTED" | "COMPLIANT" | "ALIGNED" | "CONTINUOUSLY_MONITORED"
+    status: str  # "CONTINUOUSLY_MONITORED" | "EVALUATED" | "IN_PROGRESS" | "NOT_ASSESSED"
     description: str
     icon: str
-    valid_until: str = "2027-12-31"
+    valid_until: str = "Continuous"
 
 
 @dataclass
@@ -44,13 +36,13 @@ class TrustCenterProfile:
     last_updated: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
-    overall_compliance_score: float = 98.6
-    continuous_monitoring_status: str = "ACTIVE_HEALTHY"
-    uptime_sla_percentage: float = 99.99
-    encryption_at_rest: str = "AES-256-GCM / Customer Managed Keys (KMS)"
-    encryption_in_transit: str = "TLS 1.3 / Strict HSTS"
-    penetration_test_cadence: str = "Annual Third-Party Attestation (Clean)"
-    incident_response_sla: str = "< 15 Minutes P0 / < 1 Hour P1"
+    overall_compliance_score: float = 0.0
+    continuous_monitoring_status: str = "INITIALIZING"
+    uptime_sla_percentage: float = 100.0
+    encryption_at_rest: str = "AES-256-GCM / KMS Verified"
+    encryption_in_transit: str = "TLS 1.2+ Enforced"
+    penetration_test_cadence: str = "Continuous SAST & Dependency Scanning"
+    incident_response_sla: str = "< 1 Hour P0 / Continuous Alerting"
     badges: list[TrustBadge] = field(default_factory=list)
     controls: list[SecurityControlHighlight] = field(default_factory=list)
     subprocessors: list[dict[str, Any]] = field(default_factory=list)
@@ -82,16 +74,17 @@ class TrustCenterManager:
 
     def get_profile(self) -> TrustCenterProfile:
         """Construct live Trust Center profile incorporating current evidence."""
-        # Calculate live scorecard score if evidence exists
-        score = 98.6
+        score = 0.0
+        mon_status = "INITIALIZING"
+        card = None
         try:
             ev_dir = self.base_dir / "evidence"
             if ev_dir.exists() and any(ev_dir.iterdir()):
                 card = compute_compliance_scorecard(ev_dir)
-                if card.overall_posture_score > 0.0:
-                    score = card.overall_posture_score
+                score = card.overall_posture_score
+                mon_status = "ACTIVE_MONITORING" if score >= 85.0 else "REMEDIATION_REQUIRED"
         except Exception as e:
-            logger.debug("Using default trust score: %s", e)
+            logger.debug("Failed computing live scorecard for Trust Center: %s", e)
 
         # Retrieve registered vendors / subprocessors
         subprocessors = []
@@ -108,175 +101,147 @@ class TrustCenterManager:
                 }
             )
 
-        if not subprocessors:
-            # Default authoritative enterprise subprocessors for baseline trust display
-            subprocessors = [
-                {
-                    "name": "Amazon Web Services (AWS)",
-                    "service": "Cloud Hosting, KMS, & Storage Infrastructure",
-                    "tier": "CRITICAL",
-                    "data_classification": "RESTRICTED_PII",
-                    "dpa_executed": True,
-                    "soc2_status": "VALID",
-                    "soc2_expiration": "2027-12-31",
-                },
-                {
-                    "name": "Google Cloud Platform (GCP)",
-                    "service": "Multi-Region Cloud Analytics & BigQuery",
-                    "tier": "HIGH",
-                    "data_classification": "CONFIDENTIAL_FINANCIAL",
-                    "dpa_executed": True,
-                    "soc2_status": "VALID",
-                    "soc2_expiration": "2027-11-30",
-                },
-                {
-                    "name": "Microsoft Azure",
-                    "service": "Enterprise Entra ID Identity & Backup Vaults",
-                    "tier": "HIGH",
-                    "data_classification": "INTERNAL",
-                    "dpa_executed": True,
-                    "soc2_status": "VALID",
-                    "soc2_expiration": "2027-10-15",
-                },
-                {
-                    "name": "GitHub Enterprise",
-                    "service": "Source Code Repository & CI/CD Pipelines",
-                    "tier": "HIGH",
-                    "data_classification": "INTERNAL",
-                    "dpa_executed": True,
-                    "soc2_status": "VALID",
-                    "soc2_expiration": "2027-09-30",
-                },
-            ]
-
+        # Badges derived from verified evidence runs
         badges = [
             TrustBadge(
                 name="SOC 2 Type II",
                 standard="AICPA Trust Services Criteria (Security, Availability, Confidentiality)",
-                status="ATTESTED",
-                description="Annual examination by independent AICPA accredited CPA firm.",
+                status="CONTINUOUSLY_MONITORED" if (card and card.soc2.overall_score >= 85.0) else "IN_EVALUATION",
+                description="Automated continuous evidence collection against AICPA Trust Services Criteria.",
                 icon="shield-check",
-            ),
-            TrustBadge(
-                name="ISO/IEC 27001:2022",
-                standard="Information Security Management Systems (ISMS)",
-                status="ALIGNED",
-                description="Comprehensive risk management and Annex A operational controls.",
-                icon="lock-closed",
-            ),
-            TrustBadge(
-                name="HIPAA Security Rule",
-                standard="45 CFR Part 160 and Part 164 Subparts A and C",
-                status="COMPLIANT",
-                description="Strict technical safeguards, encryption, and audit controls for ePHI.",
-                icon="heart",
             ),
             TrustBadge(
                 name="NIST SP 800-171 Rev 2",
                 standard="Protecting Controlled Unclassified Information (CUI)",
-                status="ALIGNED",
-                description="Full mapping across 14 security requirement families.",
+                status="CONTINUOUSLY_MONITORED" if (card and card.nist.overall_score >= 85.0) else "IN_EVALUATION",
+                description="Telemetry checks mapped across Access Control, Audit, and System Protection families.",
                 icon="document-check",
             ),
             TrustBadge(
                 name="CMMC 2.0 Level 2",
-                standard="Cybersecurity Maturity Model Certification",
-                status="CONTINUOUSLY_MONITORED",
-                description="110 security practices mapped with automated drift detection.",
+                standard="Cybersecurity Maturity Model Certification (Automated Telemetry Subset)",
+                status="CONTINUOUSLY_MONITORED" if (card and card.cmmc.overall_score >= 85.0) else "IN_EVALUATION",
+                description="Continuous automated practice verification and configuration drift detection.",
                 icon="check-badge",
             ),
             TrustBadge(
                 name="Zero Trust Architecture",
                 standard="CISA Zero Trust Maturity Model (Version 2.0)",
-                status="CONTINUOUSLY_MONITORED",
-                description="Continuous identity verification, least privilege, and encrypted telemetry.",
+                status="CONTINUOUSLY_MONITORED" if (card and card.zero_trust.overall_score >= 85.0) else "IN_EVALUATION",
+                description="Continuous identity verification, least privilege standing access, and encryption.",
                 icon="cpu-chip",
             ),
         ]
 
-        controls = [
-            SecurityControlHighlight(
-                category="Access Control & Authentication",
-                title="Mandatory Multi-Factor Authentication & RBAC",
-                status="ENFORCED",
-                details="FIDO2 WebAuthn & TOTP enforced for all workforce members with quarterly access recertifications.",
-            ),
-            SecurityControlHighlight(
-                category="Data Protection & Encryption",
-                title="Universal AES-256-GCM & TLS 1.3",
-                status="ENFORCED",
-                details="Customer-managed envelope encryption at rest with automated annual key rotation and strict TLS 1.3 in transit.",
-            ),
-            SecurityControlHighlight(
-                category="Vulnerability & Change Management",
-                title="Continuous SCA, SAST & Branch Protection",
-                status="ENFORCED",
-                details="Mandatory dual code reviews, automated dependency CVE scanning, and branch protection on all production repositories.",
-            ),
-            SecurityControlHighlight(
-                category="Resilience & Business Continuity",
-                title="Automated Backups & Cross-Region Redundancy",
-                status="ENFORCED",
-                details="Point-in-time immutable backup snapshots with automated recovery testing meeting 1-hour RTO and 15-minute RPO.",
-            ),
-        ]
+        # Security control highlights derived from live evidence
+        controls = []
+        if card and card.controls:
+            for c in card.controls:
+                ctrl_status = "PASS" if c.status == "PASS" else ("PARTIAL" if c.status == "PARTIAL" else "FAIL")
+                finding_desc = "; ".join(c.findings) if c.findings else f"Evaluated score: {c.score:.0f}% with quality '{c.evidence_quality}'"
+                controls.append(
+                    SecurityControlHighlight(
+                        category=c.category,
+                        title=f"{c.control_id} — {c.name}",
+                        status=ctrl_status,
+                        details=finding_desc,
+                    )
+                )
+        else:
+            controls = [
+                SecurityControlHighlight(
+                    category="Access Control & Authentication",
+                    title="CC6.1 — IAM Access Review",
+                    status="NOT_ASSESSED",
+                    details="Awaiting automated evidence collection run.",
+                ),
+                SecurityControlHighlight(
+                    category="Cryptographic Protection",
+                    title="C1.2 — Encryption Status",
+                    status="NOT_ASSESSED",
+                    details="Awaiting automated evidence collection run.",
+                ),
+            ]
 
         return TrustCenterProfile(
             overall_compliance_score=score,
+            continuous_monitoring_status=mon_status,
             badges=badges,
             controls=controls,
             subprocessors=subprocessors,
         )
 
     def generate_trust_center_html(self) -> str:
-        """Generate a sleek, production-grade standalone Trust Center web page."""
+        """Generate a sleek, production-grade standalone Trust Center web page with strict HTML escaping."""
         profile = self.get_profile()
 
         badges_html = ""
         for b in profile.badges:
+            b_name = html.escape(b.name)
+            b_status = html.escape(b.status)
+            b_std = html.escape(b.standard)
+            b_desc = html.escape(b.description)
+            b_val = html.escape(b.valid_until)
+            pill_color = "#10b981" if b.status == "CONTINUOUSLY_MONITORED" else "#f59e0b"
             badges_html += f"""
             <div class="badge-card">
                 <div class="badge-header">
-                    <span class="badge-title">{b.name}</span>
-                    <span class="badge-pill">{b.status}</span>
+                    <span class="badge-title">{b_name}</span>
+                    <span class="badge-pill" style="color:{pill_color}; border-color:{pill_color}44;">{b_status}</span>
                 </div>
-                <div class="badge-std">{b.standard}</div>
-                <div class="badge-desc">{b.description}</div>
-                <div class="badge-date">&check; Active through {b.valid_until}</div>
+                <div class="badge-std">{b_std}</div>
+                <div class="badge-desc">{b_desc}</div>
+                <div class="badge-date">&check; Status: {b_val}</div>
             </div>
             """
 
         controls_html = ""
         for c in profile.controls:
+            c_cat = html.escape(c.category)
+            c_title = html.escape(c.title)
+            c_desc = html.escape(c.details)
+            c_status = html.escape(c.status)
+            pill_color = "#10b981" if c.status == "PASS" else ("#f59e0b" if c.status == "PARTIAL" else "#ef4444")
             controls_html += f"""
             <div class="control-row">
                 <div>
-                    <div class="control-cat">{c.category}</div>
-                    <div class="control-title">{c.title}</div>
-                    <div class="control-desc">{c.details}</div>
+                    <div class="control-cat">{c_cat}</div>
+                    <div class="control-title">{c_title}</div>
+                    <div class="control-desc">{c_desc}</div>
                 </div>
-                <div><span class="pill-enforced">&check; {c.status}</span></div>
+                <div><span class="pill-enforced" style="color:{pill_color}; border-color:{pill_color}44;">&check; {c_status}</span></div>
             </div>
             """
 
         subproc_html = ""
-        for s in profile.subprocessors:
-            subproc_html += f"""
-            <tr>
-                <td style="font-weight:600; color:#ffffff;">{s['name']}</td>
-                <td style="color:#94a3b8;">{s['service']}</td>
-                <td><span class="tier-badge">{s['tier']}</span></td>
-                <td><span style="color:#10b981;">&check; {s['soc2_status']}</span></td>
-                <td style="color:#38bdf8;">{s['soc2_expiration']}</td>
-            </tr>
-            """
+        if profile.subprocessors:
+            for s in profile.subprocessors:
+                s_name = html.escape(str(s.get("name", "")))
+                s_service = html.escape(str(s.get("service", "")))
+                s_tier = html.escape(str(s.get("tier", "")))
+                s_soc2 = html.escape(str(s.get("soc2_status", "")))
+                s_exp = html.escape(str(s.get("soc2_expiration", "")))
+                subproc_html += f"""
+                <tr>
+                    <td style="font-weight:600; color:#ffffff;">{s_name}</td>
+                    <td style="color:#94a3b8;">{s_service}</td>
+                    <td><span class="tier-badge">{s_tier}</span></td>
+                    <td><span style="color:#10b981;">&check; {s_soc2}</span></td>
+                    <td style="color:#38bdf8;">{s_exp}</td>
+                </tr>
+                """
+        else:
+            subproc_html = "<tr><td colspan='5' style='color:#94a3b8; text-align:center;'>No third-party subprocessors registered yet. Register vendors using <code>sentinel vendor-risk add</code>.</td></tr>"
 
-        html = f"""<!DOCTYPE html>
+        co_name = html.escape(profile.company_name)
+        mon_stat = html.escape(profile.continuous_monitoring_status)
+
+        html_out = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{profile.company_name} — Security & Trust Center</title>
+    <title>{co_name} — Security & Trust Center</title>
     <style>
         :root {{ --bg: #0b0f19; --card: #131b2e; --border: #1e293b; --text: #f8fafc; --muted: #94a3b8; --accent: #3b82f6; --success: #10b981; }}
         body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; line-height: 1.5; }}
@@ -291,7 +256,7 @@ class TrustCenterManager:
         .metric-val {{ font-size: 36px; font-weight: 800; color: var(--success); margin: 8px 0; }}
         .metric-label {{ font-size: 13px; color: var(--muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; }}
         .section-title {{ font-size: 24px; font-weight: 700; margin: 40px 0 20px; color: #ffffff; }}
-        .badges-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 40px; }}
+        .badges-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 40px; }}
         .badge-card {{ background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }}
         .badge-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }}
         .badge-title {{ font-size: 18px; font-weight: 700; color: #ffffff; }}
@@ -314,35 +279,35 @@ class TrustCenterManager:
 </head>
 <body>
     <nav class="nav">
-        <div class="nav-logo">&#128737; {profile.company_name}</div>
-        <div style="font-size: 13px; color: var(--success); font-weight: 600;">&bull; Continuous Compliance Engine Active</div>
+        <div class="nav-logo">&#128737; {co_name}</div>
+        <div style="font-size: 13px; color: var(--success); font-weight: 600;">&bull; Status: {mon_stat}</div>
     </nav>
     <div class="container">
         <div class="hero">
             <h1>Security, Privacy & Trust Center</h1>
-            <p>Our real-time commitment to data protection, continuous compliance monitoring, and transparent security posture across the entire platform.</p>
+            <p>Real-time continuous compliance telemetry, verified cryptographic evidence provenance, and subprocessor management.</p>
         </div>
 
         <div class="metrics">
             <div class="metric-card">
                 <div class="metric-label">Compliance Posture</div>
                 <div class="metric-val">{profile.overall_compliance_score:.1f}%</div>
-                <div style="font-size: 12px; color: var(--muted);">Audit Ready Standard</div>
+                <div style="font-size: 12px; color: var(--muted);">Live Telemetry Score</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">Uptime SLA</div>
-                <div class="metric-val" style="color: #38bdf8;">{profile.uptime_sla_percentage}%</div>
-                <div style="font-size: 12px; color: var(--muted);">30-Day Trailing Average</div>
+                <div class="metric-label">Continuous Monitoring</div>
+                <div class="metric-val" style="font-size: 20px; color: #38bdf8; margin: 18px 0 10px;">{mon_stat}</div>
+                <div style="font-size: 12px; color: var(--muted);">Automated Polling Engine</div>
             </div>
             <div class="metric-card">
                 <div class="metric-label">Encryption Standard</div>
-                <div class="metric-val" style="font-size: 24px; color: #f8fafc; margin: 18px 0 10px;">AES-256-GCM</div>
+                <div class="metric-val" style="font-size: 20px; color: #f8fafc; margin: 18px 0 10px;">AES-256-GCM</div>
                 <div style="font-size: 12px; color: var(--muted);">KMS Envelope Protection</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">Penetration Testing</div>
-                <div class="metric-val" style="font-size: 22px; color: var(--success); margin: 20px 0 10px;">PASSED</div>
-                <div style="font-size: 12px; color: var(--muted);">0 High/Critical Findings</div>
+                <div class="metric-label">Subprocessor Reviews</div>
+                <div class="metric-val" style="font-size: 24px; color: var(--success); margin: 16px 0 10px;">{len(profile.subprocessors)}</div>
+                <div style="font-size: 12px; color: var(--muted);">Assessed Under CC9.2</div>
             </div>
         </div>
 
@@ -375,4 +340,4 @@ class TrustCenterManager:
 </body>
 </html>
 """
-        return html
+        return html_out

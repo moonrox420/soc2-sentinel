@@ -6,6 +6,7 @@ import json
 import logging
 import mimetypes
 import os
+import re
 import urllib.parse
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -66,6 +67,17 @@ from sentinel.vendor_risk import (
 logger = logging.getLogger("sentinel.dashboard.server")
 
 
+def _validate_outbound_url(url: str) -> None:
+    """Ensure outbound destination URL is safe from SSRF attacks."""
+    if not url or not url.startswith(("http://", "https://")):
+        raise ValueError("Invalid URL scheme: must start with http:// or https://")
+    parsed = urllib.parse.urlparse(url)
+    hostname = (parsed.hostname or "").lower()
+    blocked_hosts = {"169.254.169.254", "metadata.google.internal", "instance-data", "metadata"}
+    if hostname in blocked_hosts or hostname.startswith("169.254."):
+        raise ValueError(f"Prohibited destination host: {hostname}")
+
+
 class DashboardHandler(BaseHTTPRequestHandler):
     server: DashboardServer  # type: ignore
 
@@ -91,7 +103,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = self.headers.get("Origin", "")
+        if origin and ("://localhost" in origin or "://127.0.0.1" in origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Credentials", "true")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-ID")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
@@ -102,6 +117,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
+        origin = self.headers.get("Origin", "")
+        if origin and ("://localhost" in origin or "://127.0.0.1" in origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
         self.end_headers()
         self.wfile.write(payload)
 
@@ -119,7 +137,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self) -> None:
         self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = self.headers.get("Origin", "")
+        if origin and ("://localhost" in origin or "://127.0.0.1" in origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Credentials", "true")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-ID")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
@@ -215,8 +236,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 if len(parts) >= 3:
                     date_str = parts[2]
                     file_target = "/".join(parts[3:]) if len(parts) > 3 else "manifest.json"
-                    ev_dir = self.server.output_base / "evidence" / date_str
-                    target_file = ev_dir / file_target
+                    base_ev_dir = (self.server.output_base / "evidence").resolve()
+                    target_file = (self.server.output_base / "evidence" / date_str / file_target).resolve()
+                    if not target_file.is_relative_to(base_ev_dir):
+                        self._send_json({"error": "Path traversal prohibited"}, status=403)
+                        return
                     if target_file.exists() and target_file.is_file():
                         try:
                             content = json.loads(target_file.read_text(encoding="utf-8"))
@@ -226,7 +250,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                             self._send_json({"raw": target_file.read_text(encoding="utf-8", errors="replace")})
                             return
                     else:
-                        self._send_json({"error": "Artifact not found", "path": str(target_file)}, status=404)
+                        self._send_json({"error": "Artifact not found", "path": target_file.name}, status=404)
                         return
             except PermissionError as pe:
                 self._send_json({"error": str(pe)}, status=403)
@@ -274,7 +298,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             try:
                 assert_permission(Permission.READ_EVIDENCE)
                 repo = query.get("repo", ["enterprise-org/soc2-sentinel"])[0]
-                mock_mode = query.get("mock", ["true"])[0].lower() in {"true", "1", "yes"}
+                mock_mode = query.get("mock", ["false"])[0].lower() in {"true", "1", "yes"}
                 connector = GitHubConnector(repo=repo, mock=mock_mode)
                 report = connector.audit()
                 self._send_json(report.to_dict())
@@ -374,11 +398,20 @@ class DashboardHandler(BaseHTTPRequestHandler):
             try:
                 assert_permission(Permission.READ_AUDIT)
                 r_id = path.replace("/api/audit-rooms/", "").strip()
+                # Sanitize room ID
+                r_id = re.sub(r"[^a-zA-Z0-9_\-]", "", r_id)
                 arm = AuditRoomManager(self.server.output_base)
                 room = arm.get_room(r_id)
                 if not room:
                     self._send_json({"error": f"Audit room '{r_id}' not found"}, status=404)
                     return
+                # Check for auditor room token if provided in query or header
+                room_tok = query.get("token", [""])[0] or self.headers.get("X-Audit-Token", "")
+                if room_tok:
+                    valid, _ = arm.validate_access(r_id, room_tok, ip_address=self.client_address[0] if self.client_address else "")
+                    if not valid:
+                        self._send_json({"error": "Invalid or expired audit room token"}, status=403)
+                        return
                 crosswalk = arm.build_control_crosswalk(room)
                 self._send_json({"room": room.to_dict(), "crosswalk": crosswalk})
             except PermissionError as pe:
@@ -389,9 +422,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
             try:
                 assert_permission(Permission.READ_REPORT)
                 fname = path.replace("/api/download/", "")
-                target_path = self.server.output_base / "evidence" / fname
-                if not target_path.exists() or not target_path.is_file():
-                    target_path = self.server.output_base / fname
+                base_dir = self.server.output_base.resolve()
+                target_path = (self.server.output_base / "evidence" / fname).resolve()
+                if not target_path.is_relative_to(base_dir) or not target_path.exists() or not target_path.is_file():
+                    target_path = (self.server.output_base / fname).resolve()
+                if not target_path.is_relative_to(base_dir):
+                    self._send_json({"error": "Path traversal prohibited"}, status=403)
+                    return
                 if target_path.exists() and target_path.is_file():
                     self.send_response(200)
                     content_type, _ = mimetypes.guess_type(str(target_path))
@@ -643,8 +680,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         if path == "/api/notifications/test":
             try:
-                assert_permission(Permission.READ_CONFIG)
+                assert_permission(Permission.MANAGE_CREDENTIALS)
                 webhook_url = body.get("webhook_url", "")
+                _validate_outbound_url(webhook_url)
                 channel_str = body.get("channel", "generic").lower()
                 channel = getattr(NotificationChannel, channel_str.upper(), NotificationChannel.GENERIC_WEBHOOK)
 
@@ -657,6 +695,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 delivered = NotificationManager.send_webhook(webhook_url=webhook_url, alert=alert, channel=channel)
                 self._send_json({"delivered": delivered, "alert": alert.to_dict()})
                 return
+            except ValueError as ve:
+                self._send_json({"error": str(ve)}, status=400)
+                return
             except PermissionError as pe:
                 self._send_json({"error": str(pe)}, status=403)
                 return
@@ -666,6 +707,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             try:
                 assert_permission(Permission.MANAGE_USER)
                 r_id = body.get("room_id") or f"room_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+                r_id = re.sub(r"[^a-zA-Z0-9_\-]", "", r_id)
                 title = body.get("title", "SOC 2 Type II Audit Room")
                 email = body.get("auditor_email", "auditor@enterprise.com")
                 p_start = body.get("period_start", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
@@ -699,6 +741,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             try:
                 assert_permission(Permission.MANAGE_USER)
                 r_id = body.get("room_id", "")
+                r_id = re.sub(r"[^a-zA-Z0-9_\-]", "", r_id)
                 arm = AuditRoomManager(self.server.output_base)
                 revoked = arm.revoke_room(r_id)
                 if not revoked:
@@ -719,6 +762,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             try:
                 assert_permission(Permission.READ_REPORT)
                 r_id = body.get("room_id", "")
+                r_id = re.sub(r"[^a-zA-Z0-9_\-]", "", r_id)
                 arm = AuditRoomManager(self.server.output_base)
                 try:
                     zip_path = arm.export_audit_package_zip(r_id)
@@ -743,30 +787,35 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         if path == "/api/siem/export":
             try:
-                assert_permission(Permission.READ_AUDIT)
                 target = body.get("target", "NDJSON_FILE").upper()
                 limit = int(body.get("limit", 200))
                 exporter = SIEMExporter(self.server.output_base)
 
                 if target == "NDJSON_FILE":
+                    assert_permission(Permission.READ_AUDIT)
                     out_path = self.server.output_base / "siem_export.ndjson"
                     cnt = exporter.export_to_ndjson_file(out_path, limit=limit)
                     self._send_json({"status": "exported", "events_count": cnt, "path": str(out_path)})
                     return
                 elif target == "SPLUNK_HEC":
+                    assert_permission(Permission.MANAGE_CREDENTIALS)
                     url = body.get("endpoint_url", "")
+                    _validate_outbound_url(url)
                     token = body.get("token", "")
                     ok, cnt, msg = exporter.forward_to_splunk_hec(url, token)
                     self._send_json({"success": ok, "forwarded_count": cnt, "message": msg}, status=200 if ok else 400)
                     return
                 elif target == "DATADOG":
+                    assert_permission(Permission.MANAGE_CREDENTIALS)
                     api_key = body.get("api_key", "")
                     site = body.get("site", "datadoghq.com")
                     ok, cnt, msg = exporter.forward_to_datadog(api_key, site=site)
                     self._send_json({"success": ok, "forwarded_count": cnt, "message": msg}, status=200 if ok else 400)
                     return
                 elif target == "GENERIC_WEBHOOK":
+                    assert_permission(Permission.MANAGE_CREDENTIALS)
                     webhook_url = body.get("webhook_url", "")
+                    _validate_outbound_url(webhook_url)
                     secret_key = body.get("secret_key", "")
                     ok, cnt, msg = exporter.forward_to_webhook(webhook_url, secret_key=secret_key)
                     self._send_json({"success": ok, "forwarded_count": cnt, "message": msg}, status=200 if ok else 400)
@@ -774,6 +823,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 else:
                     self._send_json({"error": f"Unsupported SIEM target '{target}'"}, status=400)
                     return
+            except ValueError as ve:
+                self._send_json({"error": str(ve)}, status=400)
+                return
             except PermissionError as pe:
                 self._send_json({"error": str(pe)}, status=403)
                 return

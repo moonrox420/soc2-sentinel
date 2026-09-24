@@ -26,10 +26,15 @@ def encryption_snapshot(ctx: GcpContext) -> dict[str, Any]:
         ctx.succeed()
         for bucket in buckets:
             bucket.reload()
-            encrypted = bool(bucket.default_kms_key_name) or bucket.iam_configuration.uniform_bucket_level_access_enabled
-            resources.append({"resource": f"gs://{bucket.name}", "encrypted": encrypted, "type": "GCS"})
-            if not encrypted:
-                findings.append({"resource": f"gs://{bucket.name}", "issue": "no CMEK or uniform access"})
+            has_cmek = bool(getattr(bucket, "default_kms_key_name", None))
+            # GCS enforces server-side encryption at rest by default; CMEK provides customer-managed keys
+            encrypted = True
+            resources.append({
+                "resource": f"gs://{bucket.name}",
+                "encrypted": encrypted,
+                "cmek_enabled": has_cmek,
+                "type": "GCS",
+            })
     except Exception as exc:
         ctx.record_error("storage", exc)
 

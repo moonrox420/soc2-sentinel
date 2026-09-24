@@ -1,1 +1,0 @@
-[{"rule_id": "CUSTOM-FILE-002", "name": "Audit Logging", "description": "Ensure audit logs are retained >= 365 days", "category": "Logging", "severity": "HIGH", "collector_target": "log_aggregator", "condition": "retention_days >= 365"}]

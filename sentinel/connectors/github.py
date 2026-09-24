@@ -135,11 +135,11 @@ class GitHubConnector:
         self.repo = repo.strip("/")
         self.token = token or os.getenv("GITHUB_TOKEN", "")
         self.api_url = api_url.rstrip("/")
-        self.mock = mock or (not self.token and not os.getenv("GITHUB_TOKEN"))
+        self.mock = mock
 
     def _make_request(self, endpoint: str) -> Optional[Dict[str, Any] | List[Any]]:
         """Perform an authenticated GitHub API request."""
-        if self.mock:
+        if self.mock or not self.token:
             return None
 
         url = f"{self.api_url}/repos/{self.repo}/{endpoint.lstrip('/')}"
@@ -217,6 +217,9 @@ class GitHubConnector:
 
         findings: List[str] = []
         raw_evidence: Dict[str, Any] = {}
+
+        if not self.token:
+            findings.append("CRITICAL: GitHub API token (GITHUB_TOKEN) is not configured; live VCS compliance audit cannot be authenticated.")
 
         # 1. Branch Protection
         bp_data = self._make_request(f"branches/{default_branch}/protection")

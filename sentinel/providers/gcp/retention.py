@@ -33,9 +33,9 @@ def retention_snapshot(ctx: GcpContext) -> dict[str, Any]:
     return finalize_snapshot(
         {
             "buckets_missing_lifecycle": missing_lifecycle,
-            "objects_past_retention": missing_lifecycle,
+            "objects_past_retention": None,
             "findings": findings,
-            "notes": "objects_past_retention mirrors buckets_missing_lifecycle.",
+            "notes": "Evaluated bucket-level lifecycle expiration rules across active GCS buckets.",
         },
         ctx.errors,
         checks_attempted=ctx._checks_attempted,

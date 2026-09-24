@@ -63,9 +63,7 @@ def encryption_snapshot(ctx: AzureContext) -> dict[str, Any]:
     except Exception as exc:
         ctx.record_error("resourcegraph", exc)
 
-    kv_data = ctx.graph_get("/security/secureScores?$top=1")
-    if kv_data:
-        fips_keys = 1
+    # Key Vault HSM / FIPS key evaluation requires direct Key Vault SDK enumeration
 
     unencrypted = len(findings)
     return finalize_snapshot(

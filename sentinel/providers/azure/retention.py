@@ -39,9 +39,9 @@ def retention_snapshot(ctx: AzureContext) -> dict[str, Any]:
     return finalize_snapshot(
         {
             "accounts_missing_lifecycle": missing_lifecycle,
-            "objects_past_retention": missing_lifecycle,
+            "objects_past_retention": None,
             "findings": findings,
-            "notes": "objects_past_retention mirrors accounts_missing_lifecycle.",
+            "notes": "Evaluated storage account management policies for retention rules.",
         },
         ctx.errors,
         checks_attempted=ctx._checks_attempted,

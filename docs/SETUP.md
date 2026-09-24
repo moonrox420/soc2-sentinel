@@ -16,7 +16,7 @@
 ### 1. Obtain the toolkit
 
 ```bash
-cd C:\Users\droxa\soc2-sentinel
+cd soc2-sentinel
 ```
 
 Or clone/unzip the distribution to your preferred directory.

@@ -1,1 +1,0 @@
-{"collector": "encryption_status", "control_id": "C1.2", "provider": "mock", "metrics": {"unencrypted_data_stores": 1, "encrypted_at_rest_percentage": 90.0}}

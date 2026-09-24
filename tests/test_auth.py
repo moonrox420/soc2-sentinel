@@ -36,9 +36,14 @@ def test_user_identity_permissions() -> None:
     assert auditor.has_permission(Permission.READ_EVIDENCE)
     assert not auditor.has_permission(Permission.MANAGE_TENANT)
 
-    # Anonymous user defaults to super admin for CLI backwards compatibility
+    # Anonymous user defaults to least-privilege read-only VIEWER
     anon = UserIdentity.anonymous()
-    assert anon.has_permission(Permission.TRIGGER_COLLECTION)
+    assert anon.role == Role.VIEWER
+    assert anon.has_permission(Permission.READ_EVIDENCE)
+    assert anon.has_permission(Permission.READ_REPORT)
+    assert not anon.has_permission(Permission.TRIGGER_COLLECTION)
+    assert not anon.has_permission(Permission.MANAGE_TENANT)
+    assert not anon.has_permission(Permission.MANAGE_CREDENTIALS)
 
 
 def test_auth_scope_and_assertion() -> None:

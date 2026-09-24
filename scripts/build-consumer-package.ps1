@@ -5,6 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
 $Root = Split-Path $PSScriptRoot -Parent
 $Version = "2.5.0"
 $DistDir = Join-Path $Root "dist"
@@ -15,7 +16,7 @@ $BinDir = Join-Path $Root "bin"
 
 Set-Location $Root
 
-function Ensure-PyInstaller {
+function Assert-PyInstaller {
     $py = Get-Command python -ErrorAction SilentlyContinue
     if (-not $py) { throw "Python not found on PATH." }
     python -m pip install --quiet pyinstaller
@@ -23,7 +24,7 @@ function Ensure-PyInstaller {
 
 function Build-Exe {
     Write-Host "Building sentinel.exe (one-file, may take a few minutes)..."
-    Ensure-PyInstaller
+    Assert-PyInstaller
     New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
     python -m PyInstaller --noconfirm --clean --distpath $BinDir --workpath (Join-Path $Root "build\pyinstaller") build\sentinel.spec
     if (-not (Test-Path (Join-Path $BinDir "sentinel.exe"))) {

@@ -7,8 +7,23 @@ import urllib.request
 
 import pytest
 
+from sentinel.auth import Role, TokenManager, UserIdentity
 from sentinel.daemon import ContinuousMonitoringDaemon
 from sentinel.dashboard.server import DashboardHandler, DashboardServer
+
+
+@pytest.fixture(scope="module")
+def admin_token() -> str:
+    admin_user = UserIdentity(user_id="test_admin", role=Role.SUPER_ADMIN, tenant_id="default")
+    return TokenManager.create_token(admin_user)
+
+
+@pytest.fixture(scope="module")
+def admin_headers(admin_token: str) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {admin_token}",
+        "Content-Type": "application/json",
+    }
 
 
 @pytest.fixture(scope="module")
@@ -77,9 +92,16 @@ def test_get_drift(server_instance):
     assert "drift_detected" in data
 
 
-def test_get_credentials(server_instance):
+def test_get_credentials(server_instance, admin_headers):
     url, _ = server_instance
-    resp = urllib.request.urlopen(f"{url}/api/credentials")
+    # Anonymous/unauthenticated receives 403 Forbidden
+    with pytest.raises(urllib.error.HTTPError) as exc_info:
+        urllib.request.urlopen(f"{url}/api/credentials")
+    assert exc_info.value.code == 403
+
+    # Authenticated admin succeeds
+    req = urllib.request.Request(f"{url}/api/credentials", headers=admin_headers)
+    resp = urllib.request.urlopen(req)
     assert resp.status == 200
     data = json.loads(resp.read().decode("utf-8"))
     assert "mock" in data
@@ -107,12 +129,12 @@ def test_get_report_latest(server_instance):
     assert "Executive" in html
 
 
-def test_post_verify(server_instance):
+def test_post_verify(server_instance, admin_headers):
     url, _ = server_instance
     req = urllib.request.Request(
         f"{url}/api/verify",
         data=json.dumps({"date": "2026-09-23"}).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=admin_headers,
     )
     resp = urllib.request.urlopen(req)
     assert resp.status == 200
@@ -120,12 +142,12 @@ def test_post_verify(server_instance):
     assert "valid" in data
 
 
-def test_post_scan(server_instance):
+def test_post_scan(server_instance, admin_headers):
     url, _ = server_instance
     req = urllib.request.Request(
         f"{url}/api/scan",
         data=json.dumps({"provider": "mock", "collector": "iam_access_review"}).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=admin_headers,
     )
     resp = urllib.request.urlopen(req)
     assert resp.status == 200
@@ -133,12 +155,12 @@ def test_post_scan(server_instance):
     assert data["status"] == "ok"
 
 
-def test_post_export_and_download(server_instance):
+def test_post_export_and_download(server_instance, admin_headers):
     url, _ = server_instance
     req = urllib.request.Request(
         f"{url}/api/export",
         data=b"{}",
-        headers={"Content-Type": "application/json"},
+        headers=admin_headers,
     )
     resp = urllib.request.urlopen(req)
     assert resp.status == 200
@@ -146,8 +168,9 @@ def test_post_export_and_download(server_instance):
     assert data["status"] == "ok"
     assert "download_url" in data
 
-    # Test download
-    dl_resp = urllib.request.urlopen(f"{url}{data['download_url']}")
+    # Test download with auth header
+    dl_req = urllib.request.Request(f"{url}{data['download_url']}", headers=admin_headers)
+    dl_resp = urllib.request.urlopen(dl_req)
     assert dl_resp.status == 200
     assert dl_resp.headers.get("Content-Type") in {
         "application/zip",
@@ -163,9 +186,10 @@ def test_not_found(server_instance):
     assert exc_info.value.code == 404
 
 
-def test_get_policy_rules_and_evaluation(server_instance):
+def test_get_policy_rules_and_evaluation(server_instance, admin_headers):
     url, _ = server_instance
-    resp = urllib.request.urlopen(f"{url}/api/policy/rules")
+    req_rules = urllib.request.Request(f"{url}/api/policy/rules", headers=admin_headers)
+    resp = urllib.request.urlopen(req_rules)
     assert resp.status == 200
     rules = json.loads(resp.read().decode("utf-8"))
     assert isinstance(rules, list)
@@ -174,7 +198,7 @@ def test_get_policy_rules_and_evaluation(server_instance):
     req = urllib.request.Request(
         f"{url}/api/policy/evaluate",
         data=json.dumps({"state": {}}).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=admin_headers,
     )
     eval_resp = urllib.request.urlopen(req)
     assert eval_resp.status == 200
@@ -182,10 +206,11 @@ def test_get_policy_rules_and_evaluation(server_instance):
     assert "compliance_score" in report
 
 
-def test_tenants_and_tokens_endpoints(server_instance):
+def test_tenants_and_tokens_endpoints(server_instance, admin_headers):
     url, _ = server_instance
     # List tenants
-    resp = urllib.request.urlopen(f"{url}/api/tenants")
+    req_list = urllib.request.Request(f"{url}/api/tenants", headers=admin_headers)
+    resp = urllib.request.urlopen(req_list)
     assert resp.status == 200
     tenants = json.loads(resp.read().decode("utf-8"))
     assert "tenants" in tenants
@@ -194,7 +219,7 @@ def test_tenants_and_tokens_endpoints(server_instance):
     req_t = urllib.request.Request(
         f"{url}/api/tenants",
         data=json.dumps({"tenant_id": "org-dashboard-test"}).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=admin_headers,
     )
     create_t_resp = urllib.request.urlopen(req_t)
     assert create_t_resp.status == 200
@@ -203,7 +228,7 @@ def test_tenants_and_tokens_endpoints(server_instance):
     req_tok = urllib.request.Request(
         f"{url}/api/tokens/create",
         data=json.dumps({"user_id": "auditor_user", "role": "AUDITOR", "tenant_id": "org-dashboard-test"}).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=admin_headers,
     )
     create_tok_resp = urllib.request.urlopen(req_tok)
     assert create_tok_resp.status == 200
@@ -212,7 +237,7 @@ def test_tenants_and_tokens_endpoints(server_instance):
     assert tok_data["token"].startswith("sentinel_")
 
 
-def test_vcs_and_telemetry_endpoints(server_instance):
+def test_vcs_and_telemetry_endpoints(server_instance, admin_headers):
     url, _ = server_instance
     # VCS GitHub audit
     resp_gh = urllib.request.urlopen(f"{url}/api/vcs/github?mock=true")
@@ -221,16 +246,18 @@ def test_vcs_and_telemetry_endpoints(server_instance):
     assert gh_data["compliant"] is True
 
     # Telemetry events
-    resp_tel = urllib.request.urlopen(f"{url}/api/telemetry/events")
+    req_tel = urllib.request.Request(f"{url}/api/telemetry/events", headers=admin_headers)
+    resp_tel = urllib.request.urlopen(req_tel)
     assert resp_tel.status == 200
     tel_data = json.loads(resp_tel.read().decode("utf-8"))
     assert "events" in tel_data
 
 
-def test_phase2_vault_and_vrm_endpoints(server_instance):
+def test_phase2_vault_and_vrm_endpoints(server_instance, admin_headers):
     url, _ = server_instance
     # 1. Vault Chain
-    resp_vault = urllib.request.urlopen(f"{url}/api/vault/chain")
+    req_vault = urllib.request.Request(f"{url}/api/vault/chain", headers=admin_headers)
+    resp_vault = urllib.request.urlopen(req_vault)
     assert resp_vault.status == 200
     v_data = json.loads(resp_vault.read().decode("utf-8"))
     assert "verification" in v_data
@@ -239,7 +266,7 @@ def test_phase2_vault_and_vrm_endpoints(server_instance):
     req_seal = urllib.request.Request(
         f"{url}/api/vault/seal",
         data=json.dumps({"date": "2026-09-23"}).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=admin_headers,
     )
     seal_resp = urllib.request.urlopen(req_seal)
     assert seal_resp.status == 200
@@ -258,7 +285,7 @@ def test_phase2_vault_and_vrm_endpoints(server_instance):
                 "questionnaire": {"has_soc2_type2": True, "enforces_mfa": True},
             }
         }).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=admin_headers,
     )
     save_v_resp = urllib.request.urlopen(req_vrm)
     assert save_v_resp.status == 200
@@ -274,7 +301,7 @@ def test_phase2_vault_and_vrm_endpoints(server_instance):
     assert v_rep["control_id"] == "CC9.2"
 
 
-def test_phase2_uar_and_notification_endpoints(server_instance):
+def test_phase2_uar_and_notification_endpoints(server_instance, admin_headers):
     url, base = server_instance
     from sentinel.access_review import AccessReviewManager
     uar = AccessReviewManager(base)
@@ -283,7 +310,10 @@ def test_phase2_uar_and_notification_endpoints(server_instance):
         title="Dashboard Test Campaign",
         period="2026-Q3",
         due_date="2026-10-01",
-        iam_evidence={"provider": "mock"},
+        iam_evidence={
+            "provider": "mock",
+            "users": [{"user_id": "dash_user_1", "roles": ["Engineer"], "mfa_enabled": True}],
+        },
     )
 
     # List campaigns
@@ -297,7 +327,7 @@ def test_phase2_uar_and_notification_endpoints(server_instance):
     req_decide = urllib.request.Request(
         f"{url}/api/access-review/decide",
         data=json.dumps({"campaign_id": "CAMP-DASH-1", "item_id": item_id, "decision": "MAINTAIN"}).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=admin_headers,
     )
     dec_resp = urllib.request.urlopen(req_decide)
     assert dec_resp.status == 200
@@ -306,7 +336,7 @@ def test_phase2_uar_and_notification_endpoints(server_instance):
     req_notif = urllib.request.Request(
         f"{url}/api/notifications/test",
         data=json.dumps({"webhook_url": "http://127.0.0.1:65520/test", "channel": "slack"}).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=admin_headers,
     )
     notif_resp = urllib.request.urlopen(req_notif)
     assert notif_resp.status == 200

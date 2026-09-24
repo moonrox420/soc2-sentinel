@@ -61,12 +61,19 @@ def test_evidence_vault_sealing_and_verification(tmp_path: Path) -> None:
 
 
 def test_evidence_vault_tamper_detection(tmp_path: Path) -> None:
+    import pytest
     vault = EvidenceVault(tmp_path)
-    run_dir = tmp_path / "evidence" / "2026-09-01"
-    run_dir.mkdir(parents=True)
+    empty_dir = tmp_path / "evidence" / "empty-run"
+    empty_dir.mkdir(parents=True)
+    with pytest.raises(ValueError, match="No valid evidence files"):
+        vault.seal_run(empty_dir, tenant_id="tenant-tamper")
 
-    vault.seal_run(run_dir, tenant_id="tenant-tamper")
-    vault.seal_run(run_dir, tenant_id="tenant-tamper")
+    run_dir = tmp_path / "evidence" / "2026-09-01" / "iam"
+    run_dir.mkdir(parents=True)
+    (run_dir / "report.json").write_text(json.dumps({"test": "data"}), encoding="utf-8")
+
+    vault.seal_run(tmp_path / "evidence" / "2026-09-01", tenant_id="tenant-tamper")
+    vault.seal_run(tmp_path / "evidence" / "2026-09-01", tenant_id="tenant-tamper")
 
     chain_file = tmp_path / "tenants" / "tenant-tamper" / "vault" / "evidence_chain.jsonl"
     lines = chain_file.read_text(encoding="utf-8").splitlines()

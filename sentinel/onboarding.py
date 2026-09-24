@@ -296,3 +296,17 @@ def diagnose_all_providers(config: SentinelConfig | None = None) -> dict[str, di
         "azure": diagnose_azure(config).to_dict(),
         "mock": diagnose_mock().to_dict(),
     }
+
+
+def generate_minimal_policy(provider: str) -> dict[str, Any]:
+    """Generate minimal least-privilege IAM policy or role assignment payload for the target provider."""
+    p = provider.lower()
+    if p == "aws":
+        return AWS_MINIMAL_POLICY
+    elif p == "gcp":
+        return {"roles": GCP_MINIMAL_ROLES}
+    elif p == "azure":
+        return {"roles": AZURE_MINIMAL_ROLES}
+    elif p == "mock":
+        return {"mode": "offline", "permissions": "none_required"}
+    raise ValueError(f"Unsupported provider for policy generation: '{provider}'")

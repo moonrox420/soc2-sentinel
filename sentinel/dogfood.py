@@ -152,18 +152,21 @@ class DogfoodAssessor:
         forbidden_patterns = ["password=", "secret=", "aws_secret_access_key="]
         found_leaks = []
 
-        cfg_file = Path("sentinel.yaml")
-        if cfg_file.exists():
-            try:
-                content = cfg_file.read_text(encoding="utf-8").lower()
-                for pat in forbidden_patterns:
-                    if pat in content and not any(
-                        safe in content
-                        for safe in ["${env:", "<placeholder>", "replace_me"]
-                    ):
-                        found_leaks.append(f"sentinel.yaml contains '{pat}'")
-            except Exception as e:
-                logger.debug("Failed reading sentinel.yaml: %s", e)
+        cfg_candidates = [Path("sentinel.yaml"), Path("config.json"), Path("sentinel.conf")]
+        scanned_files = 0
+        for cfg_file in cfg_candidates:
+            if cfg_file.exists():
+                scanned_files += 1
+                try:
+                    content = cfg_file.read_text(encoding="utf-8").lower()
+                    for pat in forbidden_patterns:
+                        if pat in content and not any(
+                            safe in content
+                            for safe in ["${env:", "<placeholder>", "replace_me", "replace-in-prod"]
+                        ):
+                            found_leaks.append(f"{cfg_file.name} contains '{pat}'")
+                except Exception as e:
+                    logger.debug("Failed reading %s: %s", cfg_file, e)
 
         if found_leaks:
             return DogfoodCheck(
@@ -177,18 +180,30 @@ class DogfoodAssessor:
                 remediation="Use environment variable substitution (${ENV:VAR_NAME}) for sensitive credentials.",
             )
 
+        if scanned_files == 0:
+            return DogfoodCheck(
+                check_id="DOGFOOD-CC6.1-SECRETS",
+                criterion="CC6.1",
+                title="Zero Plaintext Secrets in Configuration",
+                status="WARN",
+                severity="LOW",
+                description="No configuration files found on disk; evaluated runtime environment variables only.",
+                details={"scanned_files": 0},
+                remediation="Provide sentinel.yaml or config.json to explicitly manage infrastructure settings.",
+            )
+
         return DogfoodCheck(
             check_id="DOGFOOD-CC6.1-SECRETS",
             criterion="CC6.1",
             title="Zero Plaintext Secrets in Configuration",
             status="PASS",
             severity="CRITICAL",
-            description="Configuration relies on secure environment variables without plaintext secrets.",
-            details={"config_verified": True},
+            description=f"Scanned {scanned_files} configuration file(s) with zero hardcoded plaintext secrets.",
+            details={"scanned_files": scanned_files, "config_verified": True},
         )
 
     def _check_filesystem_isolation(self) -> DogfoodCheck:
-        """Ensure evidence base directory exists and is properly isolated."""
+        """Ensure evidence base directory exists and contains evidence runs."""
         if not self.base_dir.exists():
             return DogfoodCheck(
                 check_id="DOGFOOD-CC6.1-STORAGE",
@@ -200,14 +215,27 @@ class DogfoodAssessor:
                 remediation="Run sentinel collection or onboarding to initialize isolated storage.",
             )
 
+        evidence_runs = list(self.evidence_dir.iterdir()) if self.evidence_dir.exists() else []
+        if not evidence_runs:
+            return DogfoodCheck(
+                check_id="DOGFOOD-CC6.1-STORAGE",
+                criterion="CC6.1",
+                title="Evidence Storage Directory Isolation",
+                status="WARN",
+                severity="LOW",
+                description="Evidence storage directory exists but contains zero historical evidence runs.",
+                details={"directory": str(self.base_dir), "evidence_runs": 0},
+                remediation="Execute evidence collectors to populate evidence storage.",
+            )
+
         return DogfoodCheck(
             check_id="DOGFOOD-CC6.1-STORAGE",
             criterion="CC6.1",
             title="Evidence Storage Directory Isolation",
             status="PASS",
             severity="HIGH",
-            description="Evidence storage is properly partitioned with dedicated subdirectories.",
-            details={"directory": str(self.base_dir)},
+            description=f"Evidence storage is properly partitioned with {len(evidence_runs)} recorded evidence runs.",
+            details={"directory": str(self.base_dir), "evidence_runs": len(evidence_runs)},
         )
 
     def _check_cryptographic_controls(self) -> DogfoodCheck:
@@ -278,6 +306,18 @@ class DogfoodAssessor:
                 remediation="Inspect and repair sentinel_audit.jsonl.",
             )
 
+        if line_count == 0:
+            return DogfoodCheck(
+                check_id="DOGFOOD-CC7.2-AUDITLOG",
+                criterion="CC7.2",
+                title="Tamper-Evident Operational Audit Log",
+                status="WARN",
+                severity="MEDIUM",
+                description="Audit log file exists but contains zero operational records.",
+                details={"event_count": 0},
+                remediation="Trigger an audit event to initialize logging activity.",
+            )
+
         return DogfoodCheck(
             check_id="DOGFOOD-CC7.2-AUDITLOG",
             criterion="CC7.2",
@@ -306,6 +346,18 @@ class DogfoodAssessor:
 
         blocks = self.vault.read_chain("default")
         block_count = len(blocks)
+        if block_count == 0:
+            return DogfoodCheck(
+                check_id="DOGFOOD-CC7.1-VAULT",
+                criterion="CC7.1",
+                title="Merkle Tree Evidence Vault Chain Integrity",
+                status="WARN",
+                severity="MEDIUM",
+                description="Evidence vault ledger is empty (0 sealed evidence blocks); no tamper-evident history yet recorded.",
+                details={"sealed_blocks": 0, "ledger_valid": True},
+                remediation="Run 'sentinel vault seal <date>' to create sealed Merkle evidence blocks.",
+            )
+
         return DogfoodCheck(
             check_id="DOGFOOD-CC7.1-VAULT",
             criterion="CC7.1",
@@ -317,7 +369,7 @@ class DogfoodAssessor:
         )
 
     def _check_dependency_pinning(self) -> DogfoodCheck:
-        """Verify lockfile presence and reproducibility."""
+        """Verify lockfile presence, reproducibility, and cryptographic hashes."""
         lock_file = Path("requirements.lock")
         if not lock_file.exists():
             return DogfoodCheck(
@@ -330,6 +382,20 @@ class DogfoodAssessor:
                 remediation="Run pip-compile or uv lock to pin exact dependency hashes.",
             )
 
+        content = lock_file.read_text(encoding="utf-8")
+        has_hashes = "--hash=" in content
+        if not has_hashes:
+            return DogfoodCheck(
+                check_id="DOGFOOD-CC8.1-DEPENDENCIES",
+                criterion="CC8.1",
+                title="Reproducible Dependency Pinning (Supply Chain)",
+                status="WARN",
+                severity="MEDIUM",
+                description="requirements.lock exists but does not contain cryptographic artifact hashes (--hash=sha256:...).",
+                details={"lockfile_present": True, "hashes_present": False},
+                remediation="Re-generate requirements.lock using 'pip-compile --generate-hashes'.",
+            )
+
         return DogfoodCheck(
             check_id="DOGFOOD-CC8.1-DEPENDENCIES",
             criterion="CC8.1",
@@ -337,13 +403,27 @@ class DogfoodAssessor:
             status="PASS",
             severity="MEDIUM",
             description="Production dependencies pinned with cryptographic hashes in requirements.lock.",
-            details={"lockfile_present": True},
+            details={"lockfile_present": True, "hashes_present": True},
         )
 
     def _check_vendor_risk_compliance(self) -> DogfoodCheck:
         """Verify Vendor Risk Management assessment status (CC9.2)."""
         report = self.vrm.generate_cc92_report()
-        if not report.get("compliant", False) and report.get("total_vendors", 0) > 0:
+        total_vendors = report.get("total_vendors", 0)
+
+        if total_vendors == 0:
+            return DogfoodCheck(
+                check_id="DOGFOOD-CC9.2-VRM",
+                criterion="CC9.2",
+                title="Third-Party Vendor Risk Compliance (CC9.2)",
+                status="WARN",
+                severity="MEDIUM",
+                description="Zero third-party vendors registered in Vendor Risk Registry (CC9.2 unassessed).",
+                details={"total_vendors": 0},
+                remediation="Register third-party SaaS vendors and perform risk assessments in VRM.",
+            )
+
+        if not report.get("compliant", False):
             return DogfoodCheck(
                 check_id="DOGFOOD-CC9.2-VRM",
                 criterion="CC9.2",
@@ -361,6 +441,6 @@ class DogfoodAssessor:
             title="Third-Party Vendor Risk Compliance (CC9.2)",
             status="PASS",
             severity="HIGH",
-            description="Vendor risk assessments and DPAs are compliant with SOC 2 CC9.2 standards.",
-            details={"total_vendors": report.get("total_vendors", 0)},
+            description=f"Vendor risk assessments and DPAs are compliant with SOC 2 CC9.2 standards across {total_vendors} vendors.",
+            details={"total_vendors": total_vendors},
         )

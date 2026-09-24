@@ -8,22 +8,24 @@ import enum
 import hashlib
 import hmac
 import json
+import os
 import secrets
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Iterator, Optional
+from typing import Any, Generator, Optional
 
 from sentinel.errors import SentinelError
 
 
 class Role(str, enum.Enum):
-    """5-tier enterprise RBAC roles."""
+    """Enterprise RBAC roles."""
     SUPER_ADMIN = "super_admin"
     SECURITY_ADMIN = "security_admin"
     COMPLIANCE_OFFICER = "compliance_officer"
     AUDITOR = "auditor"
     SYSTEM_USER = "system_user"
+    VIEWER = "viewer"
 
 
 class Permission(str, enum.Enum):
@@ -94,6 +96,10 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.READ_EVIDENCE,
         Permission.READ_REPORT,
     },
+    Role.VIEWER: {
+        Permission.READ_EVIDENCE,
+        Permission.READ_REPORT,
+    },
 }
 
 
@@ -136,13 +142,13 @@ class UserIdentity:
     def anonymous(cls, tenant_id: str = "default") -> UserIdentity:
         return cls(
             user_id="anonymous",
-            role=Role.SUPER_ADMIN,
+            role=Role.VIEWER,
             email="anonymous@sentinel.local",
             tenant_id=tenant_id,
         )
 
 
-# Default unauthenticated/system identity
+# Default unauthenticated/system identity (least-privilege read-only)
 DEFAULT_ANONYMOUS_USER = UserIdentity.anonymous()
 
 _CURRENT_USER: contextvars.ContextVar[UserIdentity] = contextvars.ContextVar(
@@ -167,7 +173,7 @@ def reset_current_user(token: contextvars.Token[UserIdentity]) -> None:
 
 
 @contextmanager
-def auth_scope(user: UserIdentity) -> Iterator[UserIdentity]:
+def auth_scope(user: UserIdentity) -> Generator[UserIdentity, None, None]:
     """Scoped execution under a specific user identity."""
     token = set_current_user(user)
     try:
@@ -188,7 +194,19 @@ def assert_permission(permission: Permission, user: UserIdentity | None = None) 
 class TokenManager:
     """Issues and validates cryptographically signed session tokens and API keys."""
 
-    DEFAULT_SECRET = "sentinel-insecure-dev-secret-replace-in-prod"
+    _EPHEMERAL_SECRET: Optional[str] = None
+
+    @classmethod
+    def get_signing_secret(cls, explicit_secret: Optional[str] = None) -> str:
+        """Resolve active signing secret from argument, environment, or cryptographically secure runtime secret."""
+        if explicit_secret:
+            return explicit_secret
+        env_secret = os.getenv("SENTINEL_AUTH_SECRET")
+        if env_secret:
+            return env_secret
+        if cls._EPHEMERAL_SECRET is None:
+            cls._EPHEMERAL_SECRET = secrets.token_hex(32)
+        return cls._EPHEMERAL_SECRET
 
     @classmethod
     def create_token(
@@ -198,7 +216,7 @@ class TokenManager:
         secret: Optional[str] = None,
     ) -> str:
         """Create a signed HMAC token containing user claims."""
-        signing_key = (secret or cls.DEFAULT_SECRET).encode("utf-8")
+        signing_key = cls.get_signing_secret(secret).encode("utf-8")
         payload = {
             "uid": user.user_id,
             "email": user.email,
@@ -220,7 +238,7 @@ class TokenManager:
         if not token or not token.startswith("sentinel_") or "." not in token:
             return None
 
-        signing_key = (secret or cls.DEFAULT_SECRET).encode("utf-8")
+        signing_key = cls.get_signing_secret(secret).encode("utf-8")
         token_body = token[len("sentinel_"):]
         b64_payload, signature = token_body.split(".", 1)
 

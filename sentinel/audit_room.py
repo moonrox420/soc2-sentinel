@@ -8,9 +8,11 @@ into isolated, cryptographically verifiable audit packages.
 from __future__ import annotations
 
 import csv
+import html
 import io
 import json
 import logging
+import re
 import secrets
 import zipfile
 from dataclasses import asdict, dataclass, field
@@ -36,32 +38,32 @@ TSC_CRITERIA_CATALOG: dict[str, dict[str, Any]] = {
     "CC1.1": {
         "title": "Demonstrates Commitment to Integrity and Ethical Values",
         "category": "Control Environment",
-        "required_collectors": ["identity_iam", "logging_monitoring"],
+        "required_collectors": ["iam_access_review", "log_aggregator", "zt_continuous_verification"],
     },
     "CC5.1": {
         "title": "Logical Access Control & Authentication Security",
         "category": "Logical and Physical Access",
-        "required_collectors": ["identity_iam"],
+        "required_collectors": ["iam_access_review", "zt_continuous_verification"],
     },
     "CC6.1": {
         "title": "Restricts Logical Access to Infrastructure and Systems",
         "category": "Logical and Physical Access",
-        "required_collectors": ["identity_iam"],
+        "required_collectors": ["iam_access_review"],
     },
     "CC6.2": {
         "title": "User Registration, De-registration, and Access Provisioning",
         "category": "Logical and Physical Access",
-        "required_collectors": ["identity_iam"],
+        "required_collectors": ["iam_access_review"],
     },
     "CC6.3": {
         "title": "Periodic User Access Review and Revocation",
         "category": "Logical and Physical Access",
-        "required_collectors": ["identity_iam"],
+        "required_collectors": ["iam_access_review"],
     },
     "CC6.6": {
         "title": "Boundary Protection and Network Perimeter Controls",
         "category": "Logical and Physical Access",
-        "required_collectors": ["configuration_drift"],
+        "required_collectors": ["config_drift"],
     },
     "CC6.7": {
         "title": "Transmission and Data at Rest Cryptographic Protection",
@@ -71,27 +73,27 @@ TSC_CRITERIA_CATALOG: dict[str, dict[str, Any]] = {
     "CC7.1": {
         "title": "Infrastructure and Application Logging & Vulnerability Monitoring",
         "category": "System Operations",
-        "required_collectors": ["logging_monitoring", "configuration_drift"],
+        "required_collectors": ["log_aggregator", "config_drift"],
     },
     "CC7.2": {
         "title": "Real-time Monitoring of Anomalies and Security Incidents",
         "category": "System Operations",
-        "required_collectors": ["logging_monitoring"],
+        "required_collectors": ["log_aggregator"],
     },
     "CC8.1": {
         "title": "Change Management and Separation of Environments",
         "category": "Change Management",
-        "required_collectors": ["configuration_drift"],
+        "required_collectors": ["config_drift"],
     },
     "CC9.2": {
         "title": "Vendor Risk and Third-Party Security Management",
         "category": "Risk Mitigation",
-        "required_collectors": ["identity_iam", "encryption_status"],
+        "required_collectors": ["iam_access_review", "encryption_status"],
     },
     "A1.2": {
         "title": "Disaster Recovery, Resilience, and High Availability Backups",
         "category": "Availability",
-        "required_collectors": ["resilience_status", "retention_schedule"],
+        "required_collectors": ["resilience_testing", "retention_check"],
     },
     "C1.2": {
         "title": "Confidentiality and Cryptographic Data Key Management",
@@ -101,8 +103,23 @@ TSC_CRITERIA_CATALOG: dict[str, dict[str, Any]] = {
     "C1.4": {
         "title": "Secure Data Retention and Disposal Schedules",
         "category": "Confidentiality",
-        "required_collectors": ["retention_schedule"],
+        "required_collectors": ["retention_check"],
     },
+}
+
+COLLECTOR_ALIASES: dict[str, list[str]] = {
+    "identity_iam": ["iam_access_review", "identity_iam"],
+    "iam_access_review": ["iam_access_review", "identity_iam"],
+    "logging_monitoring": ["log_aggregator", "logging_monitoring"],
+    "log_aggregator": ["log_aggregator", "logging_monitoring"],
+    "configuration_drift": ["config_drift", "configuration_drift"],
+    "config_drift": ["config_drift", "configuration_drift"],
+    "encryption_status": ["encryption_status"],
+    "resilience_status": ["resilience_testing", "resilience_status"],
+    "resilience_testing": ["resilience_testing", "resilience_status"],
+    "retention_schedule": ["retention_check", "retention_schedule"],
+    "retention_check": ["retention_check", "retention_schedule"],
+    "zt_continuous_verification": ["zt_continuous_verification"],
 }
 
 
@@ -148,9 +165,11 @@ class AuditRoom:
             }
         )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, include_token: bool = False) -> dict[str, Any]:
         data = asdict(self)
         data["status"] = self.status.value
+        if not include_token:
+            data.pop("access_token", None)
         return data
 
     @classmethod
@@ -196,6 +215,19 @@ class AuditRoomManager:
     def _ensure_storage(self) -> None:
         self.rooms_dir.mkdir(parents=True, exist_ok=True)
 
+    def _sanitize_room_id(self, room_id: str) -> str:
+        sanitized = re.sub(r"[^a-zA-Z0-9_\-]", "", room_id.strip())
+        if not sanitized:
+            raise ValueError(f"Invalid room_id: '{room_id}' contains no valid alphanumeric characters.")
+        return sanitized
+
+    def _get_room_path(self, room_id: str) -> Path:
+        sanitized = self._sanitize_room_id(room_id)
+        path = (self.rooms_dir / f"{sanitized}.json").resolve()
+        if not path.is_relative_to(self.rooms_dir.resolve()):
+            raise ValueError("Path traversal attempt in room_id")
+        return path
+
     def create_room(
         self,
         room_id: str,
@@ -208,13 +240,13 @@ class AuditRoomManager:
         notes: str = "",
     ) -> AuditRoom:
         """Create a new scoped audit room mapped to historical evidence."""
+        sanitized_id = self._sanitize_room_id(room_id)
         # Find matching evidence dates within period
         matched_dates: list[str] = []
         if self.evidence_dir.exists():
             for entry in sorted(self.evidence_dir.iterdir()):
                 if entry.is_dir():
                     date_name = entry.name
-                    # Check if date falls in [period_start, period_end]
                     if period_start <= date_name <= period_end:
                         matched_dates.append(date_name)
 
@@ -233,7 +265,7 @@ class AuditRoomManager:
             exp = now + timedelta(days=expires_days)
 
         room = AuditRoom(
-            room_id=room_id,
+            room_id=sanitized_id,
             title=title,
             auditor_email=auditor_email,
             period_start=period_start,
@@ -250,18 +282,21 @@ class AuditRoomManager:
         self.save_room(room)
         logger.info(
             "Created Audit Room '%s' covering %d evidence runs",
-            room_id,
+            sanitized_id,
             len(matched_dates),
         )
         return room
 
     def save_room(self, room: AuditRoom) -> None:
-        path = self.rooms_dir / f"{room.room_id}.json"
+        path = self._get_room_path(room.room_id)
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(room.to_dict(), f, indent=2)
+            json.dump(room.to_dict(include_token=True), f, indent=2)
 
     def get_room(self, room_id: str) -> AuditRoom | None:
-        path = self.rooms_dir / f"{room_id}.json"
+        try:
+            path = self._get_room_path(room_id)
+        except ValueError:
+            return None
         if not path.exists():
             return None
         try:
@@ -298,7 +333,7 @@ class AuditRoomManager:
         room = self.get_room(room_id)
         if not room or not room.is_active():
             return False, None
-        if not secrets.compare_digest(room.access_token, token):
+        if not token or not secrets.compare_digest(room.access_token, token):
             return False, None
         room.record_access(ip_address, user_agent)
         self.save_room(room)
@@ -324,17 +359,36 @@ class AuditRoomManager:
                 if not day_dir.exists():
                     continue
                 for req_col in meta["required_collectors"]:
-                    col_file = day_dir / f"{req_col}.json"
-                    if col_file.exists():
+                    candidate_names = COLLECTOR_ALIASES.get(req_col, [req_col])
+                    found_file: Path | None = None
+                    for c_name in candidate_names:
+                        # Try <day_dir>/<c_name>/report.json
+                        candidate1 = day_dir / c_name / "report.json"
+                        if candidate1.exists() and candidate1.is_file():
+                            found_file = candidate1
+                            break
+                        # Try <day_dir>/<c_name>/evidence.json
+                        candidate2 = day_dir / c_name / "evidence.json"
+                        if candidate2.exists() and candidate2.is_file():
+                            found_file = candidate2
+                            break
+                        # Try <day_dir>/<c_name>.json
+                        candidate3 = day_dir / f"{c_name}.json"
+                        if candidate3.exists() and candidate3.is_file():
+                            found_file = candidate3
+                            break
+
+                    if found_file is not None:
                         try:
-                            f_hash = sha256_file(col_file)
+                            f_hash = sha256_file(found_file)
                         except Exception:
                             f_hash = "UNKNOWN"
+                        rel_path = found_file.relative_to(self.evidence_dir).as_posix()
                         evidence_artifacts.append(
                             {
                                 "date": date_str,
                                 "collector": req_col,
-                                "file_name": f"{date_str}/{req_col}.json",
+                                "file_name": rel_path,
                                 "sha256": f_hash,
                             }
                         )
@@ -403,7 +457,9 @@ class AuditRoomManager:
             )
             artifacts_html = ""
             for art in c["artifacts"][:3]:  # preview top 3
-                artifacts_html += f"<code>{art['file_name']}</code> ({art['sha256'][:8]}...)<br/>"
+                escaped_fname = html.escape(str(art['file_name']))
+                escaped_hash = html.escape(str(art['sha256'][:8]))
+                artifacts_html += f"<code>{escaped_fname}</code> ({escaped_hash}...)<br/>"
             if len(c["artifacts"]) > 3:
                 artifacts_html += f"<i>+ {len(c['artifacts']) - 3} more artifacts in vault</i>"
             if not artifacts_html:
@@ -411,19 +467,27 @@ class AuditRoomManager:
 
             rows_html += f"""
             <tr>
-                <td style="font-weight:600; font-family:monospace; color:#3b82f6;">{c['control_id']}</td>
-                <td style="color:#94a3b8;">{c['category']}</td>
-                <td style="font-weight:500;">{c['title']}</td>
-                <td><span style="background:{status_color}22; color:{status_color}; padding:4px 8px; border-radius:4px; font-weight:600; font-size:12px;">{c['evidence_status']}</span></td>
+                <td style="font-weight:600; font-family:monospace; color:#3b82f6;">{html.escape(c['control_id'])}</td>
+                <td style="color:#94a3b8;">{html.escape(c['category'])}</td>
+                <td style="font-weight:500;">{html.escape(c['title'])}</td>
+                <td><span style="background:{status_color}22; color:{status_color}; padding:4px 8px; border-radius:4px; font-weight:600; font-size:12px;">{html.escape(c['evidence_status'])}</span></td>
                 <td style="font-size:12px; line-height:1.5;">{artifacts_html}</td>
             </tr>
             """
 
-        html = f"""<!DOCTYPE html>
+        escaped_title = html.escape(room.title)
+        escaped_room_id = html.escape(room.room_id)
+        escaped_pstart = html.escape(room.period_start)
+        escaped_pend = html.escape(room.period_end)
+        escaped_email = html.escape(room.auditor_email)
+        escaped_created = html.escape(room.created_at)
+        escaped_expires = html.escape(room.expires_at)
+
+        html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SOC 2 Type II Audit Room — {room.title}</title>
+    <title>SOC 2 Type II Audit Room — {escaped_title}</title>
     <style>
         body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; color: #f8fafc; margin: 0; padding: 40px; }}
         .card {{ background: #131b2e; border: 1px solid #1e293b; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }}
@@ -445,7 +509,7 @@ class AuditRoomManager:
         <div class="header">
             <div>
                 <div class="title">SOC 2 Type II External Audit Room</div>
-                <div style="color: #94a3b8; font-size: 14px; margin-top: 4px;">Auditor Scope: {room.title} &bull; Room ID: <code>{room.room_id}</code></div>
+                <div style="color: #94a3b8; font-size: 14px; margin-top: 4px;">Auditor Scope: {escaped_title} &bull; Room ID: <code>{escaped_room_id}</code></div>
             </div>
             <div class="badge">&check; CRYPTOGRAPHICALLY SEALED</div>
         </div>
@@ -453,7 +517,7 @@ class AuditRoomManager:
         <div class="stats">
             <div class="stat-box">
                 <div class="stat-lbl">Audit Period</div>
-                <div class="stat-val" style="font-size: 18px; color: #f8fafc; margin-top: 8px;">{room.period_start} &rarr; {room.period_end}</div>
+                <div class="stat-val" style="font-size: 18px; color: #f8fafc; margin-top: 8px;">{escaped_pstart} &rarr; {escaped_pend}</div>
             </div>
             <div class="stat-box">
                 <div class="stat-lbl">Control Coverage</div>
@@ -470,9 +534,9 @@ class AuditRoomManager:
         </div>
 
         <div style="font-size: 14px; color: #94a3b8; margin-bottom: 16px;">
-            <strong>Designated External Auditor:</strong> {room.auditor_email} &bull;
-            <strong>Created:</strong> {room.created_at} &bull;
-            <strong>Room Expiration:</strong> {room.expires_at}
+            <strong>Designated External Auditor:</strong> {escaped_email} &bull;
+            <strong>Created:</strong> {escaped_created} &bull;
+            <strong>Room Expiration:</strong> {escaped_expires}
         </div>
     </div>
 
@@ -496,7 +560,7 @@ class AuditRoomManager:
 </body>
 </html>
 """
-        return html
+        return html_content
 
     def export_audit_package_zip(
         self, room_id: str, output_path: Path | str | None = None
@@ -509,7 +573,7 @@ class AuditRoomManager:
         if output_path is None:
             output_dir = self.base_dir / "audit_packages"
             output_dir.mkdir(parents=True, exist_ok=True)
-            output_path = output_dir / f"SOC2-Audit-Room-{room_id}.zip"
+            output_path = output_dir / f"SOC2-Audit-Room-{room.room_id}.zip"
         else:
             output_path = Path(output_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -519,10 +583,10 @@ class AuditRoomManager:
         summary_html = self.generate_auditor_html_summary(room)
 
         with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            # 1. Room Metadata
+            # 1. Room Metadata (without secret token)
             zf.writestr(
                 "audit_room_manifest.json",
-                json.dumps(room.to_dict(), indent=2),
+                json.dumps(room.to_dict(include_token=False), indent=2),
             )
             # 2. Control Crosswalk JSON & CSV
             zf.writestr(
@@ -532,13 +596,15 @@ class AuditRoomManager:
             # 3. HTML Executive Report
             zf.writestr("AUDIT_EXECUTIVE_SUMMARY.html", summary_html)
 
-            # 4. Include Raw Evidence Files in scope
+            # 4. Include Raw Evidence Files in scope recursively (handles nested <date>/<control>/report.json)
             for date_str in room.evidence_dates:
                 day_dir = self.evidence_dir / date_str
                 if day_dir.exists():
-                    for ev_file in day_dir.glob("*.json"):
-                        arcname = f"evidence/{date_str}/{ev_file.name}"
-                        zf.write(ev_file, arcname)
+                    for ev_file in day_dir.rglob("*.json"):
+                        if ev_file.is_file():
+                            rel_name = ev_file.relative_to(self.evidence_dir).as_posix()
+                            arcname = f"evidence/{rel_name}"
+                            zf.write(ev_file, arcname)
 
             # 5. Include Vault Chain Proofs if available
             ledger_file = self.vault._get_chain_file("default")
@@ -553,7 +619,7 @@ Audit Period: {room.period_start} to {room.period_end}
 ## 1. Verifying Evidence Authenticity
 Every evidence file in `evidence/` matches SHA-256 digests recorded in `soc2_control_matrix.json`.
 To verify integrity independently:
-  sha256sum evidence/*/*.json
+  sha256sum evidence/*/*.json evidence/*/*/*.json
 
 ## 2. Reviewing Control Satisfaction
 Open `AUDIT_EXECUTIVE_SUMMARY.html` in any web browser for an interactive overview with direct control cross-references.
@@ -561,6 +627,7 @@ Open `AUDIT_EXECUTIVE_SUMMARY.html` in any web browser for an interactive overvi
             zf.writestr("README_AUDITOR_VERIFICATION.txt", instructions)
 
         logger.info(
-            "Exported Audit Package ZIP for '%s' to %s", room_id, output_path
+            "Exported Audit Package ZIP for '%s' to %s", room.room_id, output_path
         )
         return output_path
+

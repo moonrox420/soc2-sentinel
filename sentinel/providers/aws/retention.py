@@ -51,10 +51,10 @@ def retention_snapshot(ctx: AwsClients) -> dict[str, Any]:
     return finalize_snapshot(
         {
             "buckets_missing_lifecycle": missing_lifecycle,
-            "objects_past_retention": missing_lifecycle,
+            "objects_past_retention": None,
             "retention_policy_cutoff": cutoff.isoformat().replace("+00:00", "Z"),
             "findings": findings,
-            "notes": "objects_past_retention mirrors buckets_missing_lifecycle (bucket-level lifecycle audit).",
+            "notes": "Evaluated bucket-level lifecycle expiration policies across active storage buckets.",
         },
         ctx.errors,
         checks_attempted=ctx._checks_attempted,

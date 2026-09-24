@@ -13,8 +13,34 @@ def test_dogfood_assessment_clean_run(tmp_path: Path):
         json.dumps({"event": "TEST_AUDIT", "severity": "INFO", "timestamp": "2026-09-24T00:00:00Z"}) + "\n",
         encoding="utf-8",
     )
+    # Seed evidence run
+    ev_dir = tmp_path / "evidence" / "2026-09-24" / "iam_access_review"
+    ev_dir.mkdir(parents=True, exist_ok=True)
+    (ev_dir / "report.json").write_text(json.dumps({"status": "PASS"}), encoding="utf-8")
 
     assessor = DogfoodAssessor(base_dir=tmp_path)
+    # Seal vault run
+    assessor.vault.seal_run("2026-09-24")
+    # Register compliant vendor
+    from sentinel.vendor_risk import DataClassification, SecurityQuestionnaire, Vendor, VendorTier
+    q = SecurityQuestionnaire(
+        has_soc2_type2=True,
+        soc2_clean_opinion=True,
+        enforces_mfa=True,
+        encrypts_data_at_rest=True,
+        encrypts_data_in_transit=True,
+        dpa_executed=True,
+    )
+    v = Vendor(
+        vendor_id="aws",
+        name="Amazon Web Services",
+        service_description="Cloud Infrastructure",
+        tier=VendorTier.TIER_1_CRITICAL,
+        data_classification=DataClassification.CONFIDENTIAL,
+        questionnaire=q,
+    )
+    assessor.vrm.save_vendor(v)
+
     report = assessor.run_assessment()
 
     assert isinstance(report, DogfoodReport)
@@ -38,5 +64,7 @@ def test_dogfood_check_details(tmp_path: Path):
     assert crypto_chk.status == "PASS"
     assert "AES-256-GCM" in crypto_chk.details.get("algorithms", [])
 
-    secrets_chk = next(c for c in report.checks if c.criterion == "CC6.1")
-    assert secrets_chk.status == "PASS"
+    # Empty base dir yields honest warnings
+    vault_chk = next(c for c in report.checks if c.criterion == "CC7.1" and c.check_id == "DOGFOOD-CC7.1-VAULT")
+    assert vault_chk.status == "WARN"
+

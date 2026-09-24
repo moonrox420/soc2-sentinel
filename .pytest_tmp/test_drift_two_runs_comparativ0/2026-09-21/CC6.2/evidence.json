@@ -1,1 +1,0 @@
-{"collector": "config_drift", "control_id": "CC6.2", "provider": "mock", "metrics": {"open_security_groups": 0, "unapproved_changes_detected": 0}}

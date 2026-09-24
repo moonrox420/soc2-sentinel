@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import enum
 import hashlib
+import hmac
 import json
 import logging
 from dataclasses import asdict, dataclass, field
@@ -104,8 +105,8 @@ class AccessCampaign:
     def is_complete(self) -> bool:
         return self.total_items > 0 and self.pending_count == 0
 
-    def complete_and_sign(self, signatory_name: str) -> str:
-        """Finalize campaign and compute cryptographic certificate hash."""
+    def complete_and_sign(self, signatory_name: str, signing_secret: Optional[str] = None) -> str:
+        """Finalize campaign and compute cryptographic tamper-evident sign-off digest."""
         if not self.is_complete:
             raise ValueError(f"Cannot sign campaign with {self.pending_count} pending reviews remaining.")
 
@@ -113,10 +114,13 @@ class AccessCampaign:
         self.completed_at = datetime.now(timezone.utc).isoformat()
         self.signatory = signatory_name
 
-        # Calculate deterministic digest of all decisions
+        # Calculate deterministic digest of all decisions and signatory metadata
         summary_lines = [f"{i.item_id}:{i.identity_email}:{i.decision.value}:{i.reviewed_by}" for i in sorted(self.items, key=lambda x: x.item_id)]
         payload = f"{self.campaign_id}|{self.period}|{self.completed_at}|{self.signatory}|" + ";".join(summary_lines)
-        self.sign_off_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        if signing_secret:
+            self.sign_off_hash = hmac.new(signing_secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+        else:
+            self.sign_off_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         return self.sign_off_hash
 
     def to_dict(self) -> dict[str, Any]:
@@ -228,48 +232,24 @@ class AccessReviewManager:
         provider = iam_evidence.get("provider", "aws")
 
         if not raw_users:
-            # Fallback default synthetic items for initial setup
+            raise ValueError(f"No IAM user identities found in evidence for campaign '{campaign_id}'. Cannot create campaign from empty evidence.")
+
+        for idx, u in enumerate(raw_users):
+            uname = u.get("user_name") or u.get("name") or f"user-{idx+1}"
+            email = u.get("email") or f"{uname}@sentinel.local"
             items.append(
                 AccessReviewItem(
-                    item_id=f"{campaign_id}-item-001",
-                    identity_name="Admin Root",
-                    identity_email="admin@sentinel.local",
+                    item_id=f"{campaign_id}-item-{idx+1:03d}",
+                    identity_name=uname,
+                    identity_email=email,
                     provider=provider,
-                    role_or_policy="AdministratorAccess",
-                    resource="arn:aws:iam::account:root",
-                    is_admin=True,
-                    mfa_enabled=True,
+                    role_or_policy=u.get("role") or u.get("policy") or "ReadWriteAccess",
+                    resource=u.get("arn") or u.get("resource") or "global",
+                    is_admin=bool(u.get("is_admin", False)),
+                    mfa_enabled=bool(u.get("mfa_active", True)),
+                    last_login_date=u.get("last_active") or u.get("password_last_used"),
                 )
             )
-            items.append(
-                AccessReviewItem(
-                    item_id=f"{campaign_id}-item-002",
-                    identity_name="DevOps Lead",
-                    identity_email="devops@sentinel.local",
-                    provider=provider,
-                    role_or_policy="PowerUserAccess",
-                    resource="arn:aws:iam::account:role/DevOps",
-                    is_admin=True,
-                    mfa_enabled=True,
-                )
-            )
-        else:
-            for idx, u in enumerate(raw_users):
-                uname = u.get("user_name") or u.get("name") or f"user-{idx+1}"
-                email = u.get("email") or f"{uname}@sentinel.local"
-                items.append(
-                    AccessReviewItem(
-                        item_id=f"{campaign_id}-item-{idx+1:03d}",
-                        identity_name=uname,
-                        identity_email=email,
-                        provider=provider,
-                        role_or_policy=u.get("role") or u.get("policy") or "ReadWriteAccess",
-                        resource=u.get("arn") or u.get("resource") or "global",
-                        is_admin=bool(u.get("is_admin", False)),
-                        mfa_enabled=bool(u.get("mfa_active", True)),
-                        last_login_date=u.get("last_active") or u.get("password_last_used"),
-                    )
-                )
 
         campaign = AccessCampaign(
             campaign_id=campaign_id,

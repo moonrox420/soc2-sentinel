@@ -31,11 +31,11 @@ def sha256_hex(data: bytes | str) -> str:
 class MerkleTree:
     """Computes a binary Merkle tree root hash from a collection of leaf hashes."""
 
-    def __init__(self, leaf_hashes: List[str]) -> None:
-        self.leaves = sorted(leaf_hashes) if leaf_hashes else ["0" * 64]
-        self.root = self._build_tree(self.leaves)
+    def __init__(self, leaf_hashes: list[str]) -> None:
+        self.leaves: list[str] = list(sorted(leaf_hashes)) if leaf_hashes else ["0" * 64]
+        self.root: str = self._build_tree(self.leaves)
 
-    def _build_tree(self, nodes: List[str]) -> str:
+    def _build_tree(self, nodes: list[str]) -> str:
         if not nodes:
             return "0" * 64
         if len(nodes) == 1:
@@ -91,6 +91,7 @@ class EvidenceVault:
 
     def __init__(self, base_root: Path | None = None) -> None:
         self.base_root = base_root or Path.cwd()
+        self.evidence_dir = self.base_root / "evidence"
 
     def _get_chain_file(self, tenant_id: str) -> Path:
         if tenant_id == "default":
@@ -121,7 +122,7 @@ class EvidenceVault:
 
     def seal_run(
         self,
-        evidence_date_dir: Path,
+        evidence_date_dir: Path | str,
         tenant_id: Optional[str] = None,
         signatory: Optional[str] = None,
     ) -> EvidenceBlock:
@@ -133,17 +134,36 @@ class EvidenceVault:
         prev_hash = chain[-1].block_hash if chain else self.GENESIS_HASH
         block_index = len(chain)
 
-        # Collect hashes of all evidence JSON files in the run directory
+        date_path = Path(evidence_date_dir)
+        if not date_path.exists():
+            alt_path = self.evidence_dir / evidence_date_dir
+            if alt_path.exists():
+                date_path = alt_path
+
+        # Collect hashes of all evidence JSON files (report.json or evidence.json)
         leaf_hashes: List[str] = []
         collector_count = 0
-        if evidence_date_dir.exists():
-            for json_file in sorted(evidence_date_dir.glob("*/evidence.json")):
-                leaf_hashes.append(sha256_file(json_file))
-                collector_count += 1
+        if date_path.exists():
+            for sub in sorted(date_path.iterdir()):
+                if sub.is_dir() and sub.name != "manifests":
+                    rep_file = sub / "report.json"
+                    if not rep_file.exists():
+                        rep_file = sub / "evidence.json"
+                    if rep_file.exists():
+                        leaf_hashes.append(sha256_file(rep_file))
+                        collector_count += 1
+            if collector_count == 0:
+                for json_file in sorted(date_path.rglob("*.json")):
+                    if json_file.name in {"report.json", "evidence.json"}:
+                        leaf_hashes.append(sha256_file(json_file))
+                        collector_count += 1
+
+        if collector_count == 0:
+            raise ValueError(f"No valid evidence files (report.json or evidence.json) found to seal in {evidence_date_dir}")
 
         merkle_root = MerkleTree(leaf_hashes).root
         timestamp = datetime.now(timezone.utc).isoformat()
-        evidence_date = evidence_date_dir.name
+        evidence_date = date_path.name
 
         block_hash = EvidenceBlock.calculate_hash(
             block_index=block_index,

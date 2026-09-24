@@ -84,7 +84,7 @@ class AuditEvent:
             self.tenant_id = t.tenant_id if hasattr(t, "tenant_id") else str(t)
         elif hasattr(self.tenant_id, "tenant_id"):
             self.tenant_id = getattr(self.tenant_id, "tenant_id")
-        else:
+        elif not isinstance(self.tenant_id, str):
             self.tenant_id = str(self.tenant_id)
 
         if self.user_id is None:

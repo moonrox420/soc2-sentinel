@@ -58,10 +58,11 @@ def test_github_connector_mock_mode() -> None:
 
 
 def test_github_connector_unauthenticated_fallback() -> None:
-    connector = GitHubConnector(repo="my-org/unauthed-app", token="")
-    assert connector.mock is True
+    connector = GitHubConnector(repo="my-org/unauthed-app", token="", mock=False)
+    assert connector.mock is False
     report = connector.audit()
-    assert report.compliant is True
+    assert report.compliant is False
+    assert any("not configured" in f for f in report.findings)
 
 
 def test_github_connector_live_request_mocking(monkeypatch: pytest.MonkeyPatch) -> None:

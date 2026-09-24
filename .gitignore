@@ -18,6 +18,10 @@ build/*
 # Testing & Coverage
 .pytest_cache/
 .pytest_temp/
+.pytest_tmp/
+.pytest_tmp*/
+pytest_tmp_dir/
+temp_pytest/
 .mypy_cache/
 .ruff_cache/
 .coverage

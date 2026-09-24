@@ -86,12 +86,10 @@ requests==2.34.2
 requests-oauthlib==2.0.0
 responses==0.26.3
 rich==15.0.0
-rpds-py==2026.6.3
-ruff==0.16.8
+ruff==0.15.18
 s3transfer==0.19.2
 setuptools==84.0.0
 six==1.17.0
--e git+https://github.com/moonrox420/soc2-sentinel.git@37dcd193c08bf3c78eab4c9a450bdd6684f0bc23#egg=soc2_sentinel
 stevedore==5.9.1
 typing_extensions==4.16.0
 uritemplate==4.2.0

@@ -175,6 +175,10 @@ def _parser() -> argparse.ArgumentParser:
     vrm_add_p.add_argument("--encryption", action="store_true", help="Encryption at rest verified")
     vrm_add_p.add_argument("--output-base", type=Path, default=Path.cwd())
 
+    onboarding_p = sub.add_parser("onboarding", help="Cloud onboarding diagnostics & minimal IAM policy generation")
+    onboarding_p.add_argument("--provider", required=True, choices=["aws", "gcp", "azure"])
+    onboarding_p.add_argument("--format", default="json", choices=["json", "text"])
+
     uar_p = sub.add_parser("access-review", help="User Access Review & Certification Campaign Manager")
     uar_sub = uar_p.add_subparsers(dest="uar_command", required=True)
     uar_list_p = uar_sub.add_parser("list", help="List access certification campaigns")
@@ -184,10 +188,19 @@ def _parser() -> argparse.ArgumentParser:
     uar_start_p.add_argument("--title", required=True, help="Campaign title")
     uar_start_p.add_argument("--period", default="2026-Q3", help="Review period")
     uar_start_p.add_argument("--due-date", default="2026-10-15", help="Review deadline")
+    uar_start_p.add_argument("--evidence-file", type=Path, default=None, help="Path to IAM evidence JSON")
     uar_start_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    uar_decide_p = uar_sub.add_parser("decide", help="Record reviewer decision on entitlement")
+    uar_decide_p.add_argument("--id", required=True, help="Campaign identifier")
+    uar_decide_p.add_argument("--item-id", required=True, help="Access item ID")
+    uar_decide_p.add_argument("--decision", required=True, choices=["MAINTAIN", "REVOKE", "MODIFY"])
+    uar_decide_p.add_argument("--reviewer", default="Security Officer", help="Reviewer identifier")
+    uar_decide_p.add_argument("--notes", default="", help="Review notes")
+    uar_decide_p.add_argument("--output-base", type=Path, default=Path.cwd())
     uar_sign_p = uar_sub.add_parser("signoff", help="Cryptographically sign and complete campaign")
     uar_sign_p.add_argument("--id", required=True, help="Campaign identifier")
     uar_sign_p.add_argument("--signer", default="Security Officer", help="Signatory name")
+    uar_sign_p.add_argument("--secret", default=None, help="Optional signing key for HMAC digest")
     uar_sign_p.add_argument("--output-base", type=Path, default=Path.cwd())
 
     notify_p = sub.add_parser("notify", help="Dispatch compliance violation alerts to webhooks")
@@ -686,6 +699,30 @@ def main() -> None:
             print(json.dumps(saved.to_dict(), indent=2))
             return
 
+    if args.command == "onboarding":
+        from sentinel.onboarding import diagnose_all_providers, generate_minimal_policy
+
+        cfg = load_config(args.config) if hasattr(args, "config") and args.config else SentinelConfig()
+        diag = diagnose_all_providers(cfg)
+        prov_diag = diag.get(args.provider, {})
+        policy = generate_minimal_policy(args.provider)
+        result = {
+            "provider": args.provider,
+            "status": prov_diag.get("status", "unknown"),
+            "diagnostics": prov_diag,
+            "recommended_policy": policy,
+        }
+        if args.format == "json":
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"=== Onboarding Diagnostics: {args.provider.upper()} ===")
+            print(f"Status: {prov_diag.get('status', 'unknown')}")
+            for chk in prov_diag.get("checks", []):
+                print(f" - [{chk.get('status')}] {chk.get('name')}: {chk.get('message')}")
+            print("\nRecommended Minimal IAM Policy:")
+            print(json.dumps(policy, indent=2))
+        return
+
     if args.command == "access-review":
         from sentinel.access_review import AccessReviewManager, ReviewDecision
 
@@ -694,32 +731,77 @@ def main() -> None:
             print(json.dumps([c.to_dict() for c in uar.list_campaigns()], indent=2))
             return
         elif args.uar_command == "start":
-            camp = uar.create_campaign_from_evidence(
-                campaign_id=args.id,
-                title=args.title,
-                period=args.period,
-                due_date=args.due_date,
-                iam_evidence={"provider": "cli_admin"},
-            )
-            print(json.dumps(camp.to_dict(), indent=2))
+            iam_data = {"provider": "cli_admin", "users": []}
+            if args.evidence_file and args.evidence_file.exists():
+                try:
+                    iam_data = json.loads(args.evidence_file.read_text(encoding="utf-8"))
+                except Exception as ex:
+                    logger.error("Failed reading evidence file: %s", ex)
+                    sys.exit(1)
+            else:
+                # Search latest IAM collector evidence in evidence_dir if available
+                ev_dir = args.output_base / "evidence"
+                if ev_dir.exists():
+                    latest_runs = sorted([d for d in ev_dir.iterdir() if d.is_dir() and d.name != "manifests"], key=lambda d: d.name)
+                    if latest_runs:
+                        iam_file = latest_runs[-1] / "CC6.1" / "report.json"
+                        if not iam_file.exists():
+                            iam_file = latest_runs[-1] / "iam_access_review" / "report.json"
+                        if iam_file.exists():
+                            try:
+                                iam_data = json.loads(iam_file.read_text(encoding="utf-8"))
+                            except Exception:
+                                pass
+            try:
+                camp = uar.create_campaign_from_evidence(
+                    campaign_id=args.id,
+                    title=args.title,
+                    period=args.period,
+                    due_date=args.due_date,
+                    iam_evidence=iam_data,
+                )
+                print(json.dumps(camp.to_dict(), indent=2))
+                return
+            except ValueError as ve:
+                logger.error("Failed to start campaign: %s", ve)
+                sys.exit(1)
+        elif args.uar_command == "decide":
+            camp_target = uar.get_campaign(args.id)
+            if camp_target is None:
+                logger.error("Campaign '%s' not found", args.id)
+                sys.exit(1)
+            found = False
+            for it in camp_target.items:
+                if it.item_id == args.item_id:
+                    it.record_decision(
+                        decision=ReviewDecision(args.decision),
+                        reviewer=args.reviewer,
+                        notes=args.notes,
+                    )
+                    found = True
+                    break
+            if not found:
+                logger.error("Item '%s' not found in campaign '%s'", args.item_id, args.id)
+                sys.exit(1)
+            uar.save_campaign(camp_target)
+            print(json.dumps(camp_target.to_dict(), indent=2))
             return
         elif args.uar_command == "signoff":
             camp_target = uar.get_campaign(args.id)
             if camp_target is None:
                 logger.error("Campaign '%s' not found", args.id)
                 sys.exit(1)
-            # Auto-mark remaining pending as maintain for CLI demonstration signoff if any
-            for it in camp_target.items:
-                if it.decision == ReviewDecision.PENDING:
-                    it.record_decision(
-                        decision=ReviewDecision.MAINTAIN,
-                        reviewer=args.signer,
-                        notes="Auto-maintained at signoff",
-                    )
-            sig_hash = camp_target.complete_and_sign(args.signer)
-            uar.save_campaign(camp_target)
-            print(json.dumps({"campaign_id": camp_target.campaign_id, "sign_off_hash": sig_hash, "status": "COMPLETED"}, indent=2))
-            return
+            if camp_target.pending_count > 0:
+                logger.error("Cannot sign off campaign '%s': %d items remain pending review decisions.", args.id, camp_target.pending_count)
+                sys.exit(1)
+            try:
+                sig_hash = camp_target.complete_and_sign(args.signer, signing_secret=args.secret)
+                uar.save_campaign(camp_target)
+                print(json.dumps({"campaign_id": camp_target.campaign_id, "sign_off_hash": sig_hash, "status": "COMPLETED"}, indent=2))
+                return
+            except ValueError as ve:
+                logger.error("Signoff failed: %s", ve)
+                sys.exit(1)
 
     if args.command == "notify":
         from sentinel.notifications import (

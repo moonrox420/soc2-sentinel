@@ -26,9 +26,11 @@ def generate_executive_html_report(scorecard: ComplianceScorecard, evidence_dir:
 
     # Run cryptographic verification on the evidence directory
     tree_res = verify_evidence_tree(evidence_dir)
-    integrity_valid = not bool(tree_res.get("failed"))
-    status_badge_color = "#10b981" if integrity_valid else "#ef4444"
-    status_badge_text = "VERIFIED TAMPER-EVIDENT" if integrity_valid else "INTEGRITY WARNING"
+    verified_files = len(tree_res.get("verified", []))
+    failed_files = len(tree_res.get("failed", []))
+    integrity_valid = (verified_files > 0) and (failed_files == 0)
+    status_badge_color = "#10b981" if integrity_valid else ("#f59e0b" if verified_files == 0 else "#ef4444")
+    status_badge_text = "VERIFIED TAMPER-EVIDENT" if integrity_valid else ("NO EVIDENCE VERIFIED" if verified_files == 0 else "INTEGRITY WARNING")
 
     score = scorecard.overall_posture_score
     score_color = "#10b981" if score >= 85.0 else ("#f59e0b" if score >= 70.0 else "#ef4444")
@@ -342,12 +344,11 @@ Generated: {datetime.now(timezone.utc).isoformat()}
 
 CONTENTS:
 1. SOC2-Sentinel-Executive-Report-{date_str}.html (Printable Executive Report)
-2. <control_id>/evidence.json (Raw signed evidence payloads)
-3. manifest.json (SHA-256 hashes of all artifacts)
-4. manifest.sig / HMAC verification records
+2. <control_id>/report.json (Raw evidence payloads)
+3. manifest.json (SHA-256 digests of all evidence artifacts)
 
 VERIFICATION INSTRUCTIONS:
-To verify the cryptographic integrity and authenticity of this evidence tree:
+To verify the cryptographic integrity of this evidence tree:
 $ sentinel verify evidence/{date_str}
 
 All files in this archive were generated deterministically by SOC2 Sentinel v2.5.0.
