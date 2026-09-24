@@ -124,7 +124,12 @@ def _parser() -> argparse.ArgumentParser:
         help="Enable continuous background polling daemon",
     )
     serve_p.add_argument(
-        "--poll-interval", type=int, default=3600, help="Daemon interval in seconds"
+        "--interval",
+        "--poll-interval",
+        dest="poll_interval",
+        type=int,
+        default=None,
+        help="Continuous daemon interval in seconds (auto-enables daemon)",
     )
     serve_p.add_argument(
         "--no-browser", action="store_true", help="Do not open default browser"
@@ -138,7 +143,14 @@ def _parser() -> argparse.ArgumentParser:
         "--provider", default="aws", choices=["aws", "gcp", "azure"]
     )
     dash_p.add_argument("--daemon", action="store_true")
-    dash_p.add_argument("--poll-interval", type=int, default=3600)
+    dash_p.add_argument(
+        "--interval",
+        "--poll-interval",
+        dest="poll_interval",
+        type=int,
+        default=None,
+        help="Continuous daemon interval in seconds (auto-enables daemon)",
+    )
     dash_p.add_argument("--no-browser", action="store_true")
 
     score_p = sub.add_parser(
@@ -778,13 +790,16 @@ def main() -> None:
     if args.command in {"serve", "dashboard"}:
         from sentinel.dashboard.server import run_dashboard_server
 
+        enable_daemon = bool(args.daemon or (args.poll_interval is not None))
+        interval = args.poll_interval if args.poll_interval is not None else 3600
+
         run_dashboard_server(
             host=args.host,
             port=args.port,
             output_base=args.output_base,
             config=cfg,
-            enable_daemon=args.daemon,
-            daemon_interval=args.poll_interval,
+            enable_daemon=enable_daemon,
+            daemon_interval=interval,
             provider=args.provider,
             open_browser=not args.no_browser,
         )
