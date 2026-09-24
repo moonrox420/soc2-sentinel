@@ -22,7 +22,9 @@ except ImportError as exc:  # pragma: no cover
 
 class AzureContext:
     def __init__(self, subscription_id: str | None = None) -> None:
-        resolved_subscription_id = subscription_id or os.environ.get("AZURE_SUBSCRIPTION_ID")
+        resolved_subscription_id = subscription_id or os.environ.get(
+            "AZURE_SUBSCRIPTION_ID"
+        )
         self.errors: list[dict[str, Any]] = []
         self._checks_attempted = 0
         self._checks_succeeded = 0
@@ -63,7 +65,12 @@ class AzureContext:
             )
             if resp.status_code == 403:
                 self.errors.append(
-                    api_error("AccessDenied", resp.text[:200], service="graph", severity="high")
+                    api_error(
+                        "AccessDenied",
+                        resp.text[:200],
+                        service="graph",
+                        severity="high",
+                    )
                 )
                 return None
             resp.raise_for_status()
@@ -82,5 +89,7 @@ class AzureContext:
     def succeed(self) -> None:
         self._checks_succeeded += 1
 
-    def record_error(self, service: str, exc: Exception, *, code: str = "ApiError") -> None:
+    def record_error(
+        self, service: str, exc: Exception, *, code: str = "ApiError"
+    ) -> None:
         self.errors.append(api_error(code, str(exc), service=service, severity="high"))

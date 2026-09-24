@@ -112,9 +112,7 @@ def log_monitoring_snapshot(ctx: GcpContext) -> dict[str, Any]:
         "multi_region_trails": sum(
             1
             for sink in sinks
-            if getattr(sink, "destination", "").startswith(
-                "storage.googleapis.com"
-            )
+            if getattr(sink, "destination", "").startswith("storage.googleapis.com")
         ),
         "config_recorder_all_supported": required_sink,
         "log_coverage_percent": None,

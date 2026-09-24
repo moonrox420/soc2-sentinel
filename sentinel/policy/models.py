@@ -7,12 +7,15 @@ from typing import Any
 @dataclass
 class PolicyRule:
     """Declarative Policy-as-Code compliance rule definition."""
+
     rule_id: str
     name: str
     description: str
     category: str
     severity: str  # "CRITICAL", "HIGH", "MEDIUM", "LOW"
-    collector_target: str  # e.g., "iam_access_review", "config_drift", "github_vcs", etc.
+    collector_target: (
+        str  # e.g., "iam_access_review", "config_drift", "github_vcs", etc.
+    )
     condition: str  # Safe boolean expression, e.g., "orphaned_accounts == 0"
     frameworks: dict[str, list[str]] = field(default_factory=dict)
     remediation_summary: str = ""
@@ -26,6 +29,7 @@ class PolicyRule:
 @dataclass
 class RuleEvaluationResult:
     """Individual rule evaluation outcome."""
+
     rule_id: str
     name: str
     category: str
@@ -44,6 +48,7 @@ class RuleEvaluationResult:
 @dataclass
 class PolicyReport:
     """Full policy execution evaluation report."""
+
     timestamp: str
     tenant_id: str
     provider: str

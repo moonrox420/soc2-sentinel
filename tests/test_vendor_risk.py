@@ -79,7 +79,9 @@ def test_vendor_risk_manager_persistence_and_cc92_report(tmp_path: Path) -> None
         tier=VendorTier.TIER_2_HIGH,
         data_classification=DataClassification.INTERNAL,
         soc2_valid_until="2030-01-01T00:00:00Z",
-        questionnaire=SecurityQuestionnaire(has_soc2_type2=True, enforces_mfa=True, encrypts_data_at_rest=True),
+        questionnaire=SecurityQuestionnaire(
+            has_soc2_type2=True, enforces_mfa=True, encrypts_data_at_rest=True
+        ),
     )
     mgr.save_vendor(v1)
 

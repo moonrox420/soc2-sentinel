@@ -47,11 +47,11 @@ def zt_verification_snapshot(ctx: AwsClients) -> dict[str, Any]:
             "unencrypted_resources": unencrypted,
             "mfa_enforcement_percent": mfa_pct,
             "mfa_registered_percent": mfa_registered_pct,
-            "jit_recommendations": [
-                f"Review {standing} privileged accounts for JIT conversion"
-            ]
-            if standing
-            else [],
+            "jit_recommendations": (
+                [f"Review {standing} privileged accounts for JIT conversion"]
+                if standing
+                else []
+            ),
             "session_timeout_compliant": None,
             "privileged_standing_count": standing,
             "pillar_scores": {

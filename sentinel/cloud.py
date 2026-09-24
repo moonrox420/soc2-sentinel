@@ -23,7 +23,9 @@ _DEFAULT_RETRYABLE = frozenset(
 )
 
 
-def botocore_config(*, connect_timeout: int = 10, read_timeout: int = 60, max_attempts: int = 3):
+def botocore_config(
+    *, connect_timeout: int = 10, read_timeout: int = 60, max_attempts: int = 3
+):
     from botocore.config import Config
 
     return Config(
@@ -33,7 +35,9 @@ def botocore_config(*, connect_timeout: int = 10, read_timeout: int = 60, max_at
     )
 
 
-def is_retryable_error(exc: BaseException, *, retryable_codes: frozenset[str] | None = None) -> bool:
+def is_retryable_error(
+    exc: BaseException, *, retryable_codes: frozenset[str] | None = None
+) -> bool:
     if isinstance(exc, (ConnectionError, TimeoutError, OSError)):
         return True
     codes = retryable_codes or _DEFAULT_RETRYABLE
@@ -60,7 +64,9 @@ def call_with_retry(
         try:
             result = fn()
             elapsed_ms = int((time.monotonic() - started) * 1000)
-            logger.debug("%s succeeded in %dms (attempt %d)", operation, elapsed_ms, attempt)
+            logger.debug(
+                "%s succeeded in %dms (attempt %d)", operation, elapsed_ms, attempt
+            )
             return result
         except Exception as exc:
             last_exc = exc
@@ -77,7 +83,7 @@ def call_with_retry(
             )
             if not retryable or attempt >= max_attempts:
                 raise
-            time.sleep(min(2 ** attempt, 8))
+            time.sleep(min(2**attempt, 8))
     assert last_exc is not None
     raise last_exc
 

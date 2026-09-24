@@ -14,7 +14,9 @@ from sentinel.scoring import ComplianceScorecard, compute_compliance_scorecard
 logger = logging.getLogger("sentinel.reporting")
 
 
-def generate_executive_html_report(scorecard: ComplianceScorecard, evidence_dir: Path) -> str:
+def generate_executive_html_report(
+    scorecard: ComplianceScorecard, evidence_dir: Path
+) -> str:
     """Generate a self-contained, printable, executive-ready HTML audit report."""
     manifest_file = evidence_dir / "manifest.json"
     manifest_data: dict[str, Any] = {}
@@ -29,17 +31,35 @@ def generate_executive_html_report(scorecard: ComplianceScorecard, evidence_dir:
     verified_files = len(tree_res.get("verified", []))
     failed_files = len(tree_res.get("failed", []))
     integrity_valid = (verified_files > 0) and (failed_files == 0)
-    status_badge_color = "#10b981" if integrity_valid else ("#f59e0b" if verified_files == 0 else "#ef4444")
-    status_badge_text = "VERIFIED TAMPER-EVIDENT" if integrity_valid else ("NO EVIDENCE VERIFIED" if verified_files == 0 else "INTEGRITY WARNING")
+    status_badge_color = (
+        "#10b981"
+        if integrity_valid
+        else ("#f59e0b" if verified_files == 0 else "#ef4444")
+    )
+    status_badge_text = (
+        "VERIFIED TAMPER-EVIDENT"
+        if integrity_valid
+        else ("NO EVIDENCE VERIFIED" if verified_files == 0 else "INTEGRITY WARNING")
+    )
 
     score = scorecard.overall_posture_score
-    score_color = "#10b981" if score >= 85.0 else ("#f59e0b" if score >= 70.0 else "#ef4444")
+    score_color = (
+        "#10b981" if score >= 85.0 else ("#f59e0b" if score >= 70.0 else "#ef4444")
+    )
 
     # Build control rows
     control_rows_html = []
     for ctrl in scorecard.controls:
-        status_class = "status-pass" if ctrl.status == "PASS" else ("status-partial" if ctrl.status == "PARTIAL" else "status-fail")
-        findings_html = "".join(f"<li>{html.escape(f)}</li>" for f in ctrl.findings) if ctrl.findings else "<span class='text-muted'>No deficiencies identified</span>"
+        status_class = (
+            "status-pass"
+            if ctrl.status == "PASS"
+            else ("status-partial" if ctrl.status == "PARTIAL" else "status-fail")
+        )
+        findings_html = (
+            "".join(f"<li>{html.escape(f)}</li>" for f in ctrl.findings)
+            if ctrl.findings
+            else "<span class='text-muted'>No deficiencies identified</span>"
+        )
         metrics_pills = "".join(
             f"<span class='metric-pill'><strong>{html.escape(k)}:</strong> {html.escape(str(v))}</span>"
             for k, v in ctrl.metrics_summary.items()
@@ -64,17 +84,18 @@ def generate_executive_html_report(scorecard: ComplianceScorecard, evidence_dir:
     # Framework Cards
     fw_cards = []
     for fw in [scorecard.soc2, scorecard.nist, scorecard.cmmc, scorecard.zero_trust]:
-        fw_color = "#10b981" if fw.overall_score >= 85.0 else ("#f59e0b" if fw.overall_score >= 70.0 else "#ef4444")
-        pillars_html = "".join(
-            f"""
+        fw_color = (
+            "#10b981"
+            if fw.overall_score >= 85.0
+            else ("#f59e0b" if fw.overall_score >= 70.0 else "#ef4444")
+        )
+        pillars_html = "".join(f"""
             <div class="pillar-row">
               <span class="pillar-name">{html.escape(pname)}</span>
               <div class="pillar-bar-bg"><div class="pillar-bar-fill" style="width: {pscore}%;"></div></div>
               <span class="pillar-score">{pscore:.0f}%</span>
             </div>
-            """
-            for pname, pscore in fw.pillar_scores.items()
-        )
+            """ for pname, pscore in fw.pillar_scores.items())
         fw_cards.append(f"""
         <div class="framework-card">
           <div class="framework-header">
@@ -97,8 +118,14 @@ def generate_executive_html_report(scorecard: ComplianceScorecard, evidence_dir:
     manifest_entries = manifest_data.get("files", {})
     manifest_rows = []
     for fname, fhash in sorted(manifest_entries.items()):
-        manifest_rows.append(f"<tr><td><code>{html.escape(fname)}</code></td><td><code class='hash'>{html.escape(fhash)}</code></td></tr>")
-    manifest_table_html = "\n".join(manifest_rows) if manifest_rows else "<tr><td colspan='2'>No manifest files recorded</td></tr>"
+        manifest_rows.append(
+            f"<tr><td><code>{html.escape(fname)}</code></td><td><code class='hash'>{html.escape(fhash)}</code></td></tr>"
+        )
+    manifest_table_html = (
+        "\n".join(manifest_rows)
+        if manifest_rows
+        else "<tr><td colspan='2'>No manifest files recorded</td></tr>"
+    )
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -327,7 +354,9 @@ def export_audit_pack(
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     date_str = evidence_dir.name
-    scorecard = custom_scorecard or compute_compliance_scorecard(evidence_dir.parent, date_str=date_str)
+    scorecard = custom_scorecard or compute_compliance_scorecard(
+        evidence_dir.parent, date_str=date_str
+    )
 
     # 1. Generate Executive HTML Report
     html_report = generate_executive_html_report(scorecard, evidence_dir)

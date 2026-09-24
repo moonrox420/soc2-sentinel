@@ -33,7 +33,10 @@ def retention_snapshot(ctx: AwsClients) -> dict[str, Any]:
                 if not has_expiry:
                     missing_lifecycle += 1
                     findings.append(
-                        {"resource": f"s3://{name}", "issue": "no lifecycle expiration rule"}
+                        {
+                            "resource": f"s3://{name}",
+                            "issue": "no lifecycle expiration rule",
+                        }
                     )
             except ClientError as exc:
                 code = exc.response["Error"]["Code"]
@@ -41,7 +44,10 @@ def retention_snapshot(ctx: AwsClients) -> dict[str, Any]:
                     ctx.succeed()
                     missing_lifecycle += 1
                     findings.append(
-                        {"resource": f"s3://{name}", "issue": "missing lifecycle configuration"}
+                        {
+                            "resource": f"s3://{name}",
+                            "issue": "missing lifecycle configuration",
+                        }
                     )
                 else:
                     ctx.record_access_denied("s3", exc)

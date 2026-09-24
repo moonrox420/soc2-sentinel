@@ -76,7 +76,9 @@ AZURE_MINIMAL_ROLES = [
 @dataclass
 class ProviderHealthCheck:
     provider: str
-    status: str  # "READY", "CONFIG_REQUIRED", "CREDENTIALS_MISSING", "PERMISSION_DENIED"
+    status: (
+        str  # "READY", "CONFIG_REQUIRED", "CREDENTIALS_MISSING", "PERMISSION_DENIED"
+    )
     identity: str | None
     account_or_project: str | None
     region: str | None
@@ -95,7 +97,10 @@ def diagnose_aws(config: SentinelConfig | None = None) -> ProviderHealthCheck:
     remediation: list[str] = []
 
     has_env = bool(
-        (os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY"))
+        (
+            os.environ.get("AWS_ACCESS_KEY_ID")
+            and os.environ.get("AWS_SECRET_ACCESS_KEY")
+        )
         or os.environ.get("AWS_PROFILE")
         or (Path.home() / ".aws" / "credentials").exists()
     )
@@ -108,7 +113,9 @@ def diagnose_aws(config: SentinelConfig | None = None) -> ProviderHealthCheck:
             account_or_project=None,
             region=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
             checks_passed=[],
-            checks_failed=["AWS credentials not detected in environment or ~/.aws/credentials"],
+            checks_failed=[
+                "AWS credentials not detected in environment or ~/.aws/credentials"
+            ],
             remediation_steps=[
                 "Configure AWS CLI: run 'aws configure'",
                 "Or set environment variables: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY",
@@ -120,7 +127,11 @@ def diagnose_aws(config: SentinelConfig | None = None) -> ProviderHealthCheck:
     try:
         provider = get_provider("aws", config)
         provider.validate_credentials()
-        identity = os.environ.get("AWS_ROLE_ARN") or os.environ.get("AWS_PROFILE") or "Active IAM Session"
+        identity = (
+            os.environ.get("AWS_ROLE_ARN")
+            or os.environ.get("AWS_PROFILE")
+            or "Active IAM Session"
+        )
         passed.append("STS Credential validation successful")
         passed.append(f"Connected: {identity}")
         return ProviderHealthCheck(
@@ -128,7 +139,9 @@ def diagnose_aws(config: SentinelConfig | None = None) -> ProviderHealthCheck:
             status="READY",
             identity=identity,
             account_or_project=os.environ.get("AWS_ACCOUNT_ID", "Active"),
-            region=getattr(provider, "region", os.environ.get("AWS_DEFAULT_REGION", "us-east-1")),
+            region=getattr(
+                provider, "region", os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+            ),
             checks_passed=passed,
             checks_failed=[],
             remediation_steps=[],
@@ -136,7 +149,9 @@ def diagnose_aws(config: SentinelConfig | None = None) -> ProviderHealthCheck:
         )
     except Exception as exc:
         failed.append(f"AWS connection error: {exc}")
-        remediation.append("Check AWS credentials and ensure policy has sts:GetCallerIdentity permission")
+        remediation.append(
+            "Check AWS credentials and ensure policy has sts:GetCallerIdentity permission"
+        )
         return ProviderHealthCheck(
             provider="aws",
             status="PERMISSION_DENIED",
@@ -157,7 +172,9 @@ def diagnose_gcp(config: SentinelConfig | None = None) -> ProviderHealthCheck:
 
     has_creds = bool(
         os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-        or (Path.home() / ".config" / "gcloud" / "application_default_credentials.json").exists()
+        or (
+            Path.home() / ".config" / "gcloud" / "application_default_credentials.json"
+        ).exists()
     )
     project_id = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCP_PROJECT")
 
@@ -182,7 +199,10 @@ def diagnose_gcp(config: SentinelConfig | None = None) -> ProviderHealthCheck:
     try:
         provider = get_provider("gcp", config)
         provider.validate_credentials()
-        identity = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") or "Application Default Credentials"
+        identity = (
+            os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+            or "Application Default Credentials"
+        )
         passed.append("GCP Application Default Credentials valid")
         passed.append(f"Connected: {identity}")
         return ProviderHealthCheck(
@@ -198,7 +218,9 @@ def diagnose_gcp(config: SentinelConfig | None = None) -> ProviderHealthCheck:
         )
     except Exception as exc:
         failed.append(f"GCP connection error: {exc}")
-        remediation.append("Run 'gcloud auth application-default login' and verify project permissions")
+        remediation.append(
+            "Run 'gcloud auth application-default login' and verify project permissions"
+        )
         return ProviderHealthCheck(
             provider="gcp",
             status="PERMISSION_DENIED",
@@ -232,7 +254,9 @@ def diagnose_azure(config: SentinelConfig | None = None) -> ProviderHealthCheck:
             account_or_project=None,
             region="global",
             checks_passed=[],
-            checks_failed=["Azure Service Principal or Azure CLI login credentials not detected"],
+            checks_failed=[
+                "Azure Service Principal or Azure CLI login credentials not detected"
+            ],
             remediation_steps=[
                 "Run 'az login' for interactive CLI authentication",
                 "Or set AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID",
@@ -274,27 +298,14 @@ def diagnose_azure(config: SentinelConfig | None = None) -> ProviderHealthCheck:
         )
 
 
-def diagnose_mock() -> ProviderHealthCheck:
-    return ProviderHealthCheck(
-        provider="mock",
-        status="READY",
-        identity="Offline Demonstration Fixture",
-        account_or_project="mock-tenant-01",
-        region="local",
-        checks_passed=["Mock fixtures loaded", "No cloud credentials required"],
-        checks_failed=[],
-        remediation_steps=[],
-        policy_snippet=None,
-    )
-
-
-def diagnose_all_providers(config: SentinelConfig | None = None) -> dict[str, dict[str, Any]]:
-    """Run full diagnostic preflight across AWS, GCP, Azure, and Mock."""
+def diagnose_all_providers(
+    config: SentinelConfig | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Run full real-time diagnostic preflight across AWS, GCP, and Azure."""
     return {
         "aws": diagnose_aws(config).to_dict(),
         "gcp": diagnose_gcp(config).to_dict(),
         "azure": diagnose_azure(config).to_dict(),
-        "mock": diagnose_mock().to_dict(),
     }
 
 
@@ -307,6 +318,4 @@ def generate_minimal_policy(provider: str) -> dict[str, Any]:
         return {"roles": GCP_MINIMAL_ROLES}
     elif p == "azure":
         return {"roles": AZURE_MINIMAL_ROLES}
-    elif p == "mock":
-        return {"mode": "offline", "permissions": "none_required"}
-    raise ValueError(f"Unsupported provider for policy generation: '{provider}'")
+    raise ValueError(f"Unsupported provider for policy generation: '{provider}'. Supported: aws, gcp, azure")

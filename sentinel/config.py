@@ -68,7 +68,9 @@ class SentinelConfig:
                     "SENTINEL_EVIDENCE_KEY_FILE is not set"
                 )
             if key_file and not Path(key_file).is_file():
-                raise ValidationError(f"SENTINEL_EVIDENCE_KEY_FILE not found: {key_file}")
+                raise ValidationError(
+                    f"SENTINEL_EVIDENCE_KEY_FILE not found: {key_file}"
+                )
 
         yellow = self.thresholds.orphaned_accounts_yellow
         red = self.thresholds.orphaned_accounts_red
@@ -163,7 +165,9 @@ def load_config(path: Path | None = None) -> SentinelConfig:
         ),
         thresholds=ThresholdConfig(
             orphaned_accounts_red=_safe_int(
-                thresholds_raw.get("orphaned_accounts_red"), field_name="orphaned_accounts_red", default=7
+                thresholds_raw.get("orphaned_accounts_red"),
+                field_name="orphaned_accounts_red",
+                default=7,
             ),
             orphaned_accounts_yellow=_safe_int(
                 thresholds_raw.get("orphaned_accounts_yellow"),
@@ -171,7 +175,9 @@ def load_config(path: Path | None = None) -> SentinelConfig:
                 default=3,
             ),
             iam_review_days_red=_safe_int(
-                thresholds_raw.get("iam_review_days_red"), field_name="iam_review_days_red", default=90
+                thresholds_raw.get("iam_review_days_red"),
+                field_name="iam_review_days_red",
+                default=90,
             ),
         ),
         validation=ValidationConfig(
@@ -182,7 +188,8 @@ def load_config(path: Path | None = None) -> SentinelConfig:
         ),
         provider=ProviderConfig(
             aws_region=provider_raw.get("aws_region") or os.environ.get("AWS_REGION"),
-            gcp_project_id=provider_raw.get("gcp_project_id") or os.environ.get("GOOGLE_CLOUD_PROJECT"),
+            gcp_project_id=provider_raw.get("gcp_project_id")
+            or os.environ.get("GOOGLE_CLOUD_PROJECT"),
             azure_subscription_id=provider_raw.get("azure_subscription_id")
             or os.environ.get("AZURE_SUBSCRIPTION_ID"),
         ),

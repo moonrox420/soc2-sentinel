@@ -27,7 +27,9 @@ def collect_resilience_testing(
 ) -> Path:
     cfg = config or SentinelConfig()
     try:
-        snap = fetch_snapshot(provider.resilience_snapshot, collector="resilience_testing")
+        snap = fetch_snapshot(
+            provider.resilience_snapshot, collector="resilience_testing"
+        )
     except ProviderError as exc:
         return write_failure_evidence(
             control_id=control_id,
@@ -51,7 +53,9 @@ def collect_resilience_testing(
     metrics = {
         "last_backup_hours_ago": snap.get("last_backup_hours_ago"),
         "last_restore_test_days_ago": restore_age,
-        "last_successful_restore_days_ago": snap.get("last_successful_restore_days_ago"),
+        "last_successful_restore_days_ago": snap.get(
+            "last_successful_restore_days_ago"
+        ),
         "rto_target_hours": snap.get("rto_target_hours"),
         "rpo_target_hours": snap.get("rpo_target_hours"),
         "failover_test_days_ago": snap.get("failover_test_days_ago"),
@@ -62,11 +66,17 @@ def collect_resilience_testing(
     }
     findings = []
     if metrics["last_restore_test_days_ago"] is None:
-        findings.append({"issue": "restore-test evidence unavailable", "severity": "high"})
+        findings.append(
+            {"issue": "restore-test evidence unavailable", "severity": "high"}
+        )
     elif metrics["last_restore_test_days_ago"] > 90:
-        findings.append({"issue": "restore test overdue (>90 days)", "severity": "high"})
+        findings.append(
+            {"issue": "restore test overdue (>90 days)", "severity": "high"}
+        )
     if metrics["failover_test_passed"] is None:
-        findings.append({"issue": "failover-test evidence unavailable", "severity": "high"})
+        findings.append(
+            {"issue": "failover-test evidence unavailable", "severity": "high"}
+        )
     elif metrics["failover_test_passed"] is False:
         findings.append({"issue": "failover test not passed", "severity": "medium"})
 
@@ -77,11 +87,18 @@ def collect_resilience_testing(
         "metrics": metrics,
         "evidence_artifacts": [],
         "findings": findings,
-        "notes": snap.get("notes", "Backup, restore, and failover resilience evidence for A1.2/A1.3."),
+        "notes": snap.get(
+            "notes", "Backup, restore, and failover resilience evidence for A1.2/A1.3."
+        ),
         "provider": provider.name,
     }
     apply_collection_metadata(payload, snap)
-    log_collection_done(collector="resilience_testing", provider=provider.name, control_id=control_id, snap=snap)
+    log_collection_done(
+        collector="resilience_testing",
+        provider=provider.name,
+        control_id=control_id,
+        snap=snap,
+    )
     return write_evidence(
         payload,
         base=base,

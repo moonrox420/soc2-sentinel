@@ -152,7 +152,11 @@ class DogfoodAssessor:
         forbidden_patterns = ["password=", "secret=", "aws_secret_access_key="]
         found_leaks = []
 
-        cfg_candidates = [Path("sentinel.yaml"), Path("config.json"), Path("sentinel.conf")]
+        cfg_candidates = [
+            Path("sentinel.yaml"),
+            Path("config.json"),
+            Path("sentinel.conf"),
+        ]
         scanned_files = 0
         for cfg_file in cfg_candidates:
             if cfg_file.exists():
@@ -162,7 +166,12 @@ class DogfoodAssessor:
                     for pat in forbidden_patterns:
                         if pat in content and not any(
                             safe in content
-                            for safe in ["${env:", "<placeholder>", "replace_me", "replace-in-prod"]
+                            for safe in [
+                                "${env:",
+                                "<placeholder>",
+                                "replace_me",
+                                "replace-in-prod",
+                            ]
                         ):
                             found_leaks.append(f"{cfg_file.name} contains '{pat}'")
                 except Exception as e:
@@ -215,7 +224,9 @@ class DogfoodAssessor:
                 remediation="Run sentinel collection or onboarding to initialize isolated storage.",
             )
 
-        evidence_runs = list(self.evidence_dir.iterdir()) if self.evidence_dir.exists() else []
+        evidence_runs = (
+            list(self.evidence_dir.iterdir()) if self.evidence_dir.exists() else []
+        )
         if not evidence_runs:
             return DogfoodCheck(
                 check_id="DOGFOOD-CC6.1-STORAGE",
@@ -235,7 +246,10 @@ class DogfoodAssessor:
             status="PASS",
             severity="HIGH",
             description=f"Evidence storage is properly partitioned with {len(evidence_runs)} recorded evidence runs.",
-            details={"directory": str(self.base_dir), "evidence_runs": len(evidence_runs)},
+            details={
+                "directory": str(self.base_dir),
+                "evidence_runs": len(evidence_runs),
+            },
         )
 
     def _check_cryptographic_controls(self) -> DogfoodCheck:
@@ -247,11 +261,19 @@ class DogfoodAssessor:
             from sentinel.security import decrypt_bytes, encrypt_bytes
 
             # Test cryptographic derivation and encryption in-memory
-            enc_result = encrypt_bytes(b"dogfood_data", secret="dogfood_test_secret_32b_phrase!!")
-            dec_result = decrypt_bytes(enc_result, secret="dogfood_test_secret_32b_phrase!!")
-            test_hmac = hmac.new(b"key_32_bytes_dogfood_test_pad_123", b"dogfood_data", sha256).hexdigest()
+            enc_result = encrypt_bytes(
+                b"dogfood_data", secret="dogfood_test_secret_32b_phrase!!"
+            )
+            dec_result = decrypt_bytes(
+                enc_result, secret="dogfood_test_secret_32b_phrase!!"
+            )
+            test_hmac = hmac.new(
+                b"key_32_bytes_dogfood_test_pad_123", b"dogfood_data", sha256
+            ).hexdigest()
             if dec_result != b"dogfood_data" or not test_hmac:
-                raise ValueError("Decrypted payload mismatch or HMAC verification failed")
+                raise ValueError(
+                    "Decrypted payload mismatch or HMAC verification failed"
+                )
         except Exception as e:
             return DogfoodCheck(
                 check_id="DOGFOOD-CC6.7-CRYPTO",
@@ -270,7 +292,9 @@ class DogfoodAssessor:
             status="PASS",
             severity="HIGH",
             description="AES-256-GCM, HMAC-SHA256, and HKDF cryptographic suites verified operational.",
-            details={"algorithms": ["AES-256-GCM", "HMAC-SHA256", "HKDF-SHA256", "PBKDF2"]},
+            details={
+                "algorithms": ["AES-256-GCM", "HMAC-SHA256", "HKDF-SHA256", "PBKDF2"]
+            },
         )
 
     def _check_audit_logging(self) -> DogfoodCheck:

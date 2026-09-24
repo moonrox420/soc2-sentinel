@@ -22,6 +22,7 @@ logger = logging.getLogger("sentinel.notifications")
 
 class NotificationChannel(str, enum.Enum):
     """Supported alerting and workflow destinations."""
+
     SLACK = "slack"
     TEAMS = "teams"
     PAGERDUTY = "pagerduty"
@@ -32,6 +33,7 @@ class NotificationChannel(str, enum.Enum):
 
 class AlertSeverity(str, enum.Enum):
     """Alert priority level."""
+
     INFO = "INFO"
     WARNING = "WARNING"
     CRITICAL = "CRITICAL"
@@ -40,13 +42,16 @@ class AlertSeverity(str, enum.Enum):
 @dataclass
 class ComplianceAlert:
     """Standardized compliance violation and monitoring notification."""
+
     title: str
     message: str
     severity: AlertSeverity = AlertSeverity.WARNING
     control_id: Optional[str] = None
     tenant_id: Optional[str] = None
     details: Dict[str, Any] = field(default_factory=dict)
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
 
     def __post_init__(self) -> None:
         if self.tenant_id is None:
@@ -54,7 +59,11 @@ class ComplianceAlert:
 
     def format_slack(self) -> Dict[str, Any]:
         """Generate Slack BlockKit JSON message."""
-        color = "#ef4444" if self.severity == AlertSeverity.CRITICAL else "#f59e0b" if self.severity == AlertSeverity.WARNING else "#3b82f6"
+        color = (
+            "#ef4444"
+            if self.severity == AlertSeverity.CRITICAL
+            else "#f59e0b" if self.severity == AlertSeverity.WARNING else "#3b82f6"
+        )
         ctrl_text = f" | Control: *{self.control_id}*" if self.control_id else ""
         return {
             "attachments": [
@@ -63,7 +72,11 @@ class ComplianceAlert:
                     "blocks": [
                         {
                             "type": "header",
-                            "text": {"type": "plain_text", "text": f"[{self.severity.value}] {self.title}", "emoji": True},
+                            "text": {
+                                "type": "plain_text",
+                                "text": f"[{self.severity.value}] {self.title}",
+                                "emoji": True,
+                            },
                         },
                         {
                             "type": "section",
@@ -79,7 +92,11 @@ class ComplianceAlert:
 
     def format_teams(self) -> Dict[str, Any]:
         """Generate Microsoft Teams MessageCard JSON."""
-        color = "EF4444" if self.severity == AlertSeverity.CRITICAL else "F59E0B" if self.severity == AlertSeverity.WARNING else "3B82F6"
+        color = (
+            "EF4444"
+            if self.severity == AlertSeverity.CRITICAL
+            else "F59E0B" if self.severity == AlertSeverity.WARNING else "3B82F6"
+        )
         return {
             "@type": "MessageCard",
             "@context": "http://schema.org/extensions",
@@ -105,7 +122,9 @@ class ComplianceAlert:
             "event_action": "trigger",
             "payload": {
                 "summary": f"[{self.tenant_id}] {self.title}: {self.message}",
-                "severity": "critical" if self.severity == AlertSeverity.CRITICAL else "warning",
+                "severity": (
+                    "critical" if self.severity == AlertSeverity.CRITICAL else "warning"
+                ),
                 "source": "soc2-sentinel",
                 "component": self.control_id or "compliance",
                 "custom_details": self.details,
@@ -162,7 +181,9 @@ class NotificationManager:
         if auth_token:
             headers["Authorization"] = f"Bearer {auth_token}"
 
-        req = urllib.request.Request(webhook_url, data=raw_bytes, headers=headers, method="POST")
+        req = urllib.request.Request(
+            webhook_url, data=raw_bytes, headers=headers, method="POST"
+        )
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:  # nosec B310
                 return bool(200 <= resp.status < 300)

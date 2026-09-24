@@ -17,9 +17,13 @@ def audit_room_env(tmp_path: Path) -> tuple[AuditRoomManager, Path]:
     ev_dir = tmp_path / "evidence" / "2026-09-01"
     ev_dir.mkdir(parents=True, exist_ok=True)
     iam_file = ev_dir / "identity_iam.json"
-    iam_file.write_text(json.dumps({"provider": "mock", "users": ["alice"]}), encoding="utf-8")
+    iam_file.write_text(
+        json.dumps({"provider": "mock", "users": ["alice"]}), encoding="utf-8"
+    )
     enc_file = ev_dir / "encryption_status.json"
-    enc_file.write_text(json.dumps({"provider": "mock", "encrypted": True}), encoding="utf-8")
+    enc_file.write_text(
+        json.dumps({"provider": "mock", "encrypted": True}), encoding="utf-8"
+    )
 
     arm = AuditRoomManager(base_dir=tmp_path)
     return arm, tmp_path
@@ -50,7 +54,9 @@ def test_create_and_get_audit_room(audit_room_env: tuple[AuditRoomManager, Path]
     assert loaded.auditor_email == "lead-auditor@pwc.com"
 
 
-def test_validate_auditor_access_and_logging(audit_room_env: tuple[AuditRoomManager, Path]):
+def test_validate_auditor_access_and_logging(
+    audit_room_env: tuple[AuditRoomManager, Path],
+):
     arm, tmp_path = audit_room_env
     room = arm.create_room(
         room_id="ROOM-AUTH",
@@ -61,12 +67,16 @@ def test_validate_auditor_access_and_logging(audit_room_env: tuple[AuditRoomMana
     )
 
     # Invalid token
-    ok, r_obj = arm.validate_access("ROOM-AUTH", "wrong_token", "1.2.3.4", "TestBrowser")
+    ok, r_obj = arm.validate_access(
+        "ROOM-AUTH", "wrong_token", "1.2.3.4", "TestBrowser"
+    )
     assert ok is False
     assert r_obj is None
 
     # Valid token
-    ok, r_obj = arm.validate_access("ROOM-AUTH", room.access_token, "192.168.1.50", "Mozilla/5.0")
+    ok, r_obj = arm.validate_access(
+        "ROOM-AUTH", room.access_token, "192.168.1.50", "Mozilla/5.0"
+    )
     assert ok is True
     assert r_obj is not None
     assert len(r_obj.access_logs) == 1
@@ -98,7 +108,9 @@ def test_control_crosswalk_and_csv(audit_room_env: tuple[AuditRoomManager, Path]
     assert "SATISFIED" in csv_str
 
 
-def test_generate_html_summary_and_zip_export(audit_room_env: tuple[AuditRoomManager, Path]):
+def test_generate_html_summary_and_zip_export(
+    audit_room_env: tuple[AuditRoomManager, Path],
+):
     arm, tmp_path = audit_room_env
     room = arm.create_room(
         room_id="ROOM-EXPORT",

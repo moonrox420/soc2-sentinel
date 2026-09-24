@@ -28,7 +28,9 @@ def collect_config_drift(
 ) -> Path:
     cfg = config or SentinelConfig()
     try:
-        snap = fetch_snapshot(provider.config_and_auth_snapshot, collector="config_drift")
+        snap = fetch_snapshot(
+            provider.config_and_auth_snapshot, collector="config_drift"
+        )
     except ProviderError as exc:
         return write_failure_evidence(
             control_id=control_id,
@@ -58,7 +60,9 @@ def collect_config_drift(
     if metrics["open_http_listeners"]:
         findings.append({"issue": "HTTP listeners on port 80", "severity": "medium"})
     if metrics["weak_tls_listeners"]:
-        findings.append({"issue": "weak TLS policy on load balancer", "severity": "medium"})
+        findings.append(
+            {"issue": "weak TLS policy on load balancer", "severity": "medium"}
+        )
 
     status = worst_status(
         status_config_mfa(metrics),
@@ -76,7 +80,12 @@ def collect_config_drift(
         "provider": provider.name,
     }
     apply_collection_metadata(payload, snap)
-    log_collection_done(collector="config_drift", provider=provider.name, control_id=control_id, snap=snap)
+    log_collection_done(
+        collector="config_drift",
+        provider=provider.name,
+        control_id=control_id,
+        snap=snap,
+    )
     return write_evidence(
         payload,
         base=base,

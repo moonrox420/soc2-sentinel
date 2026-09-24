@@ -22,9 +22,7 @@ def log_monitoring_snapshot(ctx: AzureContext) -> dict[str, Any]:
         ctx.attempt()
         settings = call_with_retry(
             lambda: list(
-                monitor.diagnostic_settings.list(
-                    "subscriptions/" + ctx.subscription_id
-                )
+                monitor.diagnostic_settings.list("subscriptions/" + ctx.subscription_id)
             ),
             operation="azure_subscription_diagnostics",
         )

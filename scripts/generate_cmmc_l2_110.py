@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate CMMC Level 2 control CSVs — all 110 NIST SP 800-171 Rev 2 requirements."""
+
 from __future__ import annotations
 
 import csv
@@ -481,7 +482,8 @@ def write_csv(path: Path, rows: list[dict[str, str]], fieldnames: list[str]) -> 
 def notion_subset(rows: list[dict[str, str]]) -> list[dict[str, str]]:
     """Export automated / Met controls for Notion dashboard import."""
     return [
-        r for r in rows
+        r
+        for r in rows
         if r["Automation Hook"] != "Manual" or r["CMMC L2 Status"] == "Met"
     ]
 
@@ -490,7 +492,9 @@ def main() -> int:
     rows = build_rows()
     expected = 110
     if len(rows) != expected:
-        print(f"ERROR: Expected {expected} requirements, got {len(rows)}", file=sys.stderr)
+        print(
+            f"ERROR: Expected {expected} requirements, got {len(rows)}", file=sys.stderr
+        )
         return 1
 
     full_path = DATA / "cmmc-l2-controls-110.csv"

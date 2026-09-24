@@ -27,7 +27,9 @@ def collect_log_aggregator(
 ) -> Path:
     cfg = config or SentinelConfig()
     try:
-        snap = fetch_snapshot(provider.log_monitoring_snapshot, collector="log_aggregator")
+        snap = fetch_snapshot(
+            provider.log_monitoring_snapshot, collector="log_aggregator"
+        )
     except ProviderError as exc:
         return write_failure_evidence(
             control_id=control_id,
@@ -44,12 +46,18 @@ def collect_log_aggregator(
         "log_coverage_percent": snap.get("log_coverage_percent"),
         "max_gap_hours": snap.get("max_gap_hours"),
         "critical_control_failures_30d": snap.get("critical_control_failures_30d", 0),
-        "config_recorder_all_supported": snap.get("config_recorder_all_supported", False),
+        "config_recorder_all_supported": snap.get(
+            "config_recorder_all_supported", False
+        ),
         "cui_events_captured": len(cui_events),
         "cui_retention_days": snap.get("cui_retention_days"),
-        "log_group_retention_days_observed": snap.get("log_group_retention_days_observed"),
+        "log_group_retention_days_observed": snap.get(
+            "log_group_retention_days_observed"
+        ),
         "log_bucket_retention_days": snap.get("log_bucket_retention_days"),
-        "subscription_diagnostic_settings_count": snap.get("subscription_diagnostic_settings_count"),
+        "subscription_diagnostic_settings_count": snap.get(
+            "subscription_diagnostic_settings_count"
+        ),
         "required_sink_present": snap.get("required_sink_present"),
     }
     findings = [{**f, "severity": "high"} for f in snap.get("findings", [])]
@@ -73,5 +81,10 @@ def collect_log_aggregator(
         "attck_tags": list(snap.get("attck_summary", {}).keys()),
     }
     apply_collection_metadata(payload, snap)
-    log_collection_done(collector="log_aggregator", provider=provider.name, control_id=control_id, snap=snap)
+    log_collection_done(
+        collector="log_aggregator",
+        provider=provider.name,
+        control_id=control_id,
+        snap=snap,
+    )
     return write_evidence(payload, base=base, extra_files=extra, config=cfg)

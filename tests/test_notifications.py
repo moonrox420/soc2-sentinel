@@ -48,4 +48,9 @@ def test_notification_manager_url_validation_and_send() -> None:
     assert NotificationManager.send_webhook("file:///etc/passwd", alert) is False
 
     # Handling connection error safely without raising uncaught exceptions
-    assert NotificationManager.send_webhook("http://127.0.0.1:65510/webhook", alert, timeout=0.5) is False
+    assert (
+        NotificationManager.send_webhook(
+            "http://127.0.0.1:65510/webhook", alert, timeout=0.5
+        )
+        is False
+    )

@@ -20,6 +20,7 @@ from sentinel.errors import SentinelError
 
 class Role(str, enum.Enum):
     """Enterprise RBAC roles."""
+
     SUPER_ADMIN = "super_admin"
     SECURITY_ADMIN = "security_admin"
     COMPLIANCE_OFFICER = "compliance_officer"
@@ -30,6 +31,7 @@ class Role(str, enum.Enum):
 
 class Permission(str, enum.Enum):
     """Granular capabilities enforced across API and CLI boundaries."""
+
     READ_EVIDENCE = "read_evidence"
     READ_REPORT = "read_report"
     READ_CONFIG = "read_config"
@@ -105,6 +107,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
 
 class AuthError(SentinelError, PermissionError):
     """Raised when authentication or authorization checks fail."""
+
     def __init__(self, message: str, status_code: int = 403) -> None:
         super().__init__(message)
         self.status_code = status_code
@@ -113,6 +116,7 @@ class AuthError(SentinelError, PermissionError):
 @dataclass(frozen=True)
 class UserIdentity:
     """Authenticated user context."""
+
     user_id: str
     role: Role = Role.SYSTEM_USER
     email: str = ""
@@ -152,8 +156,7 @@ class UserIdentity:
 DEFAULT_ANONYMOUS_USER = UserIdentity.anonymous()
 
 _CURRENT_USER: contextvars.ContextVar[UserIdentity] = contextvars.ContextVar(
-    "current_user",
-    default=DEFAULT_ANONYMOUS_USER
+    "current_user", default=DEFAULT_ANONYMOUS_USER
 )
 
 
@@ -233,13 +236,15 @@ class TokenManager:
         return f"sentinel_{b64_payload}.{sig}"
 
     @classmethod
-    def verify_token(cls, token: str, secret: Optional[str] = None) -> Optional[UserIdentity]:
+    def verify_token(
+        cls, token: str, secret: Optional[str] = None
+    ) -> Optional[UserIdentity]:
         """Validate signature and extract authenticated UserIdentity, or return None."""
         if not token or not token.startswith("sentinel_") or "." not in token:
             return None
 
         signing_key = cls.get_signing_secret(secret).encode("utf-8")
-        token_body = token[len("sentinel_"):]
+        token_body = token[len("sentinel_") :]
         b64_payload, signature = token_body.split(".", 1)
 
         pad = "=" * ((4 - len(b64_payload) % 4) % 4)

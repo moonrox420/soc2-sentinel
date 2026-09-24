@@ -22,14 +22,18 @@ logger = logging.getLogger("sentinel.vendor_risk")
 
 class VendorTier(str, enum.Enum):
     """Vendor criticality tiers."""
-    TIER_1_CRITICAL = "TIER_1_CRITICAL"  # Stores customer data/PII or critical infrastructure
-    TIER_2_HIGH = "TIER_2_HIGH"          # Direct production access or operational dependency
-    TIER_3_MEDIUM = "TIER_3_MEDIUM"      # Business tools without production access
-    TIER_4_LOW = "TIER_4_LOW"            # Non-sensitive commodity software/hardware
+
+    TIER_1_CRITICAL = (
+        "TIER_1_CRITICAL"  # Stores customer data/PII or critical infrastructure
+    )
+    TIER_2_HIGH = "TIER_2_HIGH"  # Direct production access or operational dependency
+    TIER_3_MEDIUM = "TIER_3_MEDIUM"  # Business tools without production access
+    TIER_4_LOW = "TIER_4_LOW"  # Non-sensitive commodity software/hardware
 
 
 class VendorStatus(str, enum.Enum):
     """Vendor compliance evaluation status."""
+
     APPROVED = "APPROVED"
     UNDER_REVIEW = "UNDER_REVIEW"
     CONDITIONAL = "CONDITIONAL"
@@ -39,6 +43,7 @@ class VendorStatus(str, enum.Enum):
 
 class DataClassification(str, enum.Enum):
     """Classification of data shared with vendor."""
+
     RESTRICTED = "RESTRICTED"  # PII, financial, PHI, credentials
     CONFIDENTIAL = "CONFIDENTIAL"  # Internal business IP, source code
     INTERNAL = "INTERNAL"  # Standard operational logs/telemetry
@@ -48,6 +53,7 @@ class DataClassification(str, enum.Enum):
 @dataclass
 class SecurityQuestionnaire:
     """Standardized third-party vendor security assessment questionnaire."""
+
     has_soc2_type2: bool = False
     soc2_report_date: Optional[str] = None
     soc2_clean_opinion: bool = False
@@ -86,6 +92,7 @@ class SecurityQuestionnaire:
 @dataclass
 class Vendor:
     """Third-party vendor compliance record."""
+
     vendor_id: str
     name: str
     service_description: str
@@ -97,7 +104,9 @@ class Vendor:
     questionnaire: SecurityQuestionnaire = field(default_factory=SecurityQuestionnaire)
     risk_score: float = 0.0
     findings: List[str] = field(default_factory=list)
-    last_assessment_date: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    last_assessment_date: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
 
     def evaluate_risk(self) -> None:
         """Perform automated risk assessment and update score/status."""
@@ -108,17 +117,25 @@ class Vendor:
         now = datetime.now(timezone.utc)
         if self.soc2_valid_until:
             try:
-                valid_until_dt = datetime.fromisoformat(self.soc2_valid_until.replace("Z", "+00:00"))
+                valid_until_dt = datetime.fromisoformat(
+                    self.soc2_valid_until.replace("Z", "+00:00")
+                )
                 days_left = (valid_until_dt - now).days
                 if days_left < 0:
-                    findings.append(f"CRITICAL: Vendor SOC 2 Type II report expired {abs(days_left)} days ago.")
+                    findings.append(
+                        f"CRITICAL: Vendor SOC 2 Type II report expired {abs(days_left)} days ago."
+                    )
                     base_score -= 20.0
                 elif days_left <= 60:
-                    findings.append(f"WARNING: Vendor SOC 2 Type II report expires in {days_left} days.")
+                    findings.append(
+                        f"WARNING: Vendor SOC 2 Type II report expires in {days_left} days."
+                    )
             except Exception:
                 findings.append("WARNING: Invalid soc2_valid_until datetime format.")
         elif self.tier in (VendorTier.TIER_1_CRITICAL, VendorTier.TIER_2_HIGH):
-            findings.append("HIGH: No SOC 2 Type II report on file for high-criticality vendor.")
+            findings.append(
+                "HIGH: No SOC 2 Type II report on file for high-criticality vendor."
+            )
             base_score -= 15.0
 
         # Tier 1 Critical requirements
@@ -127,10 +144,14 @@ class Vendor:
                 DataClassification.RESTRICTED,
                 DataClassification.CONFIDENTIAL,
             ):
-                findings.append("CRITICAL: Data Processing Agreement (DPA) missing for Tier 1 vendor.")
+                findings.append(
+                    "CRITICAL: Data Processing Agreement (DPA) missing for Tier 1 vendor."
+                )
                 base_score -= 15.0
             if not self.questionnaire.enforces_mfa:
-                findings.append("CRITICAL: Vendor does not enforce MFA on staff identities.")
+                findings.append(
+                    "CRITICAL: Vendor does not enforce MFA on staff identities."
+                )
                 base_score -= 15.0
             if not self.questionnaire.encrypts_data_at_rest:
                 findings.append("CRITICAL: Encryption at rest not affirmed by vendor.")
@@ -140,7 +161,11 @@ class Vendor:
         self.findings = findings
 
         if any(f.startswith("CRITICAL:") for f in findings):
-            self.status = VendorStatus.CONDITIONAL if self.risk_score >= 50.0 else VendorStatus.REJECTED
+            self.status = (
+                VendorStatus.CONDITIONAL
+                if self.risk_score >= 50.0
+                else VendorStatus.REJECTED
+            )
         elif self.risk_score >= 80.0:
             self.status = VendorStatus.APPROVED
         else:
@@ -180,17 +205,25 @@ class VendorRiskManager:
             vendors: List[Vendor] = []
             for item in raw:
                 q_dict = item.pop("questionnaire", {})
-                q = SecurityQuestionnaire(**q_dict) if isinstance(q_dict, dict) else SecurityQuestionnaire()
+                q = (
+                    SecurityQuestionnaire(**q_dict)
+                    if isinstance(q_dict, dict)
+                    else SecurityQuestionnaire()
+                )
                 v = Vendor(
                     vendor_id=item["vendor_id"],
                     name=item["name"],
                     service_description=item.get("service_description", ""),
                     tier=VendorTier(item.get("tier", VendorTier.TIER_3_MEDIUM.value)),
                     data_classification=DataClassification(
-                        item.get("data_classification", DataClassification.INTERNAL.value)
+                        item.get(
+                            "data_classification", DataClassification.INTERNAL.value
+                        )
                     ),
                     owner_email=item.get("owner_email", ""),
-                    status=VendorStatus(item.get("status", VendorStatus.UNDER_REVIEW.value)),
+                    status=VendorStatus(
+                        item.get("status", VendorStatus.UNDER_REVIEW.value)
+                    ),
                     soc2_valid_until=item.get("soc2_valid_until"),
                     questionnaire=q,
                     risk_score=float(item.get("risk_score", 0.0)),
@@ -224,7 +257,9 @@ class VendorRiskManager:
         file_path.write_text(json.dumps(serialized, indent=2), encoding="utf-8")
         return vendor
 
-    def get_vendor(self, vendor_id: str, tenant_id: Optional[str] = None) -> Optional[Vendor]:
+    def get_vendor(
+        self, vendor_id: str, tenant_id: Optional[str] = None
+    ) -> Optional[Vendor]:
         """Retrieve a specific vendor by ID."""
         for v in self.list_vendors(tenant_id):
             if v.vendor_id == vendor_id:
@@ -238,7 +273,9 @@ class VendorRiskManager:
         approved = len([v for v in vendors if v.status == VendorStatus.APPROVED])
         conditional = len([v for v in vendors if v.status == VendorStatus.CONDITIONAL])
         rejected = len([v for v in vendors if v.status == VendorStatus.REJECTED])
-        under_review = len([v for v in vendors if v.status == VendorStatus.UNDER_REVIEW])
+        under_review = len(
+            [v for v in vendors if v.status == VendorStatus.UNDER_REVIEW]
+        )
 
         critical_gaps = []
         for v in vendors:
@@ -246,7 +283,9 @@ class VendorRiskManager:
                 if f.startswith("CRITICAL:"):
                     critical_gaps.append(f"[{v.name}] {f}")
 
-        avg_score = round(sum(v.risk_score for v in vendors) / total, 1) if total > 0 else 100.0
+        avg_score = (
+            round(sum(v.risk_score for v in vendors) / total, 1) if total > 0 else 100.0
+        )
 
         return {
             "timestamp": datetime.now(timezone.utc).isoformat(),

@@ -62,12 +62,16 @@ class SafeExpressionEvaluator:
         try:
             tree = ast.parse(expression_str.strip(), mode="eval")
         except SyntaxError as e:
-            raise ValueError(f"Invalid policy expression syntax: {expression_str}") from e
+            raise ValueError(
+                f"Invalid policy expression syntax: {expression_str}"
+            ) from e
 
         # Validate that no disallowed AST nodes exist (e.g., Call, Import, Lambda, Exec)
         for node in ast.walk(tree):
             if not isinstance(node, cls.ALLOWED_NODES):
-                raise ValueError(f"Forbidden syntax in policy expression: {type(node).__name__}")
+                raise ValueError(
+                    f"Forbidden syntax in policy expression: {type(node).__name__}"
+                )
 
         return bool(cls._eval_node(tree.body, context))
 
@@ -189,7 +193,12 @@ DEFAULT_ENTERPRISE_RULES: list[PolicyRule] = [
         severity="CRITICAL",
         collector_target="iam_access_review",
         condition="mfa_enforced_percentage >= 100.0",
-        frameworks={"soc2": ["CC6.1", "CC6.2"], "nist": ["3.5.3"], "cmmc": ["IA.L2-3.5.3"], "zt": ["ZT-01"]},
+        frameworks={
+            "soc2": ["CC6.1", "CC6.2"],
+            "nist": ["3.5.3"],
+            "cmmc": ["IA.L2-3.5.3"],
+            "zt": ["ZT-01"],
+        },
         remediation_summary="Enable mandatory MFA / WebAuthn conditional access policies across all identity providers.",
         remediation_playbook="docs/playbooks/iam-mfa-enforcement.md",
     ),
@@ -201,7 +210,12 @@ DEFAULT_ENTERPRISE_RULES: list[PolicyRule] = [
         severity="HIGH",
         collector_target="iam_access_review",
         condition="orphaned_accounts == 0",
-        frameworks={"soc2": ["CC6.1"], "nist": ["3.1.1", "3.1.2"], "cmmc": ["AC.L2-3.1.1"], "zt": ["ZT-01"]},
+        frameworks={
+            "soc2": ["CC6.1"],
+            "nist": ["3.1.1", "3.1.2"],
+            "cmmc": ["AC.L2-3.1.1"],
+            "zt": ["ZT-01"],
+        },
         remediation_summary="Deprovision all orphaned users identified in the IAM access review report.",
         remediation_playbook="docs/playbooks/iam-deprovisioning.md",
     ),
@@ -225,7 +239,12 @@ DEFAULT_ENTERPRISE_RULES: list[PolicyRule] = [
         severity="CRITICAL",
         collector_target="log_aggregator",
         condition="log_streams >= 1 and completeness >= 95.0",
-        frameworks={"soc2": ["CC7.1"], "nist": ["3.3.1", "3.3.2"], "cmmc": ["AU.L2-3.3.1"], "zt": ["ZT-06"]},
+        frameworks={
+            "soc2": ["CC7.1"],
+            "nist": ["3.3.1", "3.3.2"],
+            "cmmc": ["AU.L2-3.3.1"],
+            "zt": ["ZT-06"],
+        },
         remediation_summary="Enable multi-region CloudTrail, Azure Activity Log diagnostics, or GCP Audit Logs.",
         remediation_playbook="docs/playbooks/logging-setup.md",
     ),
@@ -249,7 +268,12 @@ DEFAULT_ENTERPRISE_RULES: list[PolicyRule] = [
         severity="CRITICAL",
         collector_target="config_drift",
         condition="open_sgs == 0",
-        frameworks={"soc2": ["CC6.6", "CC6.2"], "nist": ["3.13.1"], "cmmc": ["SC.L2-3.13.1"], "zt": ["ZT-04"]},
+        frameworks={
+            "soc2": ["CC6.6", "CC6.2"],
+            "nist": ["3.13.1"],
+            "cmmc": ["SC.L2-3.13.1"],
+            "zt": ["ZT-04"],
+        },
         remediation_summary="Restrict ingress rules to authorized corporate CIDR blocks or VPN gateways.",
         remediation_playbook="docs/playbooks/network-security.md",
     ),
@@ -261,7 +285,12 @@ DEFAULT_ENTERPRISE_RULES: list[PolicyRule] = [
         severity="CRITICAL",
         collector_target="encryption_status",
         condition="unencrypted_stores == 0 and at_rest_pct >= 100.0",
-        frameworks={"soc2": ["C1.1", "C1.2"], "nist": ["3.13.16"], "cmmc": ["SC.L2-3.13.16"], "zt": ["ZT-05"]},
+        frameworks={
+            "soc2": ["C1.1", "C1.2"],
+            "nist": ["3.13.16"],
+            "cmmc": ["SC.L2-3.13.16"],
+            "zt": ["ZT-05"],
+        },
         remediation_summary="Enable KMS/AES-256 encryption on all unencrypted volumes and database instances.",
         remediation_playbook="docs/playbooks/encryption-at-rest.md",
     ),
@@ -273,7 +302,12 @@ DEFAULT_ENTERPRISE_RULES: list[PolicyRule] = [
         severity="HIGH",
         collector_target="encryption_status",
         condition="transit_pct >= 100.0",
-        frameworks={"soc2": ["C1.2"], "nist": ["3.13.8"], "cmmc": ["SC.L2-3.13.8"], "zt": ["ZT-05"]},
+        frameworks={
+            "soc2": ["C1.2"],
+            "nist": ["3.13.8"],
+            "cmmc": ["SC.L2-3.13.8"],
+            "zt": ["ZT-05"],
+        },
         remediation_summary="Upgrade load balancer SSL policies to TLS 1.2 or TLS 1.3 only.",
         remediation_playbook="docs/playbooks/tls-configuration.md",
     ),
@@ -285,7 +319,11 @@ DEFAULT_ENTERPRISE_RULES: list[PolicyRule] = [
         severity="CRITICAL",
         collector_target="github_vcs",
         condition="branch_protection_enforced == True and required_approvals >= 1",
-        frameworks={"soc2": ["CC8.1"], "nist": ["3.4.1", "3.4.2"], "cmmc": ["CM.L2-3.4.1"]},
+        frameworks={
+            "soc2": ["CC8.1"],
+            "nist": ["3.4.1", "3.4.2"],
+            "cmmc": ["CM.L2-3.4.1"],
+        },
         remediation_summary="Configure GitHub branch protection rule requiring pull request approvals before merge.",
         remediation_playbook="docs/playbooks/vcs-branch-protection.md",
     ),
@@ -309,7 +347,12 @@ DEFAULT_ENTERPRISE_RULES: list[PolicyRule] = [
         severity="HIGH",
         collector_target="resilience_testing",
         condition="success_24h >= 1",
-        frameworks={"soc2": ["A1.2"], "nist": ["3.11.1"], "cmmc": ["RE.L2-3.11.1"], "zt": ["ZT-07"]},
+        frameworks={
+            "soc2": ["A1.2"],
+            "nist": ["3.11.1"],
+            "cmmc": ["RE.L2-3.11.1"],
+            "zt": ["ZT-07"],
+        },
         remediation_summary="Investigate failed backup jobs in AWS Backup / Azure Backup / GCP snapshots.",
         remediation_playbook="docs/playbooks/backup-recovery.md",
     ),
@@ -321,7 +364,11 @@ DEFAULT_ENTERPRISE_RULES: list[PolicyRule] = [
         severity="HIGH",
         collector_target="resilience_testing",
         condition="restore_tested_90d == True",
-        frameworks={"soc2": ["A1.3", "A1.2"], "nist": ["3.11.1"], "cmmc": ["RE.L2-3.11.1"]},
+        frameworks={
+            "soc2": ["A1.3", "A1.2"],
+            "nist": ["3.11.1"],
+            "cmmc": ["RE.L2-3.11.1"],
+        },
         remediation_summary="Perform a test restore drill and record completion timestamp in Sentinel.",
         remediation_playbook="docs/playbooks/restore-drills.md",
     ),
@@ -332,7 +379,9 @@ class PolicyEngine:
     """Evaluates declarative policy rules across collector metric payloads."""
 
     def __init__(self, custom_rules: list[PolicyRule] | None = None) -> None:
-        self.rules: dict[str, PolicyRule] = {r.rule_id: r for r in DEFAULT_ENTERPRISE_RULES}
+        self.rules: dict[str, PolicyRule] = {
+            r.rule_id: r for r in DEFAULT_ENTERPRISE_RULES
+        }
         if custom_rules:
             for r in custom_rules:
                 self.rules[r.rule_id] = r
@@ -358,7 +407,9 @@ class PolicyEngine:
             logger.error("Failed loading policy rules from %s: %s", file_path, e)
             return 0
 
-    def evaluate(self, collector_data: dict[str, dict[str, Any]], provider: str = "unknown") -> PolicyReport:
+    def evaluate(
+        self, collector_data: dict[str, dict[str, Any]], provider: str = "unknown"
+    ) -> PolicyReport:
         """Evaluate all active rules against collector telemetry."""
         now_iso = datetime.now(timezone.utc).isoformat()
         tenant = get_current_tenant()
@@ -404,7 +455,9 @@ class PolicyEngine:
                 continue
 
             try:
-                is_compliant = SafeExpressionEvaluator.evaluate(rule.condition, target_metrics)
+                is_compliant = SafeExpressionEvaluator.evaluate(
+                    rule.condition, target_metrics
+                )
                 if is_compliant:
                     status = "PASS"
                     message = "Condition satisfied"
@@ -436,7 +489,9 @@ class PolicyEngine:
             )
 
         evaluated = passed + failed
-        compliance_score = round((passed / evaluated * 100.0), 1) if evaluated > 0 else 0.0
+        compliance_score = (
+            round((passed / evaluated * 100.0), 1) if evaluated > 0 else 0.0
+        )
 
         return PolicyReport(
             timestamp=now_iso,

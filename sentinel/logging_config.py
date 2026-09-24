@@ -35,7 +35,9 @@ class _JsonFormatter(logging.Formatter):
         return json.dumps(payload, default=str)
 
 
-def configure_logging(*, verbose: bool = False, log_file: str | Path | None = None) -> logging.Logger:
+def configure_logging(
+    *, verbose: bool = False, log_file: str | Path | None = None
+) -> logging.Logger:
     logger = logging.getLogger("sentinel")
     logger.handlers.clear()
     logger.setLevel(logging.DEBUG if verbose else logging.INFO)

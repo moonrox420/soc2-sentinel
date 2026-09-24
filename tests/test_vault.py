@@ -44,12 +44,16 @@ def test_evidence_vault_sealing_and_verification(tmp_path: Path) -> None:
     (run2_ctrl / "evidence.json").write_text(json.dumps({"test": 2}), encoding="utf-8")
 
     # Seal block 0
-    b0 = vault.seal_run(run1, tenant_id="tenant-vault-test", signatory="Security Officer")
+    b0 = vault.seal_run(
+        run1, tenant_id="tenant-vault-test", signatory="Security Officer"
+    )
     assert b0.block_index == 0
     assert b0.previous_hash == EvidenceVault.GENESIS_HASH
 
     # Seal block 1
-    b1 = vault.seal_run(run2, tenant_id="tenant-vault-test", signatory="Security Officer")
+    b1 = vault.seal_run(
+        run2, tenant_id="tenant-vault-test", signatory="Security Officer"
+    )
     assert b1.block_index == 1
     assert b1.previous_hash == b0.block_hash
 
@@ -62,6 +66,7 @@ def test_evidence_vault_sealing_and_verification(tmp_path: Path) -> None:
 
 def test_evidence_vault_tamper_detection(tmp_path: Path) -> None:
     import pytest
+
     vault = EvidenceVault(tmp_path)
     empty_dir = tmp_path / "evidence" / "empty-run"
     empty_dir.mkdir(parents=True)
@@ -75,7 +80,9 @@ def test_evidence_vault_tamper_detection(tmp_path: Path) -> None:
     vault.seal_run(tmp_path / "evidence" / "2026-09-01", tenant_id="tenant-tamper")
     vault.seal_run(tmp_path / "evidence" / "2026-09-01", tenant_id="tenant-tamper")
 
-    chain_file = tmp_path / "tenants" / "tenant-tamper" / "vault" / "evidence_chain.jsonl"
+    chain_file = (
+        tmp_path / "tenants" / "tenant-tamper" / "vault" / "evidence_chain.jsonl"
+    )
     lines = chain_file.read_text(encoding="utf-8").splitlines()
 
     # Tamper with block 0 payload

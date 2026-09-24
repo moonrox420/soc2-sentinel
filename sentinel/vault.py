@@ -32,7 +32,9 @@ class MerkleTree:
     """Computes a binary Merkle tree root hash from a collection of leaf hashes."""
 
     def __init__(self, leaf_hashes: list[str]) -> None:
-        self.leaves: list[str] = list(sorted(leaf_hashes)) if leaf_hashes else ["0" * 64]
+        self.leaves: list[str] = (
+            list(sorted(leaf_hashes)) if leaf_hashes else ["0" * 64]
+        )
         self.root: str = self._build_tree(self.leaves)
 
     def _build_tree(self, nodes: list[str]) -> str:
@@ -54,6 +56,7 @@ class MerkleTree:
 @dataclass
 class EvidenceBlock:
     """An immutable record in the audit evidence chain."""
+
     block_index: int
     timestamp: str
     tenant_id: str
@@ -159,7 +162,9 @@ class EvidenceVault:
                         collector_count += 1
 
         if collector_count == 0:
-            raise ValueError(f"No valid evidence files (report.json or evidence.json) found to seal in {evidence_date_dir}")
+            raise ValueError(
+                f"No valid evidence files (report.json or evidence.json) found to seal in {evidence_date_dir}"
+            )
 
         merkle_root = MerkleTree(leaf_hashes).root
         timestamp = datetime.now(timezone.utc).isoformat()
@@ -208,7 +213,9 @@ class EvidenceVault:
         for idx, block in enumerate(chain):
             # Check block index continuity
             if block.block_index != idx:
-                errors.append(f"Block index mismatch at position {idx}: got {block.block_index}")
+                errors.append(
+                    f"Block index mismatch at position {idx}: got {block.block_index}"
+                )
 
             # Check previous hash linkage
             if block.previous_hash != expected_prev_hash:

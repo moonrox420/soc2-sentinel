@@ -66,7 +66,9 @@ def _safe_int(val: Any, default: int = 0) -> int:
         return default
 
 
-def _read_evidence_dir(evidence_base: Path, date_str: str | None = None) -> tuple[str, dict[str, dict[str, Any]]]:
+def _read_evidence_dir(
+    evidence_base: Path, date_str: str | None = None
+) -> tuple[str, dict[str, dict[str, Any]]]:
     """Find and load the latest or specified evidence directory."""
     if not evidence_base.exists():
         return "", {}
@@ -77,7 +79,9 @@ def _read_evidence_dir(evidence_base: Path, date_str: str | None = None) -> tupl
             return date_str, {}
         chosen_dir = target_dir
     else:
-        dirs = [d for d in evidence_base.iterdir() if d.is_dir() and d.name != "manifests"]
+        dirs = [
+            d for d in evidence_base.iterdir() if d.is_dir() and d.name != "manifests"
+        ]
         if not dirs:
             return "", {}
         chosen_dir = max(dirs, key=lambda d: d.name)
@@ -126,11 +130,20 @@ def _eval_iam(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="none",
             findings=["No IAM access review evidence collected"],
-            frameworks={"soc2": "CC6.1", "nist": "AC-2, AC-3", "cmmc": "AC.L2-3.1.1", "zt": "ZT-01"},
+            frameworks={
+                "soc2": "CC6.1",
+                "nist": "AC-2, AC-3",
+                "cmmc": "AC.L2-3.1.1",
+                "zt": "ZT-01",
+            },
         )
     quality = data.get("collection_quality", "unknown")
     if quality == "failed":
-        err_msg = data.get("errors", ["IAM collector failed execution"])[0] if data.get("errors") else "IAM collection failed"
+        err_msg = (
+            data.get("errors", ["IAM collector failed execution"])[0]
+            if data.get("errors")
+            else "IAM collection failed"
+        )
         return ControlScore(
             control_id="CC6.1",
             name="IAM & Access Provisioning",
@@ -139,12 +152,19 @@ def _eval_iam(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="failed",
             findings=[f"Evidence collection failed: {err_msg}"],
-            frameworks={"soc2": "CC6.1", "nist": "AC-2, AC-3", "cmmc": "AC.L2-3.1.1", "zt": "ZT-01"},
+            frameworks={
+                "soc2": "CC6.1",
+                "nist": "AC-2, AC-3",
+                "cmmc": "AC.L2-3.1.1",
+                "zt": "ZT-01",
+            },
         )
 
     metrics = data.get("metrics", {})
     orphaned = _safe_int(metrics.get("orphaned_accounts", 0))
-    mfa_raw = metrics.get("mfa_enforced_percentage", metrics.get("mfa_enforcement_percent"))
+    mfa_raw = metrics.get(
+        "mfa_enforced_percentage", metrics.get("mfa_enforcement_percent")
+    )
     mfa = _safe_float(mfa_raw, 0.0) if mfa_raw is not None else 0.0
     review_days = metrics.get("days_since_last_review")
     review_days_int = _safe_int(review_days, 999) if review_days is not None else 0
@@ -154,17 +174,23 @@ def _eval_iam(data: dict[str, Any] | None) -> ControlScore:
     if orphaned > 0:
         deduction = min(30.0, orphaned * 5.0)
         score -= deduction
-        findings.append(f"{orphaned} orphaned accounts detected requiring deprovisioning")
+        findings.append(
+            f"{orphaned} orphaned accounts detected requiring deprovisioning"
+        )
     if mfa < 100.0:
         deduction = min(40.0, (100.0 - mfa) * 0.8)
         score -= deduction
         findings.append(f"MFA enforcement is only {mfa:.1f}% (target: 100%)")
     if review_days_int > 90:
         score -= 20.0
-        findings.append(f"IAM review overdue ({review_days_int} days since last review, max SLA: 90 days)")
+        findings.append(
+            f"IAM review overdue ({review_days_int} days since last review, max SLA: 90 days)"
+        )
     if quality == "partial":
         score = min(70.0, score)
-        findings.append("Partial evidence collection: some IAM metrics could not be verified")
+        findings.append(
+            "Partial evidence collection: some IAM metrics could not be verified"
+        )
 
     score = max(0.0, min(100.0, score))
     status = "PASS" if score >= 85.0 else ("PARTIAL" if score >= 50.0 else "FAIL")
@@ -176,8 +202,17 @@ def _eval_iam(data: dict[str, Any] | None) -> ControlScore:
         score=score,
         evidence_quality=quality,
         findings=findings,
-        metrics_summary={"orphaned_accounts": orphaned, "mfa_enforced_percentage": mfa, "review_days": review_days_int},
-        frameworks={"soc2": "CC6.1", "nist": "AC-2, AC-3", "cmmc": "AC.L2-3.1.1", "zt": "ZT-01"},
+        metrics_summary={
+            "orphaned_accounts": orphaned,
+            "mfa_enforced_percentage": mfa,
+            "review_days": review_days_int,
+        },
+        frameworks={
+            "soc2": "CC6.1",
+            "nist": "AC-2, AC-3",
+            "cmmc": "AC.L2-3.1.1",
+            "zt": "ZT-01",
+        },
     )
 
 
@@ -191,11 +226,20 @@ def _eval_logging(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="none",
             findings=["No log aggregator evidence collected"],
-            frameworks={"soc2": "CC7.1", "nist": "AU-2, AU-3, AU-6", "cmmc": "AU.L2-3.3.1", "zt": "ZT-06"},
+            frameworks={
+                "soc2": "CC7.1",
+                "nist": "AU-2, AU-3, AU-6",
+                "cmmc": "AU.L2-3.3.1",
+                "zt": "ZT-06",
+            },
         )
     quality = data.get("collection_quality", "unknown")
     if quality == "failed":
-        err_msg = data.get("errors", ["Logging collector failed execution"])[0] if data.get("errors") else "Log aggregator collection failed"
+        err_msg = (
+            data.get("errors", ["Logging collector failed execution"])[0]
+            if data.get("errors")
+            else "Log aggregator collection failed"
+        )
         return ControlScore(
             control_id="CC7.1",
             name="System Logging & Anomaly Monitoring",
@@ -204,14 +248,30 @@ def _eval_logging(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="failed",
             findings=[f"Evidence collection failed: {err_msg}"],
-            frameworks={"soc2": "CC7.1", "nist": "AU-2, AU-3, AU-6", "cmmc": "AU.L2-3.3.1", "zt": "ZT-06"},
+            frameworks={
+                "soc2": "CC7.1",
+                "nist": "AU-2, AU-3, AU-6",
+                "cmmc": "AU.L2-3.3.1",
+                "zt": "ZT-06",
+            },
         )
 
     metrics = data.get("metrics", {})
-    streams = _safe_int(metrics.get("log_streams_active", metrics.get("active_trails", 0)))
-    completeness = _safe_float(metrics.get("critical_events_logged_percentage", metrics.get("log_coverage_percent", 0.0)))
-    retention = _safe_int(metrics.get("retention_days", metrics.get("cui_retention_days", 0)))
-    gap_hours = _safe_float(metrics.get("longest_gap_hours", metrics.get("max_gap_hours", 0.0)))
+    streams = _safe_int(
+        metrics.get("log_streams_active", metrics.get("active_trails", 0))
+    )
+    completeness = _safe_float(
+        metrics.get(
+            "critical_events_logged_percentage",
+            metrics.get("log_coverage_percent", 0.0),
+        )
+    )
+    retention = _safe_int(
+        metrics.get("retention_days", metrics.get("cui_retention_days", 0))
+    )
+    gap_hours = _safe_float(
+        metrics.get("longest_gap_hours", metrics.get("max_gap_hours", 0.0))
+    )
 
     score = 100.0
     findings = []
@@ -220,16 +280,24 @@ def _eval_logging(data: dict[str, Any] | None) -> ControlScore:
         findings.append("No active log streams configured")
     if completeness < 95.0:
         score -= min(40.0, (95.0 - completeness) * 1.5)
-        findings.append(f"Critical event log completeness is {completeness:.1f}% (target: >=95%)")
+        findings.append(
+            f"Critical event log completeness is {completeness:.1f}% (target: >=95%)"
+        )
     if retention < 365:
         score -= 20.0
-        findings.append(f"Audit log retention is {retention} days (SOC2/NIST target: >=365 days)")
+        findings.append(
+            f"Audit log retention is {retention} days (SOC2/NIST target: >=365 days)"
+        )
     if gap_hours > 24.0:
         score -= 20.0
-        findings.append(f"Logging gap of {gap_hours:.1f} hours exceeds 24h continuity threshold")
+        findings.append(
+            f"Logging gap of {gap_hours:.1f} hours exceeds 24h continuity threshold"
+        )
     if quality == "partial":
         score = min(70.0, score)
-        findings.append("Partial evidence collection: log continuity could not be fully verified")
+        findings.append(
+            "Partial evidence collection: log continuity could not be fully verified"
+        )
 
     score = max(0.0, min(100.0, score))
     status = "PASS" if score >= 85.0 else ("PARTIAL" if score >= 50.0 else "FAIL")
@@ -241,8 +309,17 @@ def _eval_logging(data: dict[str, Any] | None) -> ControlScore:
         score=score,
         evidence_quality=quality,
         findings=findings,
-        metrics_summary={"log_streams": streams, "completeness": completeness, "retention_days": retention},
-        frameworks={"soc2": "CC7.1", "nist": "AU-2, AU-3, AU-6", "cmmc": "AU.L2-3.3.1", "zt": "ZT-06"},
+        metrics_summary={
+            "log_streams": streams,
+            "completeness": completeness,
+            "retention_days": retention,
+        },
+        frameworks={
+            "soc2": "CC7.1",
+            "nist": "AU-2, AU-3, AU-6",
+            "cmmc": "AU.L2-3.3.1",
+            "zt": "ZT-06",
+        },
     )
 
 
@@ -256,11 +333,20 @@ def _eval_config_drift(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="none",
             findings=["No configuration drift evidence collected"],
-            frameworks={"soc2": "CC6.2", "nist": "CM-2, CM-3", "cmmc": "CM.L2-3.4.1", "zt": "ZT-04"},
+            frameworks={
+                "soc2": "CC6.2",
+                "nist": "CM-2, CM-3",
+                "cmmc": "CM.L2-3.4.1",
+                "zt": "ZT-04",
+            },
         )
     quality = data.get("collection_quality", "unknown")
     if quality == "failed":
-        err_msg = data.get("errors", ["Config drift collector failed execution"])[0] if data.get("errors") else "Configuration drift collection failed"
+        err_msg = (
+            data.get("errors", ["Config drift collector failed execution"])[0]
+            if data.get("errors")
+            else "Configuration drift collection failed"
+        )
         return ControlScore(
             control_id="CC6.2",
             name="Configuration Baseline & Drift Control",
@@ -269,30 +355,51 @@ def _eval_config_drift(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="failed",
             findings=[f"Evidence collection failed: {err_msg}"],
-            frameworks={"soc2": "CC6.2", "nist": "CM-2, CM-3", "cmmc": "CM.L2-3.4.1", "zt": "ZT-04"},
+            frameworks={
+                "soc2": "CC6.2",
+                "nist": "CM-2, CM-3",
+                "cmmc": "CM.L2-3.4.1",
+                "zt": "ZT-04",
+            },
         )
 
     metrics = data.get("metrics", {})
     evaluated = _safe_int(metrics.get("resources_evaluated", 0))
-    drifted = _safe_int(metrics.get("drifted_resources", metrics.get("config_noncompliant_resources", 0)))
-    open_sgs = _safe_int(metrics.get("open_security_groups", metrics.get("open_http_listeners", 0)))
-    unapproved = _safe_int(metrics.get("unapproved_changes_detected", metrics.get("unapproved_changes", 0)))
+    drifted = _safe_int(
+        metrics.get(
+            "drifted_resources", metrics.get("config_noncompliant_resources", 0)
+        )
+    )
+    open_sgs = _safe_int(
+        metrics.get("open_security_groups", metrics.get("open_http_listeners", 0))
+    )
+    unapproved = _safe_int(
+        metrics.get("unapproved_changes_detected", metrics.get("unapproved_changes", 0))
+    )
 
     score = 100.0
     findings = []
     if evaluated == 0:
         score -= 50.0
-        findings.append("Zero infrastructure resources evaluated for baseline compliance")
+        findings.append(
+            "Zero infrastructure resources evaluated for baseline compliance"
+        )
     if open_sgs > 0:
         score -= min(40.0, open_sgs * 20.0)
-        findings.append(f"{open_sgs} security groups permit unrestricted 0.0.0.0/0 ingress")
+        findings.append(
+            f"{open_sgs} security groups permit unrestricted 0.0.0.0/0 ingress"
+        )
     if unapproved > 0:
         score -= min(30.0, unapproved * 15.0)
-        findings.append(f"{unapproved} unapproved infrastructure modifications detected")
+        findings.append(
+            f"{unapproved} unapproved infrastructure modifications detected"
+        )
     if evaluated > 0 and drifted > 0:
         drift_rate = (drifted / evaluated) * 100.0
         score -= min(30.0, drift_rate * 0.5)
-        findings.append(f"{drifted}/{evaluated} evaluated resources drifted from compliance baselines ({drift_rate:.1f}%)")
+        findings.append(
+            f"{drifted}/{evaluated} evaluated resources drifted from compliance baselines ({drift_rate:.1f}%)"
+        )
     if quality == "partial":
         score = min(70.0, score)
         findings.append("Partial evidence collection: drift analysis incomplete")
@@ -307,8 +414,17 @@ def _eval_config_drift(data: dict[str, Any] | None) -> ControlScore:
         score=score,
         evidence_quality=quality,
         findings=findings,
-        metrics_summary={"resources_evaluated": evaluated, "drifted": drifted, "open_sgs": open_sgs},
-        frameworks={"soc2": "CC6.2", "nist": "CM-2, CM-3", "cmmc": "CM.L2-3.4.1", "zt": "ZT-04"},
+        metrics_summary={
+            "resources_evaluated": evaluated,
+            "drifted": drifted,
+            "open_sgs": open_sgs,
+        },
+        frameworks={
+            "soc2": "CC6.2",
+            "nist": "CM-2, CM-3",
+            "cmmc": "CM.L2-3.4.1",
+            "zt": "ZT-04",
+        },
     )
 
 
@@ -322,11 +438,20 @@ def _eval_encryption(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="none",
             findings=["No encryption status evidence collected"],
-            frameworks={"soc2": "C1.2", "nist": "SC-8, SC-13, SC-28", "cmmc": "SC.L2-3.13.8", "zt": "ZT-05"},
+            frameworks={
+                "soc2": "C1.2",
+                "nist": "SC-8, SC-13, SC-28",
+                "cmmc": "SC.L2-3.13.8",
+                "zt": "ZT-05",
+            },
         )
     quality = data.get("collection_quality", "unknown")
     if quality == "failed":
-        err_msg = data.get("errors", ["Encryption collector failed execution"])[0] if data.get("errors") else "Encryption status collection failed"
+        err_msg = (
+            data.get("errors", ["Encryption collector failed execution"])[0]
+            if data.get("errors")
+            else "Encryption status collection failed"
+        )
         return ControlScore(
             control_id="C1.2",
             name="Cryptographic Protection & Key Management",
@@ -335,7 +460,12 @@ def _eval_encryption(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="failed",
             findings=[f"Evidence collection failed: {err_msg}"],
-            frameworks={"soc2": "C1.2", "nist": "SC-8, SC-13, SC-28", "cmmc": "SC.L2-3.13.8", "zt": "ZT-05"},
+            frameworks={
+                "soc2": "C1.2",
+                "nist": "SC-8, SC-13, SC-28",
+                "cmmc": "SC.L2-3.13.8",
+                "zt": "ZT-05",
+            },
         )
 
     metrics = data.get("metrics", {})
@@ -355,7 +485,9 @@ def _eval_encryption(data: dict[str, Any] | None) -> ControlScore:
         weak_ciphers = _safe_int(metrics.get("weak_cipher_endpoints", 0))
         in_transit = 100.0 if (weak_ciphers == 0 and total > 0) else 0.0
 
-    unencrypted_stores = _safe_int(metrics.get("unencrypted_data_stores", metrics.get("unencrypted_cui_count", 0)))
+    unencrypted_stores = _safe_int(
+        metrics.get("unencrypted_data_stores", metrics.get("unencrypted_cui_count", 0))
+    )
     fips_val = metrics.get("fips_compliant_algorithms")
     if fips_val is not None:
         fips = bool(fips_val)
@@ -366,22 +498,30 @@ def _eval_encryption(data: dict[str, Any] | None) -> ControlScore:
     findings = []
     if total == 0 and "encrypted_at_rest_percentage" not in metrics:
         score -= 40.0
-        findings.append("No confidential storage volumes or databases discovered for encryption validation")
+        findings.append(
+            "No confidential storage volumes or databases discovered for encryption validation"
+        )
     if unencrypted_stores > 0:
         score -= min(50.0, unencrypted_stores * 25.0)
-        findings.append(f"{unencrypted_stores} unencrypted storage volumes or databases detected")
+        findings.append(
+            f"{unencrypted_stores} unencrypted storage volumes or databases detected"
+        )
     if at_rest < 100.0:
         score -= (100.0 - at_rest) * 0.4
         findings.append(f"Encryption at rest is {at_rest:.1f}% (target: 100%)")
     if in_transit < 100.0:
         score -= (100.0 - in_transit) * 0.4
-        findings.append(f"TLS 1.2+ transit enforcement is {in_transit:.1f}% (target: 100%)")
+        findings.append(
+            f"TLS 1.2+ transit enforcement is {in_transit:.1f}% (target: 100%)"
+        )
     if not fips:
         score -= 10.0
         findings.append("Cryptographic suites are not verified FIPS 140-2/3 compliant")
     if quality == "partial":
         score = min(70.0, score)
-        findings.append("Partial evidence collection: cryptographic key status incomplete")
+        findings.append(
+            "Partial evidence collection: cryptographic key status incomplete"
+        )
 
     score = max(0.0, min(100.0, score))
     status = "PASS" if score >= 85.0 else ("PARTIAL" if score >= 50.0 else "FAIL")
@@ -393,8 +533,17 @@ def _eval_encryption(data: dict[str, Any] | None) -> ControlScore:
         score=score,
         evidence_quality=quality,
         findings=findings,
-        metrics_summary={"at_rest_pct": at_rest, "transit_pct": in_transit, "unencrypted_stores": unencrypted_stores},
-        frameworks={"soc2": "C1.2", "nist": "SC-8, SC-13, SC-28", "cmmc": "SC.L2-3.13.8", "zt": "ZT-05"},
+        metrics_summary={
+            "at_rest_pct": at_rest,
+            "transit_pct": in_transit,
+            "unencrypted_stores": unencrypted_stores,
+        },
+        frameworks={
+            "soc2": "C1.2",
+            "nist": "SC-8, SC-13, SC-28",
+            "cmmc": "SC.L2-3.13.8",
+            "zt": "ZT-05",
+        },
     )
 
 
@@ -408,11 +557,20 @@ def _eval_retention(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="none",
             findings=["No retention check evidence collected"],
-            frameworks={"soc2": "C1.4", "nist": "MP-7, SI-12", "cmmc": "MP.L2-3.8.7", "zt": "ZT-05"},
+            frameworks={
+                "soc2": "C1.4",
+                "nist": "MP-7, SI-12",
+                "cmmc": "MP.L2-3.8.7",
+                "zt": "ZT-05",
+            },
         )
     quality = data.get("collection_quality", "unknown")
     if quality == "failed":
-        err_msg = data.get("errors", ["Retention collector failed execution"])[0] if data.get("errors") else "Data retention collection failed"
+        err_msg = (
+            data.get("errors", ["Retention collector failed execution"])[0]
+            if data.get("errors")
+            else "Data retention collection failed"
+        )
         return ControlScore(
             control_id="C1.4",
             name="Data Retention & Secure Disposal",
@@ -421,34 +579,58 @@ def _eval_retention(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="failed",
             findings=[f"Evidence collection failed: {err_msg}"],
-            frameworks={"soc2": "C1.4", "nist": "MP-7, SI-12", "cmmc": "MP.L2-3.8.7", "zt": "ZT-05"},
+            frameworks={
+                "soc2": "C1.4",
+                "nist": "MP-7, SI-12",
+                "cmmc": "MP.L2-3.8.7",
+                "zt": "ZT-05",
+            },
         )
 
     metrics = data.get("metrics", {})
     past_retention = _safe_int(metrics.get("objects_past_retention", 0))
-    buckets = _safe_int(metrics.get("policies_checked", metrics.get("buckets_checked", 0)))
+    buckets = _safe_int(
+        metrics.get("policies_checked", metrics.get("buckets_checked", 0))
+    )
     missing_lc = _safe_int(metrics.get("buckets_missing_lifecycle", 0))
-    compliant = _safe_int(metrics.get("compliant_buckets", max(0, buckets - missing_lc)))
-    deletion_valid = bool(metrics.get("deletion_certificates_valid", True if (buckets > 0 and past_retention == 0) else False))
+    compliant = _safe_int(
+        metrics.get("compliant_buckets", max(0, buckets - missing_lc))
+    )
+    deletion_valid = bool(
+        metrics.get(
+            "deletion_certificates_valid",
+            True if (buckets > 0 and past_retention == 0) else False,
+        )
+    )
 
     score = 100.0
     findings = []
     if buckets == 0:
         score -= 40.0
-        findings.append("No data storage repositories evaluated for lifecycle retention policies")
+        findings.append(
+            "No data storage repositories evaluated for lifecycle retention policies"
+        )
     if past_retention > 0:
         score -= min(40.0, past_retention * 10.0)
-        findings.append(f"{past_retention} objects past retention window awaiting secure deletion")
+        findings.append(
+            f"{past_retention} objects past retention window awaiting secure deletion"
+        )
     if buckets > 0 and compliant < buckets:
         ratio = (compliant / buckets) * 100.0
         score -= (100.0 - ratio) * 0.7
-        findings.append(f"{buckets - compliant}/{buckets} data storage locations lack enforced lifecycle retention rules")
+        findings.append(
+            f"{buckets - compliant}/{buckets} data storage locations lack enforced lifecycle retention rules"
+        )
     if not deletion_valid:
         score -= 20.0
-        findings.append("Data purge certificates or deletion verification receipts are invalid or absent")
+        findings.append(
+            "Data purge certificates or deletion verification receipts are invalid or absent"
+        )
     if quality == "partial":
         score = min(70.0, score)
-        findings.append("Partial evidence collection: retention policies partially evaluated")
+        findings.append(
+            "Partial evidence collection: retention policies partially evaluated"
+        )
 
     score = max(0.0, min(100.0, score))
     status = "PASS" if score >= 85.0 else ("PARTIAL" if score >= 50.0 else "FAIL")
@@ -461,7 +643,12 @@ def _eval_retention(data: dict[str, Any] | None) -> ControlScore:
         evidence_quality=quality,
         findings=findings,
         metrics_summary={"policies_checked": buckets, "compliant_policies": compliant},
-        frameworks={"soc2": "C1.4", "nist": "MP-7, SI-12", "cmmc": "MP.L2-3.8.7", "zt": "ZT-05"},
+        frameworks={
+            "soc2": "C1.4",
+            "nist": "MP-7, SI-12",
+            "cmmc": "MP.L2-3.8.7",
+            "zt": "ZT-05",
+        },
     )
 
 
@@ -475,11 +662,20 @@ def _eval_resilience(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="none",
             findings=["No resilience testing evidence collected"],
-            frameworks={"soc2": "A1.2", "nist": "CP-9, CP-10", "cmmc": "RE.L2-3.11.1", "zt": "ZT-07"},
+            frameworks={
+                "soc2": "A1.2",
+                "nist": "CP-9, CP-10",
+                "cmmc": "RE.L2-3.11.1",
+                "zt": "ZT-07",
+            },
         )
     quality = data.get("collection_quality", "unknown")
     if quality == "failed":
-        err_msg = data.get("errors", ["Resilience collector failed execution"])[0] if data.get("errors") else "Resilience testing collection failed"
+        err_msg = (
+            data.get("errors", ["Resilience collector failed execution"])[0]
+            if data.get("errors")
+            else "Resilience testing collection failed"
+        )
         return ControlScore(
             control_id="A1.2",
             name="Backup Integrity & Disaster Recovery",
@@ -488,7 +684,12 @@ def _eval_resilience(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="failed",
             findings=[f"Evidence collection failed: {err_msg}"],
-            frameworks={"soc2": "A1.2", "nist": "CP-9, CP-10", "cmmc": "RE.L2-3.11.1", "zt": "ZT-07"},
+            frameworks={
+                "soc2": "A1.2",
+                "nist": "CP-9, CP-10",
+                "cmmc": "RE.L2-3.11.1",
+                "zt": "ZT-07",
+            },
         )
 
     metrics = data.get("metrics", {})
@@ -517,32 +718,54 @@ def _eval_resilience(data: dict[str, Any] | None) -> ControlScore:
     else:
         restore_tested = False
 
-    rto_met = bool(metrics.get("rto_target_met", True if (success_24h > 0 and restore_tested) else False))
-    rpo_met = bool(metrics.get("rpo_target_met", True if (success_24h > 0 and restore_tested) else False))
+    rto_met = bool(
+        metrics.get(
+            "rto_target_met", True if (success_24h > 0 and restore_tested) else False
+        )
+    )
+    rpo_met = bool(
+        metrics.get(
+            "rpo_target_met", True if (success_24h > 0 and restore_tested) else False
+        )
+    )
 
     score = 100.0
     findings = []
     if jobs == 0 or success_24h == 0:
         score -= 40.0
-        findings.append("No verified successful backup jobs executed in the last 24 hours")
+        findings.append(
+            "No verified successful backup jobs executed in the last 24 hours"
+        )
     elif success_24h < jobs:
         score -= 20.0
-        findings.append(f"{jobs - success_24h}/{jobs} backup jobs failed in the last 24-hour cycle")
+        findings.append(
+            f"{jobs - success_24h}/{jobs} backup jobs failed in the last 24-hour cycle"
+        )
     if failed_30d > 0:
         score -= min(25.0, failed_30d * 5.0)
-        findings.append(f"{failed_30d} backup job failures recorded in 30-day monitoring window")
+        findings.append(
+            f"{failed_30d} backup job failures recorded in 30-day monitoring window"
+        )
     if not restore_tested:
         score -= 30.0
-        findings.append("Disaster recovery restore test has not been executed within the 90-day SLA window")
+        findings.append(
+            "Disaster recovery restore test has not been executed within the 90-day SLA window"
+        )
     if not rto_met:
         score -= 15.0
-        findings.append("Recovery Time Objective (RTO) SLA targets are exceeded in current architecture")
+        findings.append(
+            "Recovery Time Objective (RTO) SLA targets are exceeded in current architecture"
+        )
     if not rpo_met:
         score -= 15.0
-        findings.append("Recovery Point Objective (RPO) SLA targets exceeded in recovery plan")
+        findings.append(
+            "Recovery Point Objective (RPO) SLA targets exceeded in recovery plan"
+        )
     if quality == "partial":
         score = min(70.0, score)
-        findings.append("Partial evidence collection: resilience verification incomplete")
+        findings.append(
+            "Partial evidence collection: resilience verification incomplete"
+        )
 
     score = max(0.0, min(100.0, score))
     status = "PASS" if score >= 85.0 else ("PARTIAL" if score >= 50.0 else "FAIL")
@@ -554,8 +777,17 @@ def _eval_resilience(data: dict[str, Any] | None) -> ControlScore:
         score=score,
         evidence_quality=quality,
         findings=findings,
-        metrics_summary={"jobs_evaluated": jobs, "success_24h": success_24h, "restore_tested_90d": restore_tested},
-        frameworks={"soc2": "A1.2", "nist": "CP-9, CP-10", "cmmc": "RE.L2-3.11.1", "zt": "ZT-07"},
+        metrics_summary={
+            "jobs_evaluated": jobs,
+            "success_24h": success_24h,
+            "restore_tested_90d": restore_tested,
+        },
+        frameworks={
+            "soc2": "A1.2",
+            "nist": "CP-9, CP-10",
+            "cmmc": "RE.L2-3.11.1",
+            "zt": "ZT-07",
+        },
     )
 
 
@@ -569,11 +801,20 @@ def _eval_zero_trust(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="none",
             findings=["No Zero Trust continuous verification evidence collected"],
-            frameworks={"soc2": "CC6.1, CC6.2", "nist": "AC-2, IA-2, SC-7", "cmmc": "AC.L2-3.1.3", "zt": "ZT-ALL"},
+            frameworks={
+                "soc2": "CC6.1, CC6.2",
+                "nist": "AC-2, IA-2, SC-7",
+                "cmmc": "AC.L2-3.1.3",
+                "zt": "ZT-ALL",
+            },
         )
     quality = data.get("collection_quality", "unknown")
     if quality == "failed":
-        err_msg = data.get("errors", ["Zero trust collector failed execution"])[0] if data.get("errors") else "Zero trust continuous verification failed"
+        err_msg = (
+            data.get("errors", ["Zero trust collector failed execution"])[0]
+            if data.get("errors")
+            else "Zero trust continuous verification failed"
+        )
         return ControlScore(
             control_id="ZT-1",
             name="Zero Trust Continuous Verification",
@@ -582,7 +823,12 @@ def _eval_zero_trust(data: dict[str, Any] | None) -> ControlScore:
             score=0.0,
             evidence_quality="failed",
             findings=[f"Evidence collection failed: {err_msg}"],
-            frameworks={"soc2": "CC6.1, CC6.2", "nist": "AC-2, IA-2, SC-7", "cmmc": "AC.L2-3.1.3", "zt": "ZT-ALL"},
+            frameworks={
+                "soc2": "CC6.1, CC6.2",
+                "nist": "AC-2, IA-2, SC-7",
+                "cmmc": "AC.L2-3.1.3",
+                "zt": "ZT-ALL",
+            },
         )
 
     metrics = data.get("metrics", {})
@@ -595,15 +841,32 @@ def _eval_zero_trust(data: dict[str, Any] | None) -> ControlScore:
         score = (checks_passed / checks_total) * 100.0
         findings = []
         if checks_passed < checks_total:
-            findings.append(f"{checks_total - checks_passed}/{checks_total} zero trust verification checks failed")
+            findings.append(
+                f"{checks_total - checks_passed}/{checks_total} zero trust verification checks failed"
+            )
         id_verified = bool(composite.get("iam_review_current", True))
         device_health = bool(composite.get("session_timeout_compliant", True))
         least_priv = bool(composite.get("mfa_enforced", True))
     else:
-        id_verified = bool(metrics.get("identity_verified", composite.get("iam_review_current", False)))
-        device_health = bool(metrics.get("device_health_checked", composite.get("session_timeout_compliant", False)))
-        least_priv = bool(metrics.get("least_privilege_enforced", composite.get("mfa_enforced", False)))
-        continuous_mon = bool(metrics.get("continuous_monitoring_active", composite.get("encryption_green", False)))
+        id_verified = bool(
+            metrics.get("identity_verified", composite.get("iam_review_current", False))
+        )
+        device_health = bool(
+            metrics.get(
+                "device_health_checked",
+                composite.get("session_timeout_compliant", False),
+            )
+        )
+        least_priv = bool(
+            metrics.get(
+                "least_privilege_enforced", composite.get("mfa_enforced", False)
+            )
+        )
+        continuous_mon = bool(
+            metrics.get(
+                "continuous_monitoring_active", composite.get("encryption_green", False)
+            )
+        )
         raw_maturity = _safe_float(metrics.get("zt_maturity_score", 0.0))
 
         score = 0.0
@@ -615,22 +878,30 @@ def _eval_zero_trust(data: dict[str, Any] | None) -> ControlScore:
         if device_health:
             score += 25.0
         else:
-            findings.append("Device posture and endpoint health verification telemetry missing")
+            findings.append(
+                "Device posture and endpoint health verification telemetry missing"
+            )
         if least_priv:
             score += 25.0
         else:
-            findings.append("Just-In-Time / Least Privilege micro-segmentation is not fully enforced")
+            findings.append(
+                "Just-In-Time / Least Privilege micro-segmentation is not fully enforced"
+            )
         if continuous_mon:
             score += 25.0
         else:
-            findings.append("Continuous automated behavioral verification is not active")
+            findings.append(
+                "Continuous automated behavioral verification is not active"
+            )
 
         if raw_maturity > 0.0 and score == 0.0:
             score = raw_maturity * 25.0
 
     if quality == "partial":
         score = min(70.0, score)
-        findings.append("Partial evidence collection: Zero Trust dynamic checks partially evaluated")
+        findings.append(
+            "Partial evidence collection: Zero Trust dynamic checks partially evaluated"
+        )
 
     score = max(0.0, min(100.0, score))
     status = "PASS" if score >= 85.0 else ("PARTIAL" if score >= 50.0 else "FAIL")
@@ -642,8 +913,17 @@ def _eval_zero_trust(data: dict[str, Any] | None) -> ControlScore:
         score=score,
         evidence_quality=quality,
         findings=findings,
-        metrics_summary={"identity_verified": id_verified, "device_health": device_health, "least_privilege": least_priv},
-        frameworks={"soc2": "CC6.1, CC6.2", "nist": "AC-2, IA-2, SC-7", "cmmc": "AC.L2-3.1.3", "zt": "ZT-ALL"},
+        metrics_summary={
+            "identity_verified": id_verified,
+            "device_health": device_health,
+            "least_privilege": least_priv,
+        },
+        frameworks={
+            "soc2": "CC6.1, CC6.2",
+            "nist": "AC-2, IA-2, SC-7",
+            "cmmc": "AC.L2-3.1.3",
+            "zt": "ZT-ALL",
+        },
     )
 
 
@@ -684,7 +964,9 @@ def _compute_framework_summary(
     pillar_scores: dict[str, float] = {}
     for pillar, c_ids in pillar_mapping.items():
         matched = [s.score for s in scores if s.control_id in c_ids]
-        pillar_scores[pillar] = round(sum(matched) / len(matched), 1) if matched else 0.0
+        pillar_scores[pillar] = (
+            round(sum(matched) / len(matched), 1) if matched else 0.0
+        )
 
     critical_findings: list[str] = []
     for s in scores:
@@ -729,7 +1011,15 @@ def compute_compliance_scorecard(
     ctrl_res = _eval_resilience(evidence_map.get("resilience_testing"))
     ctrl_zt = _eval_zero_trust(evidence_map.get("zt_continuous_verification"))
 
-    all_controls = [ctrl_iam, ctrl_log, ctrl_drift, ctrl_enc, ctrl_ret, ctrl_res, ctrl_zt]
+    all_controls = [
+        ctrl_iam,
+        ctrl_log,
+        ctrl_drift,
+        ctrl_enc,
+        ctrl_ret,
+        ctrl_res,
+        ctrl_zt,
+    ]
 
     soc2_summary = _compute_framework_summary(
         "soc2",

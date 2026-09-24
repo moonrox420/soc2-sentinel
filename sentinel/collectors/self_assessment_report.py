@@ -27,7 +27,9 @@ def _load_rows(path: Path) -> list[dict[str, str]]:
 
 def _status_field(row: dict[str, str], mode: str) -> str:
     if mode == "zt":
-        return (row.get("Current Maturity") or row.get("current_maturity") or "Initial").strip()
+        return (
+            row.get("Current Maturity") or row.get("current_maturity") or "Initial"
+        ).strip()
     return (row.get("CMMC L2 Status") or row.get("cmmc_l2_status") or "Not Met").strip()
 
 
@@ -41,7 +43,9 @@ def generate_self_assessment_report(
         raise ValidationError(f"Input file not found: {input_path}")
 
     rows = _load_rows(input_path)
-    family_scores: dict[str, dict[str, int]] = defaultdict(lambda: {"met": 0, "total": 0})
+    family_scores: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"met": 0, "total": 0}
+    )
     overall = {"met": 0, "total": 0, "na": 0, "poam": 0}
 
     for row in rows:
@@ -72,8 +76,14 @@ def generate_self_assessment_report(
         elif status == "POA&M":
             overall["poam"] += 1
 
-    pct = round((overall["met"] / overall["total"]) * 100, 1) if overall["total"] else 0.0
-    title = "CMMC L2 Self-Assessment Report" if mode == "cmmc" else "Zero Trust Maturity Report"
+    pct = (
+        round((overall["met"] / overall["total"]) * 100, 1) if overall["total"] else 0.0
+    )
+    title = (
+        "CMMC L2 Self-Assessment Report"
+        if mode == "cmmc"
+        else "Zero Trust Maturity Report"
+    )
     report: dict[str, Any] = {
         "generated": utc_now_iso(),
         "mode": mode,
@@ -87,7 +97,11 @@ def generate_self_assessment_report(
             fam: {
                 "met": data["met"],
                 "total": data["total"],
-                "percent": round((data["met"] / data["total"]) * 100, 1) if data["total"] else 0,
+                "percent": (
+                    round((data["met"] / data["total"]) * 100, 1)
+                    if data["total"]
+                    else 0
+                ),
             }
             for fam, data in family_scores.items()
         },

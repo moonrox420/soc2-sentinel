@@ -27,7 +27,9 @@ def collect_encryption_status(
 ) -> Path:
     cfg = config or SentinelConfig()
     try:
-        snap = fetch_snapshot(provider.encryption_snapshot, collector="encryption_status")
+        snap = fetch_snapshot(
+            provider.encryption_snapshot, collector="encryption_status"
+        )
     except ProviderError as exc:
         return write_failure_evidence(
             control_id=control_id,
@@ -59,7 +61,12 @@ def collect_encryption_status(
         "provider": provider.name,
     }
     apply_collection_metadata(payload, snap)
-    log_collection_done(collector="encryption_status", provider=provider.name, control_id=control_id, snap=snap)
+    log_collection_done(
+        collector="encryption_status",
+        provider=provider.name,
+        control_id=control_id,
+        snap=snap,
+    )
     return write_evidence(
         payload,
         base=base,

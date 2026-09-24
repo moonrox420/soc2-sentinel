@@ -38,7 +38,11 @@ TSC_CRITERIA_CATALOG: dict[str, dict[str, Any]] = {
     "CC1.1": {
         "title": "Demonstrates Commitment to Integrity and Ethical Values",
         "category": "Control Environment",
-        "required_collectors": ["iam_access_review", "log_aggregator", "zt_continuous_verification"],
+        "required_collectors": [
+            "iam_access_review",
+            "log_aggregator",
+            "zt_continuous_verification",
+        ],
     },
     "CC5.1": {
         "title": "Logical Access Control & Authentication Security",
@@ -186,9 +190,7 @@ class AuditRoom:
             auditor_email=data.get("auditor_email", "auditor@enterprise.com"),
             period_start=data["period_start"],
             period_end=data["period_end"],
-            created_at=data.get(
-                "created_at", datetime.now(timezone.utc).isoformat()
-            ),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
             expires_at=data.get("expires_at", ""),
             status=status,
             access_token=data.get("access_token", secrets.token_urlsafe(32)),
@@ -218,7 +220,9 @@ class AuditRoomManager:
     def _sanitize_room_id(self, room_id: str) -> str:
         sanitized = re.sub(r"[^a-zA-Z0-9_\-]", "", room_id.strip())
         if not sanitized:
-            raise ValueError(f"Invalid room_id: '{room_id}' contains no valid alphanumeric characters.")
+            raise ValueError(
+                f"Invalid room_id: '{room_id}' contains no valid alphanumeric characters."
+            )
         return sanitized
 
     def _get_room_path(self, room_id: str) -> Path:
@@ -272,8 +276,7 @@ class AuditRoomManager:
             period_end=period_end,
             expires_at=exp.isoformat(),
             status=AuditRoomStatus.ACTIVE,
-            controls_in_scope=controls_in_scope
-            or list(TSC_CRITERIA_CATALOG.keys()),
+            controls_in_scope=controls_in_scope or list(TSC_CRITERIA_CATALOG.keys()),
             evidence_dates=matched_dates,
             vault_block_hashes=matched_block_hashes,
             notes=notes
@@ -399,9 +402,9 @@ class AuditRoomManager:
                     "title": meta["title"],
                     "category": meta["category"],
                     "evidence_count": len(evidence_artifacts),
-                    "evidence_status": "SATISFIED"
-                    if evidence_artifacts
-                    else "NO_EVIDENCE_IN_WINDOW",
+                    "evidence_status": (
+                        "SATISFIED" if evidence_artifacts else "NO_EVIDENCE_IN_WINDOW"
+                    ),
                     "artifacts": evidence_artifacts,
                 }
             )
@@ -451,17 +454,19 @@ class AuditRoomManager:
         rows_html = ""
         for c in crosswalk:
             status_color = (
-                "#10b981"
-                if c["evidence_status"] == "SATISFIED"
-                else "#ef4444"
+                "#10b981" if c["evidence_status"] == "SATISFIED" else "#ef4444"
             )
             artifacts_html = ""
             for art in c["artifacts"][:3]:  # preview top 3
-                escaped_fname = html.escape(str(art['file_name']))
-                escaped_hash = html.escape(str(art['sha256'][:8]))
-                artifacts_html += f"<code>{escaped_fname}</code> ({escaped_hash}...)<br/>"
+                escaped_fname = html.escape(str(art["file_name"]))
+                escaped_hash = html.escape(str(art["sha256"][:8]))
+                artifacts_html += (
+                    f"<code>{escaped_fname}</code> ({escaped_hash}...)<br/>"
+                )
             if len(c["artifacts"]) > 3:
-                artifacts_html += f"<i>+ {len(c['artifacts']) - 3} more artifacts in vault</i>"
+                artifacts_html += (
+                    f"<i>+ {len(c['artifacts']) - 3} more artifacts in vault</i>"
+                )
             if not artifacts_html:
                 artifacts_html = "<i>No evidence collected in audit window</i>"
 
@@ -589,9 +594,7 @@ class AuditRoomManager:
                 json.dumps(room.to_dict(include_token=False), indent=2),
             )
             # 2. Control Crosswalk JSON & CSV
-            zf.writestr(
-                "soc2_control_matrix.json", json.dumps(crosswalk, indent=2)
-            )
+            zf.writestr("soc2_control_matrix.json", json.dumps(crosswalk, indent=2))
             zf.writestr("soc2_control_matrix.csv", crosswalk_csv)
             # 3. HTML Executive Report
             zf.writestr("AUDIT_EXECUTIVE_SUMMARY.html", summary_html)
@@ -630,4 +633,3 @@ Open `AUDIT_EXECUTIVE_SUMMARY.html` in any web browser for an interactive overvi
             "Exported Audit Package ZIP for '%s' to %s", room.room_id, output_path
         )
         return output_path
-

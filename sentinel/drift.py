@@ -71,7 +71,13 @@ def _load_run_evidence(date_dir: Path | None) -> dict[str, dict[str, Any]]:
         if ev_file.exists():
             try:
                 data = json.loads(ev_file.read_text(encoding="utf-8"))
-                collector = data.get("collector") or canonical_map.get(data.get("control_id", "")) or canonical_map.get(sub.name) or data.get("control_id") or sub.name
+                collector = (
+                    data.get("collector")
+                    or canonical_map.get(data.get("control_id", ""))
+                    or canonical_map.get(sub.name)
+                    or data.get("control_id")
+                    or sub.name
+                )
                 evidence[collector] = data
                 ctrl_id = data.get("control_id")
                 if ctrl_id and ctrl_id in canonical_map:
@@ -108,8 +114,14 @@ def _compare_collector_metrics(
                 )
             )
 
-        old_mfa = base_metrics.get("mfa_enforced_percentage", base_metrics.get("mfa_enforcement_percent", 100.0))
-        new_mfa = curr_metrics.get("mfa_enforced_percentage", curr_metrics.get("mfa_enforcement_percent", 100.0))
+        old_mfa = base_metrics.get(
+            "mfa_enforced_percentage",
+            base_metrics.get("mfa_enforcement_percent", 100.0),
+        )
+        new_mfa = curr_metrics.get(
+            "mfa_enforced_percentage",
+            curr_metrics.get("mfa_enforcement_percent", 100.0),
+        )
         if new_mfa < old_mfa:
             items.append(
                 DriftItem(
@@ -124,8 +136,12 @@ def _compare_collector_metrics(
                 )
             )
 
-        old_priv = base_metrics.get("privileged_users", base_metrics.get("privileged_count", 0))
-        new_priv = curr_metrics.get("privileged_users", curr_metrics.get("privileged_count", 0))
+        old_priv = base_metrics.get(
+            "privileged_users", base_metrics.get("privileged_count", 0)
+        )
+        new_priv = curr_metrics.get(
+            "privileged_users", curr_metrics.get("privileged_count", 0)
+        )
         if new_priv > old_priv:
             items.append(
                 DriftItem(
@@ -142,8 +158,12 @@ def _compare_collector_metrics(
 
     # 2. Config Drift
     elif collector in {"config_drift", "CC6.2"}:
-        old_open_sgs = base_metrics.get("open_security_groups", base_metrics.get("open_http_listeners", 0))
-        new_open_sgs = curr_metrics.get("open_security_groups", curr_metrics.get("open_http_listeners", 0))
+        old_open_sgs = base_metrics.get(
+            "open_security_groups", base_metrics.get("open_http_listeners", 0)
+        )
+        new_open_sgs = curr_metrics.get(
+            "open_security_groups", curr_metrics.get("open_http_listeners", 0)
+        )
         if new_open_sgs > old_open_sgs:
             items.append(
                 DriftItem(
@@ -158,8 +178,12 @@ def _compare_collector_metrics(
                 )
             )
 
-        old_unapproved = base_metrics.get("unapproved_changes_detected", base_metrics.get("unapproved_changes", 0))
-        new_unapproved = curr_metrics.get("unapproved_changes_detected", curr_metrics.get("unapproved_changes", 0))
+        old_unapproved = base_metrics.get(
+            "unapproved_changes_detected", base_metrics.get("unapproved_changes", 0)
+        )
+        new_unapproved = curr_metrics.get(
+            "unapproved_changes_detected", curr_metrics.get("unapproved_changes", 0)
+        )
         if new_unapproved > old_unapproved:
             items.append(
                 DriftItem(
@@ -176,8 +200,12 @@ def _compare_collector_metrics(
 
     # 3. Encryption Drift
     elif collector in {"encryption_status", "C1.2"}:
-        old_unenc = base_metrics.get("unencrypted_data_stores", base_metrics.get("unencrypted_cui_count", 0))
-        new_unenc = curr_metrics.get("unencrypted_data_stores", curr_metrics.get("unencrypted_cui_count", 0))
+        old_unenc = base_metrics.get(
+            "unencrypted_data_stores", base_metrics.get("unencrypted_cui_count", 0)
+        )
+        new_unenc = curr_metrics.get(
+            "unencrypted_data_stores", curr_metrics.get("unencrypted_cui_count", 0)
+        )
         if new_unenc > old_unenc:
             items.append(
                 DriftItem(
@@ -210,8 +238,14 @@ def _compare_collector_metrics(
 
     # 4. Logging Drift
     elif collector in {"log_aggregator", "CC7.1"}:
-        old_comp = base_metrics.get("critical_events_logged_percentage", base_metrics.get("log_coverage_percent", 100.0))
-        new_comp = curr_metrics.get("critical_events_logged_percentage", curr_metrics.get("log_coverage_percent", 100.0))
+        old_comp = base_metrics.get(
+            "critical_events_logged_percentage",
+            base_metrics.get("log_coverage_percent", 100.0),
+        )
+        new_comp = curr_metrics.get(
+            "critical_events_logged_percentage",
+            curr_metrics.get("log_coverage_percent", 100.0),
+        )
         if new_comp < old_comp:
             items.append(
                 DriftItem(
@@ -228,8 +262,12 @@ def _compare_collector_metrics(
 
     # 5. Resilience Drift
     elif collector in {"resilience_testing", "A1.2"}:
-        old_backups = base_metrics.get("successful_backups_24h", base_metrics.get("backup_jobs_success_30d", 0))
-        new_backups = curr_metrics.get("successful_backups_24h", curr_metrics.get("backup_jobs_success_30d", 0))
+        old_backups = base_metrics.get(
+            "successful_backups_24h", base_metrics.get("backup_jobs_success_30d", 0)
+        )
+        new_backups = curr_metrics.get(
+            "successful_backups_24h", curr_metrics.get("backup_jobs_success_30d", 0)
+        )
         if new_backups < old_backups:
             items.append(
                 DriftItem(
@@ -269,7 +307,10 @@ def detect_configuration_drift(
             items=[],
         )
 
-    dirs = sorted([d for d in base.iterdir() if d.is_dir() and d.name != "manifests"], key=lambda d: d.name)
+    dirs = sorted(
+        [d for d in base.iterdir() if d.is_dir() and d.name != "manifests"],
+        key=lambda d: d.name,
+    )
     if not dirs:
         return DriftReport(
             timestamp=now_iso,
@@ -314,7 +355,9 @@ def detect_configuration_drift(
             ctrl_id = cur_payload.get("control_id", "UNKNOWN")
             cur_metrics = cur_payload.get("metrics", {})
             base_metrics = base_payload.get("metrics", {})
-            items = _compare_collector_metrics(collector, ctrl_id, base_metrics, cur_metrics, now_iso)
+            items = _compare_collector_metrics(
+                collector, ctrl_id, base_metrics, cur_metrics, now_iso
+            )
             drift_items.extend(items)
     else:
         # No prior baseline run: check absolute compliance violations as initial drift baseline

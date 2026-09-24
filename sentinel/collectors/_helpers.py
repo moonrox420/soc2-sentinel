@@ -14,7 +14,9 @@ from sentinel.security import redact_pii, sanitize_csv_cell
 logger = logging.getLogger("sentinel.collectors")
 
 
-def fetch_snapshot(fn: Callable[[], dict[str, Any]], *, collector: str) -> dict[str, Any]:
+def fetch_snapshot(
+    fn: Callable[[], dict[str, Any]], *, collector: str
+) -> dict[str, Any]:
     try:
         return fn()
     except ProviderError:
@@ -27,7 +29,9 @@ def apply_collection_metadata(payload: dict[str, Any], snap: dict[str, Any]) -> 
     """Map provider snapshot errors and collection_quality into evidence payload."""
     errors = snap.get("errors") or []
     if errors and isinstance(errors[0], str):
-        errors = [{"code": "ProviderError", "message": e, "severity": "high"} for e in errors]
+        errors = [
+            {"code": "ProviderError", "message": e, "severity": "high"} for e in errors
+        ]
     payload["errors"] = list(errors)
     quality = snap.get("collection_quality", "complete")
     payload["collection_quality"] = quality
@@ -61,7 +65,9 @@ def failure_payload(
         "metrics": {"collection_failed": True},
         "evidence_artifacts": [],
         "findings": [{"issue": error, "severity": "critical", "resource": collector}],
-        "errors": [{"code": "CollectionFailed", "message": error, "severity": "critical"}],
+        "errors": [
+            {"code": "CollectionFailed", "message": error, "severity": "critical"}
+        ],
         "notes": f"{collector} failed: {error}",
         "provider": provider_name,
     }

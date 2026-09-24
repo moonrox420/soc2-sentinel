@@ -11,7 +11,9 @@ from sentinel.providers.aws._client import AwsClients
 
 logger = logging.getLogger("sentinel.providers.aws.encryption")
 
-_FIPS_SPECS = frozenset({"SYMMETRIC_DEFAULT", "RSA_2048", "RSA_3072", "RSA_4096", "ECC_NIST_P256"})
+_FIPS_SPECS = frozenset(
+    {"SYMMETRIC_DEFAULT", "RSA_2048", "RSA_3072", "RSA_4096", "ECC_NIST_P256"}
+)
 
 
 def encryption_snapshot(ctx: AwsClients) -> dict[str, Any]:
@@ -38,7 +40,9 @@ def encryption_snapshot(ctx: AwsClients) -> dict[str, Any]:
             try:
                 enc = s3.get_bucket_encryption(Bucket=name)
                 ctx.succeed()
-                rules = enc.get("ServerSideEncryptionConfiguration", {}).get("Rules", [])
+                rules = enc.get("ServerSideEncryptionConfiguration", {}).get(
+                    "Rules", []
+                )
                 encrypted = any(
                     r.get("ApplyServerSideEncryptionByDefault", {}).get("SSEAlgorithm")
                     in ("AES256", "aws:kms")
@@ -51,7 +55,9 @@ def encryption_snapshot(ctx: AwsClients) -> dict[str, Any]:
                     encrypted = False
                 else:
                     ctx.record_access_denied("s3", exc)
-            resources.append({"resource": f"s3://{name}", "encrypted": encrypted, "type": "S3"})
+            resources.append(
+                {"resource": f"s3://{name}", "encrypted": encrypted, "type": "S3"}
+            )
             if not encrypted:
                 findings.append({"resource": f"s3://{name}", "issue": "unencrypted"})
 
@@ -60,10 +66,16 @@ def encryption_snapshot(ctx: AwsClients) -> dict[str, Any]:
         for db in rds_resp.get("DBInstances", []):
             encrypted = db.get("StorageEncrypted", False)
             resources.append(
-                {"resource": db["DBInstanceIdentifier"], "encrypted": encrypted, "type": "RDS"}
+                {
+                    "resource": db["DBInstanceIdentifier"],
+                    "encrypted": encrypted,
+                    "type": "RDS",
+                }
             )
             if not encrypted:
-                findings.append({"resource": db["DBInstanceIdentifier"], "issue": "unencrypted"})
+                findings.append(
+                    {"resource": db["DBInstanceIdentifier"], "issue": "unencrypted"}
+                )
 
     keys_resp = ctx.call("kms", "aws_kms_list_keys", lambda: kms.list_keys())
     if keys_resp:
@@ -76,7 +88,10 @@ def encryption_snapshot(ctx: AwsClients) -> dict[str, Any]:
             if not meta_resp:
                 continue
             meta = meta_resp.get("KeyMetadata", {})
-            if meta.get("KeyManager") == "CUSTOMER" and meta.get("KeyState") == "Enabled":
+            if (
+                meta.get("KeyManager") == "CUSTOMER"
+                and meta.get("KeyState") == "Enabled"
+            ):
                 spec = meta.get("KeySpec") or meta.get("CustomerMasterKeySpec", "")
                 rot_resp = ctx.call(
                     "kms",
@@ -106,7 +121,9 @@ def encryption_snapshot(ctx: AwsClients) -> dict[str, Any]:
                     weak_tls += 1
                     findings.append({"resource": arn, "issue": "expired certificate"})
 
-    ssl_resp = ctx.call("elbv2", "aws_elb_ssl_policies", lambda: elbv2.describe_ssl_policies())
+    ssl_resp = ctx.call(
+        "elbv2", "aws_elb_ssl_policies", lambda: elbv2.describe_ssl_policies()
+    )
     if ssl_resp:
         for policy in ssl_resp.get("SslPolicies", []):
             tls_checked += 1

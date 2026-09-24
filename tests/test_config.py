@@ -1,4 +1,3 @@
-
 import pytest
 
 from sentinel.config import load_config
@@ -24,7 +23,9 @@ def test_validate_encrypt_requires_key(monkeypatch):
 def test_validate_threshold_order():
     from sentinel.config import SentinelConfig, ThresholdConfig
 
-    cfg = SentinelConfig(thresholds=ThresholdConfig(orphaned_accounts_yellow=10, orphaned_accounts_red=5))
+    cfg = SentinelConfig(
+        thresholds=ThresholdConfig(orphaned_accounts_yellow=10, orphaned_accounts_red=5)
+    )
     with pytest.raises(ValidationError, match="yellow"):
         cfg.validate()
 
@@ -41,7 +42,9 @@ def test_load_config_from_yaml(tmp_path):
 
 def test_validate_bad_threshold_int(tmp_path):
     yaml_path = tmp_path / "sentinel.yaml"
-    yaml_path.write_text("thresholds:\n  orphaned_accounts_red: not-a-number\n", encoding="utf-8")
+    yaml_path.write_text(
+        "thresholds:\n  orphaned_accounts_red: not-a-number\n", encoding="utf-8"
+    )
     with pytest.raises(ValidationError, match="integer"):
         load_config(yaml_path)
 

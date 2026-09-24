@@ -14,8 +14,19 @@ def test_generate_executive_html_report(tmp_path: Path):
     day_dir = tmp_path / "2026-09-23"
     ctrl_dir = day_dir / "CC6.1"
     ctrl_dir.mkdir(parents=True)
-    (ctrl_dir / "evidence.json").write_text(json.dumps({"collector": "iam_access_review", "control_id": "CC6.1", "provider": "mock", "metrics": {}}))
-    (day_dir / "manifest.json").write_text(json.dumps({"files": {"CC6.1/evidence.json": "sha256abc123"}}))
+    (ctrl_dir / "evidence.json").write_text(
+        json.dumps(
+            {
+                "collector": "iam_access_review",
+                "control_id": "CC6.1",
+                "provider": "mock",
+                "metrics": {},
+            }
+        )
+    )
+    (day_dir / "manifest.json").write_text(
+        json.dumps({"files": {"CC6.1/evidence.json": "sha256abc123"}})
+    )
 
     scorecard = compute_compliance_scorecard(tmp_path, date_str="2026-09-23")
     html_out = generate_executive_html_report(scorecard, day_dir)
@@ -30,8 +41,19 @@ def test_export_audit_pack(tmp_path: Path):
     day_dir = tmp_path / "2026-09-23"
     ctrl_dir = day_dir / "CC6.1"
     ctrl_dir.mkdir(parents=True)
-    (ctrl_dir / "evidence.json").write_text(json.dumps({"collector": "iam_access_review", "control_id": "CC6.1", "provider": "mock", "metrics": {}}))
-    (day_dir / "manifest.json").write_text(json.dumps({"files": {"CC6.1/evidence.json": "sha256abc123"}}))
+    (ctrl_dir / "evidence.json").write_text(
+        json.dumps(
+            {
+                "collector": "iam_access_review",
+                "control_id": "CC6.1",
+                "provider": "mock",
+                "metrics": {},
+            }
+        )
+    )
+    (day_dir / "manifest.json").write_text(
+        json.dumps({"files": {"CC6.1/evidence.json": "sha256abc123"}})
+    )
 
     zip_path = export_audit_pack(day_dir, output_dir=tmp_path)
     assert zip_path.exists()

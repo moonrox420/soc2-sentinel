@@ -67,9 +67,7 @@ def resilience_snapshot(ctx: AzureContext) -> dict[str, Any]:
                     backup_failed += 1
 
             protected = call_with_retry(
-                lambda: list(
-                    backup_client.backup_protected_items.list(rg, vault_name)
-                ),
+                lambda: list(backup_client.backup_protected_items.list(rg, vault_name)),
                 operation="azure_protected_items",
             )
             for item in protected:
@@ -93,8 +91,7 @@ def resilience_snapshot(ctx: AzureContext) -> dict[str, Any]:
 
         if latest_restore:
             last_successful_restore_days = (
-                datetime.now(timezone.utc)
-                - latest_restore.replace(tzinfo=timezone.utc)
+                datetime.now(timezone.utc) - latest_restore.replace(tzinfo=timezone.utc)
             ).days
 
     except Exception as exc:

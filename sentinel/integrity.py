@@ -40,7 +40,9 @@ def build_manifest(
     }
     hmac_key = os.environ.get("SENTINEL_HMAC_KEY", "").strip()
     if hmac_key:
-        canonical = json.dumps(artifacts, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        canonical = json.dumps(artifacts, sort_keys=True, separators=(",", ":")).encode(
+            "utf-8"
+        )
         manifest["hmac_sha256"] = hmac_sign(canonical, secret=hmac_key)
     return manifest
 
@@ -75,13 +77,14 @@ def verify_manifest(out_dir: Path) -> tuple[bool, list[str]]:
         if not stored:
             issues.append("HMAC key set but manifest has no hmac_sha256")
         else:
-            canonical = json.dumps(artifacts, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            canonical = json.dumps(
+                artifacts, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
             if hmac_sign(canonical, secret=hmac_key) != stored:
                 issues.append("HMAC verification failed")
     elif stored:
         issues.append("manifest has HMAC but SENTINEL_HMAC_KEY not set")
     return len(issues) == 0, issues
-
 
 
 def verify_and_decrypt_artifact(path: Path, *, secret: str | None = None) -> bytes:
@@ -108,7 +111,11 @@ def verify_evidence_tree(evidence_dir: Path) -> dict[str, Any]:
     """Verify all control directories under an evidence date folder."""
     results: dict[str, Any] = {"verified": [], "failed": {}, "total": 0}
     if not evidence_dir.exists():
-        return {"error": f"directory not found: {evidence_dir}", "verified": [], "failed": {}}
+        return {
+            "error": f"directory not found: {evidence_dir}",
+            "verified": [],
+            "failed": {},
+        }
     for child in sorted(evidence_dir.iterdir()):
         if not child.is_dir() or child.name in {"manifests"}:
             continue

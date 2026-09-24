@@ -18,7 +18,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import IntEnum
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any, Callable, Deque, Dict, List, Optional, Set
 
 from sentinel.auth import get_current_user
 from sentinel.tenancy import get_current_tenant
@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 class SyslogSeverity(IntEnum):
     """RFC 5424 Syslog Severity levels."""
+
     EMERGENCY = 0
     ALERT = 1
     CRITICAL = 2
@@ -40,6 +41,7 @@ class SyslogSeverity(IntEnum):
 
 class SyslogFacility(IntEnum):
     """RFC 5424 Syslog Facility codes."""
+
     KERN = 0
     USER = 1
     MAIL = 2
@@ -65,6 +67,7 @@ class SyslogFacility(IntEnum):
 @dataclass
 class AuditEvent:
     """Canonical audit and telemetry event."""
+
     action: str
     resource: str
     outcome: str = "SUCCESS"  # SUCCESS, FAILURE, DENIED
@@ -92,7 +95,9 @@ class AuditEvent:
             self.user_id = user.user_id
             self.role = user.role.name if self.role is None else self.role
 
-    def to_rfc5424(self, app_name: str = "soc2-sentinel", hostname: Optional[str] = None) -> str:
+    def to_rfc5424(
+        self, app_name: str = "soc2-sentinel", hostname: Optional[str] = None
+    ) -> str:
         """Format the event as an RFC 5424 Syslog string."""
         pri = (int(self.facility) * 8) + int(self.severity)
         version = "1"
@@ -113,7 +118,11 @@ class AuditEvent:
         ]
         structured_data = f"[sentinel@54321 {' '.join(sd_params)}]"
 
-        msg_body = json.dumps(self.details) if self.details else f"Action {self.action} on {self.resource} -> {self.outcome}"
+        msg_body = (
+            json.dumps(self.details)
+            if self.details
+            else f"Action {self.action} on {self.resource} -> {self.outcome}"
+        )
         return f"<{pri}>{version} {ts} {host} {app_name} {proc_id} {msg_id} {structured_data} {msg_body}"
 
     def to_dict(self) -> Dict[str, Any]:
@@ -135,12 +144,14 @@ class AuditEvent:
 
 class BaseTelemetrySink:
     """Base interface for all telemetry export sinks."""
+
     def send(self, event: AuditEvent) -> bool:
         raise NotImplementedError
 
 
 class MemorySink(BaseTelemetrySink):
     """In-memory circular ring buffer sink for testing, inspection, and dashboard feeds."""
+
     def __init__(self, max_size: int = 1000) -> None:
         self.events: Deque[AuditEvent] = collections.deque(maxlen=max_size)
         self._lock = threading.Lock()
@@ -150,7 +161,9 @@ class MemorySink(BaseTelemetrySink):
             self.events.append(event)
         return True
 
-    def get_events(self, limit: int = 100, tenant_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_events(
+        self, limit: int = 100, tenant_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         with self._lock:
             evs = list(self.events)
         if tenant_id:
@@ -164,6 +177,7 @@ class MemorySink(BaseTelemetrySink):
 
 class FileSink(BaseTelemetrySink):
     """Appends RFC 5424 or JSON audit logs to a designated local file."""
+
     def __init__(self, filepath: str, as_json: bool = False) -> None:
         self.filepath = filepath
         self.as_json = as_json
@@ -180,13 +194,18 @@ class FileSink(BaseTelemetrySink):
                         f.write(event.to_rfc5424() + "\n")
                 return True
             except Exception as ex:
-                logger.error("Failed to write audit event to file %s: %s", self.filepath, ex)
+                logger.error(
+                    "Failed to write audit event to file %s: %s", self.filepath, ex
+                )
                 return False
 
 
 class HttpSink(BaseTelemetrySink):
     """Sends JSON telemetry events to an external SIEM endpoint (Splunk, Datadog, Webhook)."""
-    def __init__(self, endpoint_url: str, auth_token: Optional[str] = None, timeout: float = 5.0) -> None:
+
+    def __init__(
+        self, endpoint_url: str, auth_token: Optional[str] = None, timeout: float = 5.0
+    ) -> None:
         self.endpoint_url = endpoint_url
         self.auth_token = auth_token
         self.timeout = timeout
@@ -201,18 +220,27 @@ class HttpSink(BaseTelemetrySink):
             return False
 
         data = json.dumps(event.to_dict()).encode("utf-8")
-        req = urllib.request.Request(self.endpoint_url, data=data, headers=headers, method="POST")
+        req = urllib.request.Request(
+            self.endpoint_url, data=data, headers=headers, method="POST"
+        )
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:  # nosec B310
+            with urllib.request.urlopen(
+                req, timeout=self.timeout
+            ) as resp:  # nosec B310
                 return bool(200 <= resp.status < 300)
         except Exception as ex:
-            logger.warning("HttpSink failed to deliver telemetry to %s: %s", self.endpoint_url, ex)
+            logger.warning(
+                "HttpSink failed to deliver telemetry to %s: %s", self.endpoint_url, ex
+            )
             return False
 
 
 class SyslogSink(BaseTelemetrySink):
     """Sends RFC 5424 syslog messages over UDP or TCP to a SIEM forwarder."""
-    def __init__(self, host: str = "127.0.0.1", port: int = 514, protocol: str = "UDP") -> None:
+
+    def __init__(
+        self, host: str = "127.0.0.1", port: int = 514, protocol: str = "UDP"
+    ) -> None:
         self.host = host
         self.port = port
         self.protocol = protocol.upper()
@@ -233,16 +261,21 @@ class SyslogSink(BaseTelemetrySink):
                 sock.close()
                 return True
         except Exception as ex:
-            logger.debug("SyslogSink delivery error (%s:%d): %s", self.host, self.port, ex)
+            logger.debug(
+                "SyslogSink delivery error (%s:%d): %s", self.host, self.port, ex
+            )
             return False
         return False
 
 
 class TelemetryManager:
-    """Global manager for telemetry dispatch across configured sinks."""
+    """Global manager for real-time telemetry dispatch and live pub/sub streaming across sinks."""
+
     def __init__(self) -> None:
         self.sinks: List[BaseTelemetrySink] = []
         self._memory_sink = MemorySink(max_size=1000)
+        self._subscribers: Set[Callable[[AuditEvent], None]] = set()
+        self._sub_lock = threading.Lock()
         self.add_sink(self._memory_sink)
 
     def add_sink(self, sink: BaseTelemetrySink) -> None:
@@ -251,6 +284,17 @@ class TelemetryManager:
     def clear_sinks(self) -> None:
         self.sinks.clear()
         self.add_sink(self._memory_sink)
+
+    def subscribe(self, callback: Callable[[AuditEvent], None]) -> Callable[[], None]:
+        """Register a real-time listener callback for streaming events."""
+        with self._sub_lock:
+            self._subscribers.add(callback)
+
+        def unsubscribe() -> None:
+            with self._sub_lock:
+                self._subscribers.discard(callback)
+
+        return unsubscribe
 
     def emit(
         self,
@@ -263,7 +307,7 @@ class TelemetryManager:
         tenant_id: Optional[str] = None,
         user_id: Optional[str] = None,
     ) -> AuditEvent:
-        """Create and publish an audit event to all registered sinks."""
+        """Create and publish an audit event to all registered sinks and real-time subscribers."""
         event = AuditEvent(
             action=action,
             resource=resource,
@@ -279,9 +323,21 @@ class TelemetryManager:
                 sink.send(event)
             except Exception as ex:
                 logger.error("Telemetry sink %s failed: %s", type(sink).__name__, ex)
+
+        # Broadcast in real time to live stream subscribers
+        with self._sub_lock:
+            subs = list(self._subscribers)
+        for sub in subs:
+            try:
+                sub(event)
+            except Exception as ex:
+                logger.debug("Real-time telemetry subscriber error: %s", ex)
+
         return event
 
-    def get_recent_events(self, limit: int = 100, tenant_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_recent_events(
+        self, limit: int = 100, tenant_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """Retrieve recent audit events from memory sink."""
         return self._memory_sink.get_events(limit=limit, tenant_id=tenant_id)
 

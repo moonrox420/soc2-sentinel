@@ -29,9 +29,13 @@ def _enforce_collection_quality_rules(payload: dict[str, Any]) -> None:
     critical_errors = [e for e in errors if e.get("severity") == "critical"]
     if quality == "complete":
         if critical_errors:
-            raise ValidationError("collection_quality complete but critical errors present")
+            raise ValidationError(
+                "collection_quality complete but critical errors present"
+            )
         if not artifacts:
-            raise ValidationError("collection_quality complete requires evidence_artifacts")
+            raise ValidationError(
+                "collection_quality complete requires evidence_artifacts"
+            )
     if quality == "failed" and artifacts and critical_errors:
         pass  # allowed — partial artifact write on hard failure
 
@@ -57,4 +61,9 @@ def validate_evidence(payload: dict[str, Any]) -> None:
 def utc_now_iso() -> str:
     from datetime import datetime, timezone
 
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )

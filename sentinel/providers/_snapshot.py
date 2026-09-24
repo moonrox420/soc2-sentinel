@@ -20,7 +20,9 @@ def api_error(
     }
 
 
-def collection_quality(errors: list[dict[str, Any]], *, checks_attempted: int, checks_succeeded: int) -> str:
+def collection_quality(
+    errors: list[dict[str, Any]], *, checks_attempted: int, checks_succeeded: int
+) -> str:
     if checks_attempted == 0 or (errors and checks_succeeded == 0):
         return "failed"
     if errors:
@@ -63,6 +65,13 @@ def merge_results(*snapshots: dict[str, Any]) -> dict[str, Any]:
                 continue
             if key not in merged:
                 merged[key] = value
-            elif isinstance(value, list) and isinstance(merged.get(key), list) or isinstance(value, int) and isinstance(merged.get(key), int):
+            elif (
+                isinstance(value, list)
+                and isinstance(merged.get(key), list)
+                or isinstance(value, int)
+                and isinstance(merged.get(key), int)
+            ):
                 merged[key] = merged[key] + value
-    return finalize_snapshot(merged, all_errors, checks_attempted=attempted, checks_succeeded=succeeded)
+    return finalize_snapshot(
+        merged, all_errors, checks_attempted=attempted, checks_succeeded=succeeded
+    )

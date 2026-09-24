@@ -40,12 +40,21 @@ def zt_verification_snapshot(ctx: GcpContext) -> dict[str, Any]:
             },
             "pillar_provenance": {
                 "Identity": {
-                    "source_metrics": ["privileged_count", "stale_service_account_keys"],
+                    "source_metrics": [
+                        "privileged_count",
+                        "stale_service_account_keys",
+                    ],
                     "limitations": "No reliable account-inactivity, access-review-date, or MFA-enforcement metric is collected.",
                 },
                 "Device": {"source_metrics": [], "limitations": "Not collected."},
-                "Network": {"source_metrics": [], "limitations": "Not collected for ZT maturity."},
-                "Application": {"source_metrics": [], "limitations": "Not collected for ZT maturity."},
+                "Network": {
+                    "source_metrics": [],
+                    "limitations": "Not collected for ZT maturity.",
+                },
+                "Application": {
+                    "source_metrics": [],
+                    "limitations": "Not collected for ZT maturity.",
+                },
                 "Data": {
                     "source_metrics": ["unencrypted_cui_count"],
                     "limitations": "Encryption posture is measured; broader data controls are not.",

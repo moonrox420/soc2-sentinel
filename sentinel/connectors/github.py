@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BranchProtectionStatus:
     """Status of branch protection rules on target branch."""
+
     branch: str
     protected: bool
     enforce_admins: bool
@@ -48,18 +49,20 @@ class BranchProtectionStatus:
 @dataclass
 class VulnerabilityAlertSummary:
     """Summary of open security vulnerabilities."""
+
     total_open: int = 0
     critical: int = 0
     high: int = 0
     medium: int = 0
     low: int = 0
     critical_sla_breaches: int = 0  # > 7 days old
-    high_sla_breaches: int = 0      # > 30 days old
+    high_sla_breaches: int = 0  # > 30 days old
 
 
 @dataclass
 class SecurityFeaturesStatus:
     """Security features enabled on the repository."""
+
     secret_scanning_enabled: bool
     secret_scanning_push_protection_enabled: bool
     dependabot_alerts_enabled: bool
@@ -70,6 +73,7 @@ class SecurityFeaturesStatus:
 @dataclass
 class GitHubComplianceReport:
     """Complete VCS compliance evidence snapshot."""
+
     repository: str
     timestamp: str
     default_branch: str
@@ -130,16 +134,14 @@ class GitHubConnector:
         repo: str,
         token: Optional[str] = None,
         api_url: str = "https://api.github.com",
-        mock: bool = False,
     ) -> None:
         self.repo = repo.strip("/")
         self.token = token or os.getenv("GITHUB_TOKEN", "")
         self.api_url = api_url.rstrip("/")
-        self.mock = mock
 
     def _make_request(self, endpoint: str) -> Optional[Dict[str, Any] | List[Any]]:
-        """Perform an authenticated GitHub API request."""
-        if self.mock or not self.token:
+        """Perform an authenticated real-time GitHub API request."""
+        if not self.token:
             return None
 
         url = f"{self.api_url}/repos/{self.repo}/{endpoint.lstrip('/')}"
@@ -167,66 +169,24 @@ class GitHubConnector:
             logger.error("GitHub API request failed for %s: %s", url, ex)
             return None
 
-    def _get_mock_report(self) -> GitHubComplianceReport:
-        """Provide a compliant mock snapshot for testing or offline operation."""
-        branch_prot = BranchProtectionStatus(
-            branch="main",
-            protected=True,
-            enforce_admins=True,
-            required_approving_review_count=2,
-            dismiss_stale_reviews=True,
-            require_code_owner_reviews=True,
-            required_status_checks=["ci/build", "security/sast", "security/trivy"],
-            require_signed_commits=True,
-            allows_force_pushes=False,
-            allows_deletions=False,
-        )
-        sec_features = SecurityFeaturesStatus(
-            secret_scanning_enabled=True,
-            secret_scanning_push_protection_enabled=True,
-            dependabot_alerts_enabled=True,
-            dependabot_security_updates_enabled=True,
-            code_scanning_enabled=True,
-        )
-        dep_summary = VulnerabilityAlertSummary(
-            total_open=1,
-            critical=0,
-            high=0,
-            medium=1,
-            low=0,
-            critical_sla_breaches=0,
-            high_sla_breaches=0,
-        )
-        return GitHubComplianceReport(
-            repository=self.repo or "enterprise-org/soc2-sentinel",
-            timestamp=datetime.now(timezone.utc).isoformat(),
-            default_branch="main",
-            branch_protection=branch_prot,
-            security_features=sec_features,
-            dependabot_summary=dep_summary,
-            secret_scanning_alerts_open=0,
-            compliant=True,
-            findings=[],
-            raw_evidence={"mock": True, "source": "synthetic_soc2_benchmark"},
-        )
-
     def audit(self, default_branch: str = "main") -> GitHubComplianceReport:
-        """Perform full compliance assessment on the repository."""
-        if self.mock:
-            return self._get_mock_report()
-
+        """Perform full real-time compliance assessment on the live GitHub repository."""
         findings: List[str] = []
         raw_evidence: Dict[str, Any] = {}
 
         if not self.token:
-            findings.append("CRITICAL: GitHub API token (GITHUB_TOKEN) is not configured; live VCS compliance audit cannot be authenticated.")
+            findings.append(
+                "CRITICAL: GitHub API token (GITHUB_TOKEN) is not configured; live VCS compliance audit cannot be authenticated."
+            )
 
         # 1. Branch Protection
         bp_data = self._make_request(f"branches/{default_branch}/protection")
         raw_evidence["branch_protection"] = bp_data
 
         if not bp_data or not isinstance(bp_data, dict):
-            findings.append(f"CRITICAL: Branch protection is not configured or inaccessible for '{default_branch}'.")
+            findings.append(
+                f"CRITICAL: Branch protection is not configured or inaccessible for '{default_branch}'."
+            )
             branch_prot = BranchProtectionStatus(
                 branch=default_branch,
                 protected=False,
@@ -248,23 +208,43 @@ class GitHubConnector:
                 branch=default_branch,
                 protected=True,
                 enforce_admins=bool(admin_enforce.get("enabled", False)),
-                required_approving_review_count=int(req_reviews.get("required_approving_review_count", 0)),
-                dismiss_stale_reviews=bool(req_reviews.get("dismiss_stale_reviews", False)),
-                require_code_owner_reviews=bool(req_reviews.get("require_code_owner_reviews", False)),
+                required_approving_review_count=int(
+                    req_reviews.get("required_approving_review_count", 0)
+                ),
+                dismiss_stale_reviews=bool(
+                    req_reviews.get("dismiss_stale_reviews", False)
+                ),
+                require_code_owner_reviews=bool(
+                    req_reviews.get("require_code_owner_reviews", False)
+                ),
                 required_status_checks=list(status_checks.get("contexts", [])),
-                require_signed_commits=bool(bp_data.get("required_signatures", {}).get("enabled", False)),
-                allows_force_pushes=bool(bp_data.get("allow_force_pushes", {}).get("enabled", False)),
-                allows_deletions=bool(bp_data.get("allow_deletions", {}).get("enabled", False)),
+                require_signed_commits=bool(
+                    bp_data.get("required_signatures", {}).get("enabled", False)
+                ),
+                allows_force_pushes=bool(
+                    bp_data.get("allow_force_pushes", {}).get("enabled", False)
+                ),
+                allows_deletions=bool(
+                    bp_data.get("allow_deletions", {}).get("enabled", False)
+                ),
             )
 
             if branch_prot.required_approving_review_count < 1:
-                findings.append(f"HIGH: Branch '{default_branch}' does not require pull request peer reviews.")
+                findings.append(
+                    f"HIGH: Branch '{default_branch}' does not require pull request peer reviews."
+                )
             if not branch_prot.dismiss_stale_reviews:
-                findings.append(f"MEDIUM: Stale PR approval dismissal is disabled on '{default_branch}'.")
+                findings.append(
+                    f"MEDIUM: Stale PR approval dismissal is disabled on '{default_branch}'."
+                )
             if branch_prot.allows_force_pushes:
-                findings.append(f"HIGH: Force pushes are allowed on branch '{default_branch}'.")
+                findings.append(
+                    f"HIGH: Force pushes are allowed on branch '{default_branch}'."
+                )
             if branch_prot.allows_deletions:
-                findings.append(f"HIGH: Branch deletions are allowed on '{default_branch}'.")
+                findings.append(
+                    f"HIGH: Branch deletions are allowed on '{default_branch}'."
+                )
 
         # 2. Repo Security Features (Secret scanning, Dependabot)
         repo_data = self._make_request("")
@@ -285,13 +265,21 @@ class GitHubConnector:
             dep_sec = sec_meta.get("dependabot_security_updates") or {}
 
             sec_features.secret_scanning_enabled = sec_scan.get("status") == "enabled"
-            sec_features.secret_scanning_push_protection_enabled = sec_push.get("status") == "enabled"
-            sec_features.dependabot_security_updates_enabled = dep_sec.get("status") == "enabled"
+            sec_features.secret_scanning_push_protection_enabled = (
+                sec_push.get("status") == "enabled"
+            )
+            sec_features.dependabot_security_updates_enabled = (
+                dep_sec.get("status") == "enabled"
+            )
 
             if not sec_features.secret_scanning_enabled:
-                findings.append("HIGH: Secret scanning is not enabled on the repository.")
+                findings.append(
+                    "HIGH: Secret scanning is not enabled on the repository."
+                )
             if not sec_features.secret_scanning_push_protection_enabled:
-                findings.append("MEDIUM: Push protection for secret scanning is disabled.")
+                findings.append(
+                    "MEDIUM: Push protection for secret scanning is disabled."
+                )
 
         # 3. Dependabot Alerts & SLA
         dep_alerts = self._make_request("dependabot/alerts?state=open")
@@ -313,7 +301,9 @@ class GitHubConnector:
                 days_open = 0
                 if created_at_str:
                     try:
-                        created_dt = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+                        created_dt = datetime.fromisoformat(
+                            created_at_str.replace("Z", "+00:00")
+                        )
                         days_open = (now_dt - created_dt).days
                     except Exception:
                         days_open = 0
@@ -332,9 +322,13 @@ class GitHubConnector:
                     dep_summary.low += 1
 
             if dep_summary.critical_sla_breaches > 0:
-                findings.append(f"CRITICAL: {dep_summary.critical_sla_breaches} Critical Dependabot alerts exceed 7-day remediation SLA.")
+                findings.append(
+                    f"CRITICAL: {dep_summary.critical_sla_breaches} Critical Dependabot alerts exceed 7-day remediation SLA."
+                )
             if dep_summary.high_sla_breaches > 0:
-                findings.append(f"HIGH: {dep_summary.high_sla_breaches} High Dependabot alerts exceed 30-day remediation SLA.")
+                findings.append(
+                    f"HIGH: {dep_summary.high_sla_breaches} High Dependabot alerts exceed 30-day remediation SLA."
+                )
 
         # 4. Secret Scanning Alerts
         sec_alerts = self._make_request("secret-scanning/alerts?state=open")
@@ -342,9 +336,20 @@ class GitHubConnector:
         open_secrets = len(sec_alerts) if isinstance(sec_alerts, list) else 0
 
         if open_secrets > 0:
-            findings.append(f"CRITICAL: {open_secrets} unmitigated secrets detected in repository codebase.")
+            findings.append(
+                f"CRITICAL: {open_secrets} unmitigated secrets detected in repository codebase."
+            )
 
-        compliant = len([f for f in findings if f.startswith("CRITICAL:") or f.startswith("HIGH:")]) == 0
+        compliant = (
+            len(
+                [
+                    f
+                    for f in findings
+                    if f.startswith("CRITICAL:") or f.startswith("HIGH:")
+                ]
+            )
+            == 0
+        )
 
         return GitHubComplianceReport(
             repository=self.repo,

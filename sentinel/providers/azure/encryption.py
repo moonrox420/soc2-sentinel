@@ -25,12 +25,22 @@ def encryption_snapshot(ctx: AzureContext) -> dict[str, Any]:
         )
         ctx.succeed()
         for account in accounts:
-            encrypted = account.encryption.services.blob.enabled if account.encryption else False
+            encrypted = (
+                account.encryption.services.blob.enabled
+                if account.encryption
+                else False
+            )
             resources.append(
-                {"resource": account.name, "encrypted": encrypted, "type": "StorageAccount"}
+                {
+                    "resource": account.name,
+                    "encrypted": encrypted,
+                    "type": "StorageAccount",
+                }
             )
             if not encrypted:
-                findings.append({"resource": account.name, "issue": "storage encryption disabled"})
+                findings.append(
+                    {"resource": account.name, "issue": "storage encryption disabled"}
+                )
     except Exception as exc:
         ctx.record_error("storage", exc)
 
@@ -57,9 +67,16 @@ def encryption_snapshot(ctx: AzureContext) -> dict[str, Any]:
         rows = cast(list[dict[str, Any]], result.data)
         for row in rows:
             enc = str(row.get("encrypted", "")).lower() == "true"
-            resources.append({"resource": row.get("name", "disk"), "encrypted": enc, "type": "Disk"})
+            resources.append(
+                {"resource": row.get("name", "disk"), "encrypted": enc, "type": "Disk"}
+            )
             if not enc:
-                findings.append({"resource": str(row.get("name")), "issue": "disk encryption disabled"})
+                findings.append(
+                    {
+                        "resource": str(row.get("name")),
+                        "issue": "disk encryption disabled",
+                    }
+                )
     except Exception as exc:
         ctx.record_error("resourcegraph", exc)
 

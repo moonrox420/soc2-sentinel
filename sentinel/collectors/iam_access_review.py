@@ -28,7 +28,9 @@ def collect_iam_access_review(
 ) -> Path:
     cfg = config or SentinelConfig()
     try:
-        snap = fetch_snapshot(provider.iam_access_snapshot, collector="iam_access_review")
+        snap = fetch_snapshot(
+            provider.iam_access_snapshot, collector="iam_access_review"
+        )
     except ProviderError as exc:
         return write_failure_evidence(
             control_id=control_id,
@@ -41,9 +43,11 @@ def collect_iam_access_review(
 
     privileged_standing = snap.get("privileged_count", 0)
     jit_recommendations = snap.get("jit_recommendations") or [
-        f"Convert {privileged_standing} standing privileged accounts to time-bound JIT access"
-        if privileged_standing
-        else "No JIT conversions required"
+        (
+            f"Convert {privileged_standing} standing privileged accounts to time-bound JIT access"
+            if privileged_standing
+            else "No JIT conversions required"
+        )
     ]
     metrics = {
         "total_identities": snap.get("total_identities", 0),
@@ -72,12 +76,19 @@ def collect_iam_access_review(
         "metrics": metrics,
         "evidence_artifacts": [],
         "findings": findings,
-        "notes": snap.get("notes", "IAM access review with JIT privileged access recommendations."),
+        "notes": snap.get(
+            "notes", "IAM access review with JIT privileged access recommendations."
+        ),
         "provider": provider.name,
         "composite_checks": {"jit_recommendations": jit_recommendations},
     }
     apply_collection_metadata(payload, snap)
-    log_collection_done(collector="iam_access_review", provider=provider.name, control_id=control_id, snap=snap)
+    log_collection_done(
+        collector="iam_access_review",
+        provider=provider.name,
+        control_id=control_id,
+        snap=snap,
+    )
 
     csv_content = snap.get("csv", "")
     if cfg.evidence.redact_pii and csv_content:

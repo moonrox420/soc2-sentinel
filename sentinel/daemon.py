@@ -14,6 +14,7 @@ from sentinel.collectors import COLLECTORS
 from sentinel.config import SentinelConfig
 from sentinel.drift import detect_configuration_drift
 from sentinel.providers import get_provider
+from sentinel.telemetry import TELEMETRY
 
 logger = logging.getLogger("sentinel.daemon")
 
@@ -37,7 +38,7 @@ class ContinuousMonitoringDaemon:
     def __init__(
         self,
         *,
-        provider_name: str = "mock",
+        provider_name: str = "aws",
         interval_seconds: int = 3600,
         output_base: Path | None = None,
         config: SentinelConfig | None = None,
@@ -82,9 +83,15 @@ class ContinuousMonitoringDaemon:
                 return
             self._stop_event.clear()
             self._running = True
-            self._thread = threading.Thread(target=self._run_loop, daemon=True, name="sentinel-daemon")
+            self._thread = threading.Thread(
+                target=self._run_loop, daemon=True, name="sentinel-daemon"
+            )
             self._thread.start()
-            logger.info("Continuous monitoring daemon started (interval=%ds, provider=%s)", self.interval_seconds, self.provider_name)
+            logger.info(
+                "Continuous monitoring daemon started (interval=%ds, provider=%s)",
+                self.interval_seconds,
+                self.provider_name,
+            )
 
     def stop(self, timeout: float = 5.0) -> None:
         with self._lock:
@@ -103,7 +110,10 @@ class ContinuousMonitoringDaemon:
 
     def _execute_cycle(self) -> dict[str, Any]:
         now_iso = datetime.now(timezone.utc).isoformat()
-        logger.info("Daemon executing scheduled compliance collection cycle for provider '%s'", self.provider_name)
+        logger.info(
+            "Daemon executing scheduled compliance collection cycle for provider '%s'",
+            self.provider_name,
+        )
         errors: list[str] = []
 
         try:
@@ -134,7 +144,9 @@ class ContinuousMonitoringDaemon:
 
         drift_count = 0
         try:
-            drift_report = detect_configuration_drift(self.output_base / "evidence", record_audit=True)
+            drift_report = detect_configuration_drift(
+                self.output_base / "evidence", record_audit=True
+            )
             drift_count = drift_report.total_drift_items
         except Exception as exc:
             logger.warning("Drift detection error: %s", exc)
@@ -151,7 +163,21 @@ class ContinuousMonitoringDaemon:
                 command="daemon_cycle",
                 provider=self.provider_name,
                 outcome="success" if not errors else "partial",
-                details={"errors_count": len(errors), "drift_count": drift_count, "run_number": self._total_runs},
+                details={
+                    "errors_count": len(errors),
+                    "drift_count": drift_count,
+                    "run_number": self._total_runs,
+                },
+            )
+            TELEMETRY.emit(
+                action="DAEMON_CYCLE_COMPLETED",
+                resource=f"provider/{self.provider_name}",
+                outcome="SUCCESS" if not errors else "PARTIAL",
+                details={
+                    "errors_count": len(errors),
+                    "drift_count": drift_count,
+                    "run_number": self._total_runs,
+                },
             )
         except Exception as exc:
             logger.debug("Failed writing daemon audit event: %s", exc)
@@ -165,7 +191,9 @@ class ContinuousMonitoringDaemon:
 
     def _run_loop(self) -> None:
         while not self._stop_event.is_set():
-            next_run_ts = datetime.fromtimestamp(time.time() + self.interval_seconds, timezone.utc).isoformat()
+            next_run_ts = datetime.fromtimestamp(
+                time.time() + self.interval_seconds, timezone.utc
+            ).isoformat()
             with self._lock:
                 self._next_run_timestamp = next_run_ts
 

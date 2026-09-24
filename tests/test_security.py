@@ -1,4 +1,9 @@
-from sentinel.security import decrypt_bytes, encrypt_bytes, redact_pii, sanitize_csv_cell
+from sentinel.security import (
+    decrypt_bytes,
+    encrypt_bytes,
+    redact_pii,
+    sanitize_csv_cell,
+)
 
 
 def test_sanitize_csv_cell_formula():
@@ -203,9 +208,7 @@ def test_encrypted_write_tracks_and_manifests_real_artifacts(tmp_path, monkeypat
         "report.json.enc",
     ]
 
-    manifest = json.loads(
-        (path.parent / "manifest.json").read_text(encoding="utf-8")
-    )
+    manifest = json.loads((path.parent / "manifest.json").read_text(encoding="utf-8"))
     assert "report.json.enc" in manifest["artifacts"]
     assert "artifact.txt.enc" in manifest["artifacts"]
     assert "report.meta.json" in manifest["artifacts"]

@@ -54,7 +54,12 @@ def collect_retention_check(
         "provider": provider.name,
     }
     apply_collection_metadata(payload, snap)
-    log_collection_done(collector="retention_check", provider=provider.name, control_id=control_id, snap=snap)
+    log_collection_done(
+        collector="retention_check",
+        provider=provider.name,
+        control_id=control_id,
+        snap=snap,
+    )
     return write_evidence(
         payload,
         base=base,

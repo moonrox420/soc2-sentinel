@@ -29,8 +29,12 @@ def test_siem_event_formatting():
 def test_siem_export_ndjson(tmp_path: Path):
     audit_file = tmp_path / "sentinel_audit.jsonl"
     audit_file.write_text(
-        json.dumps({"event": "LOGIN_SUCCESS", "severity": "INFO", "user": "admin"}) + "\n"
-        + json.dumps({"event": "DRIFT_DETECTED", "severity": "HIGH", "control": "CC6.6"}) + "\n",
+        json.dumps({"event": "LOGIN_SUCCESS", "severity": "INFO", "user": "admin"})
+        + "\n"
+        + json.dumps(
+            {"event": "DRIFT_DETECTED", "severity": "HIGH", "control": "CC6.6"}
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -49,7 +53,8 @@ def test_siem_export_ndjson(tmp_path: Path):
 def test_siem_forward_splunk_mock(tmp_path: Path):
     audit_file = tmp_path / "sentinel_audit.jsonl"
     audit_file.write_text(
-        json.dumps({"event": "VAULT_SEALED", "severity": "INFO", "block": "blk-1"}) + "\n",
+        json.dumps({"event": "VAULT_SEALED", "severity": "INFO", "block": "blk-1"})
+        + "\n",
         encoding="utf-8",
     )
     exporter = SIEMExporter(base_dir=tmp_path)

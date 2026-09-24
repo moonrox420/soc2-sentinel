@@ -84,7 +84,9 @@ def iam_access_snapshot(ctx: GcpContext) -> dict[str, Any]:
             for key in keys:
                 valid = key.valid_after_time
                 if valid:
-                    age = (datetime.now(timezone.utc) - valid.replace(tzinfo=timezone.utc)).days
+                    age = (
+                        datetime.now(timezone.utc) - valid.replace(tzinfo=timezone.utc)
+                    ).days
                     if age > 90:
                         stale_service_account_keys += 1
                         users.append(

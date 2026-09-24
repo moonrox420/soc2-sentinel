@@ -502,7 +502,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <div class="header-status">
       <div class="provider-pill" id="active-provider-pill">
         <div class="indicator-dot" id="provider-dot"></div>
-        <span id="active-provider-name">Provider: MOCK</span>
+        <span id="active-provider-name">Provider: AWS</span>
       </div>
       <button class="btn btn-secondary btn-sm" onclick="refreshAllData()" title="Reload telemetry">
         &#x21bb; Refresh
@@ -584,14 +584,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <div id="tab-scanner" class="tab-content">
       <div class="glass-card">
         <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">Live Evidence Collection Runner</h3>
-        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 24px;">Execute real-time evidence collection against AWS, GCP, Azure, or offline Mock testbeds</p>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 24px;">Execute real-time evidence collection against live cloud infrastructure (AWS, GCP, Azure)</p>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 16px; align-items: flex-end; margin-bottom: 24px;">
           <div class="form-group" style="margin: 0;">
             <label class="form-label" for="scan-provider-select">Target Cloud Provider</label>
             <select class="form-select" id="scan-provider-select">
-              <option value="mock">Mock Fixture (Offline Demo)</option>
-              <option value="aws">Amazon Web Services (AWS Live)</option>
+              <option value="aws" selected>Amazon Web Services (AWS Live)</option>
               <option value="gcp">Google Cloud Platform (GCP Live)</option>
               <option value="azure">Microsoft Azure (Azure Live)</option>
             </select>
@@ -753,11 +752,11 @@ Select a target cloud provider and collector routine to execute an evidence run.
         <!-- 3 Quick Cards Grid -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px;">
           <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 18px;">
-            <div style="font-weight: 700; font-size: 15px; color: var(--accent-primary); margin-bottom: 6px;">1. Instant Mock Demo</div>
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">Test the full collection, scoring, and reporting pipeline with zero cloud credentials required.</p>
+            <div style="font-weight: 700; font-size: 15px; color: var(--accent-primary); margin-bottom: 6px;">1. Live Cloud Scan</div>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">Run all 7 automated evidence collectors against active cloud infrastructure.</p>
             <div style="background: #000; padding: 10px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; position: relative;">
-              <code>sentinel run-all --provider mock</code>
-              <button onclick="copyCommand('sentinel run-all --provider mock')" style="position: absolute; right: 8px; top: 8px; background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;">Copy</button>
+              <code>sentinel run-all --provider aws</code>
+              <button onclick="copyCommand('sentinel run-all --provider aws')" style="position: absolute; right: 8px; top: 8px; background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;">Copy</button>
             </div>
           </div>
 
@@ -830,9 +829,9 @@ sentinel onboarding --provider azure</pre>
               </tr>
               <tr>
                 <td><code>sentinel run-all</code></td>
-                <td><code>--provider aws|gcp|azure|mock</code></td>
+                <td><code>--provider aws|gcp|azure</code></td>
                 <td>Execute all 7 automated evidence collectors</td>
-                <td><button class="btn btn-secondary btn-sm" onclick="copyCommand('sentinel run-all --provider mock')">Copy</button></td>
+                <td><button class="btn btn-secondary btn-sm" onclick="copyCommand('sentinel run-all --provider aws')">Copy</button></td>
               </tr>
               <tr>
                 <td><code>sentinel scorecard</code></td>
@@ -866,9 +865,9 @@ sentinel onboarding --provider azure</pre>
               </tr>
               <tr>
                 <td><code>sentinel validate</code></td>
-                <td><code>--provider aws|gcp|azure|mock</code></td>
+                <td><code>--provider aws|gcp|azure</code></td>
                 <td>Validate cloud credentials and configuration integrity</td>
-                <td><button class="btn btn-secondary btn-sm" onclick="copyCommand('sentinel validate --provider mock')">Copy</button></td>
+                <td><button class="btn btn-secondary btn-sm" onclick="copyCommand('sentinel validate --provider aws')">Copy</button></td>
               </tr>
             </tbody>
           </table>
@@ -964,7 +963,7 @@ sentinel onboarding --provider azure</pre>
       else circle.style.stroke = 'var(--status-danger)';
 
       // Provider
-      const provName = (data.provider || 'MOCK').toUpperCase();
+      const provName = (data.provider || 'AWS').toUpperCase();
       document.getElementById('active-provider-name').textContent = 'Provider: ' + provName;
 
       // Frameworks Grid
@@ -1315,9 +1314,40 @@ sentinel onboarding --provider azure</pre>
       ]);
     }
 
+    let eventSource = null;
+    function initLiveEventStream() {
+      if (window.EventSource) {
+        try {
+          eventSource = new EventSource('/api/stream/events');
+          eventSource.onmessage = function(e) {
+            try {
+              const ev = JSON.parse(e.data);
+              if (ev.type === 'connected') {
+                logToConsole(`[LIVE SSE] Real-time telemetry stream connected at ${ev.timestamp}`);
+              } else if (ev.action) {
+                logToConsole(`[EVENT] ${ev.action} - ${JSON.stringify(ev.metadata || {})}`);
+                if (ev.action === 'DAEMON_CYCLE_COMPLETED' || ev.action === 'SCAN_COMPLETED') {
+                  showToast('Live telemetry update: ' + ev.action, 'info');
+                  refreshAllData();
+                }
+              }
+            } catch (parseErr) {
+              // Non-JSON ping or comment
+            }
+          };
+          eventSource.onerror = function() {
+            // Reconnection handled automatically by browser EventSource
+          };
+        } catch (err) {
+          console.warn('SSE initialization failed', err);
+        }
+      }
+    }
+
     // Auto-initialize on load
     window.addEventListener('DOMContentLoaded', () => {
       refreshAllData();
+      initLiveEventStream();
       setInterval(() => {
         loadScorecard();
         loadDrift();

@@ -117,12 +117,18 @@ def test_github_connector_live_request_mocking(monkeypatch: pytest.MonkeyPatch) 
     assert report.dependabot_summary.critical_sla_breaches == 1
     assert report.dependabot_summary.high_sla_breaches == 1
     assert report.secret_scanning_alerts_open == 1
-    assert report.compliant is False  # Because critical SLA breaches and open secrets exist
+    assert (
+        report.compliant is False
+    )  # Because critical SLA breaches and open secrets exist
     assert len(report.findings) > 0
 
 
-def test_github_connector_unprotected_branch_handling(monkeypatch: pytest.MonkeyPatch) -> None:
-    connector = GitHubConnector(repo="acme/insecure-repo", token="ghp_fake_token", mock=False)
+def test_github_connector_unprotected_branch_handling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connector = GitHubConnector(
+        repo="acme/insecure-repo", token="ghp_fake_token", mock=False
+    )
 
     def mock_make_request(endpoint: str):
         # Returns None simulating 404 on branch protection

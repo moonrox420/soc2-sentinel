@@ -62,7 +62,9 @@ def resilience_snapshot(ctx: AwsClients) -> dict[str, Any]:
             last_restore_days = (datetime.now(timezone.utc) - latest_restore).days
 
     if last_backup_hours is None:
-        snap_resp = ctx.call("rds", "aws_rds_snapshots", lambda: rds.describe_db_snapshots())
+        snap_resp = ctx.call(
+            "rds", "aws_rds_snapshots", lambda: rds.describe_db_snapshots()
+        )
         if snap_resp:
             latest_snap: datetime | None = None
             for snap in snap_resp.get("DBSnapshots", []):

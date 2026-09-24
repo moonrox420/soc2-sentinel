@@ -43,11 +43,18 @@ def log_monitoring_snapshot(ctx: AwsClients) -> dict[str, Any]:
                     active_trails += 1
                     latest = status_resp.get("LatestDeliveryTime")
                     if latest:
-                        gap = (datetime.now(timezone.utc) - latest).total_seconds() / 3600
-                        max_gap_hours = gap if max_gap_hours is None else max(max_gap_hours, gap)
+                        gap = (
+                            datetime.now(timezone.utc) - latest
+                        ).total_seconds() / 3600
+                        max_gap_hours = (
+                            gap if max_gap_hours is None else max(max_gap_hours, gap)
+                        )
                 else:
                     findings.append(
-                        {"resource": trail.get("Name", "trail"), "issue": "trail not logging"}
+                        {
+                            "resource": trail.get("Name", "trail"),
+                            "issue": "trail not logging",
+                        }
                     )
 
     recorder_resp = ctx.call(
@@ -57,12 +64,16 @@ def log_monitoring_snapshot(ctx: AwsClients) -> dict[str, Any]:
     )
     if recorder_resp:
         recorders = recorder_resp.get("ConfigurationRecorders", [])
-        recorder_on = any(r.get("recordingGroup", {}).get("allSupported") for r in recorders)
+        recorder_on = any(
+            r.get("recordingGroup", {}).get("allSupported") for r in recorders
+        )
 
     log_groups_with_retention = 0
     log_groups_total = 0
     log_group_retention_days: list[int] = []
-    lg_resp = ctx.call("logs", "aws_describe_log_groups", lambda: logs.describe_log_groups(limit=50))
+    lg_resp = ctx.call(
+        "logs", "aws_describe_log_groups", lambda: logs.describe_log_groups(limit=50)
+    )
     if lg_resp:
         for group in lg_resp.get("logGroups", []):
             log_groups_total += 1
@@ -117,7 +128,9 @@ def _sample_cui_events(ctx: AwsClients, trails_client) -> list[dict[str, Any]]:
         "cloudtrail",
         "aws_lookup_events",
         lambda: trails_client.lookup_events(
-            LookupAttributes=[{"AttributeKey": "ResourceName", "AttributeValue": "cui"}],
+            LookupAttributes=[
+                {"AttributeKey": "ResourceName", "AttributeValue": "cui"}
+            ],
             MaxResults=10,
         ),
     )
@@ -125,8 +138,12 @@ def _sample_cui_events(ctx: AwsClients, trails_client) -> list[dict[str, Any]]:
         for event in resp.get("Events", []):
             events.append(
                 {
-                    "timestamp": event.get("EventTime", datetime.now(timezone.utc)).isoformat(),
-                    "resource": event.get("Resources", [{}])[0].get("ResourceName", "unknown"),
+                    "timestamp": event.get(
+                        "EventTime", datetime.now(timezone.utc)
+                    ).isoformat(),
+                    "resource": event.get("Resources", [{}])[0].get(
+                        "ResourceName", "unknown"
+                    ),
                     "action": event.get("EventName", "unknown"),
                     "principal": event.get("Username", "unknown"),
                     "attck_tags": ["T1078"],

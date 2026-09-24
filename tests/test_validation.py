@@ -30,7 +30,6 @@ def test_resolve_safe_output_base_writable(tmp_path):
 # --- Consolidated from test_validation_extended.py ---
 
 
-
 def test_control_id_reserved():
     with pytest.raises(ValidationError):
         sanitize_control_id("CON", strict_allowlist=False)
@@ -49,7 +48,6 @@ def test_control_id_empty():
 # --- Consolidated from test_validation_paths.py ---
 
 
-
 def test_output_base_not_directory(tmp_path):
     f = tmp_path / "file.txt"
     f.write_text("x", encoding="utf-8")
@@ -63,7 +61,6 @@ def test_artifact_empty_name():
 
 
 # --- Consolidated from test_validation_strict.py ---
-
 
 
 def test_unknown_control_rejected_by_default():

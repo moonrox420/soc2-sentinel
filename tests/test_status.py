@@ -65,12 +65,7 @@ def test_logging_status():
 def test_config_and_change():
     assert status_config_mfa({"mfa_enforcement_percent": 50}) == "red"
     assert status_change_management({"unapproved_changes": 1}) == "red"
-    assert (
-        status_change_management(
-            {"changes_missing_rollback_test": 1}
-        )
-        == "yellow"
-    )
+    assert status_change_management({"changes_missing_rollback_test": 1}) == "yellow"
 
 
 def test_retention_and_generic():

@@ -11,8 +11,12 @@ from sentinel.providers.azure._client import AzureContext
 
 def zt_verification_snapshot(ctx: AzureContext) -> dict[str, Any]:
     iam = azure_iam.iam_access_snapshot(ctx)
-    enc = azure_encryption.encryption_snapshot(AzureContext(subscription_id=ctx.subscription_id))
-    cfg = azure_config.config_and_auth_snapshot(AzureContext(subscription_id=ctx.subscription_id))
+    enc = azure_encryption.encryption_snapshot(
+        AzureContext(subscription_id=ctx.subscription_id)
+    )
+    cfg = azure_config.config_and_auth_snapshot(
+        AzureContext(subscription_id=ctx.subscription_id)
+    )
 
     unencrypted = enc.get("unencrypted_cui_count", 0)
     mfa_pct = cfg.get("mfa_enforcement_percent")
@@ -46,8 +50,14 @@ def zt_verification_snapshot(ctx: AzureContext) -> dict[str, Any]:
                     "limitations": "MFA registration does not prove enforcement, and access-review timing is not collected.",
                 },
                 "Device": {"source_metrics": [], "limitations": "Not collected."},
-                "Network": {"source_metrics": [], "limitations": "Not collected for ZT maturity."},
-                "Application": {"source_metrics": [], "limitations": "Not collected for ZT maturity."},
+                "Network": {
+                    "source_metrics": [],
+                    "limitations": "Not collected for ZT maturity.",
+                },
+                "Application": {
+                    "source_metrics": [],
+                    "limitations": "Not collected for ZT maturity.",
+                },
                 "Data": {
                     "source_metrics": ["unencrypted_cui_count"],
                     "limitations": "Encryption posture is measured; broader data controls are not.",

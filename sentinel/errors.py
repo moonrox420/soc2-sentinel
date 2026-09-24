@@ -12,7 +12,11 @@ class SentinelError(Exception):
         self.details = details or {}
 
     def to_dict(self) -> dict[str, Any]:
-        return {"error": self.__class__.__name__, "message": self.message, "details": self.details}
+        return {
+            "error": self.__class__.__name__,
+            "message": self.message,
+            "details": self.details,
+        }
 
 
 class ValidationError(SentinelError, ValueError):

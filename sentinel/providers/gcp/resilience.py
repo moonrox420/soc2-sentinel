@@ -38,7 +38,9 @@ def resilience_snapshot(ctx: GcpContext) -> dict[str, Any]:
                 if latest is None or dt > latest:
                     latest = dt
         if latest:
-            last_backup_hours = round((datetime.now(timezone.utc) - latest).total_seconds() / 3600, 1)
+            last_backup_hours = round(
+                (datetime.now(timezone.utc) - latest).total_seconds() / 3600, 1
+            )
     except Exception as exc:
         ctx.record_error("compute", exc)
 

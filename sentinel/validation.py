@@ -65,7 +65,9 @@ def sanitize_control_id(control_id: str, *, strict_allowlist: bool = True) -> st
     if not value:
         raise ValidationError("control_id is required")
     if ".." in value or "/" in value or "\\" in value or ":" in value:
-        raise ValidationError(f"control_id contains unsafe path characters: {control_id!r}")
+        raise ValidationError(
+            f"control_id contains unsafe path characters: {control_id!r}"
+        )
     if not _CONTROL_ID_PATTERN.match(value):
         raise ValidationError(f"control_id has invalid format: {control_id!r}")
     if value.upper() in _RESERVED_NAMES:
@@ -73,7 +75,9 @@ def sanitize_control_id(control_id: str, *, strict_allowlist: bool = True) -> st
     if strict_allowlist:
         known = _load_known_controls()
         if value not in known:
-            raise ValidationError(f"control_id not in known controls list: {control_id!r}")
+            raise ValidationError(
+                f"control_id not in known controls list: {control_id!r}"
+            )
     elif value not in _load_known_controls():
         logger.warning("Unknown control_id (allowed): %s", value)
     return value

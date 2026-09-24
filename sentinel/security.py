@@ -86,7 +86,9 @@ def encrypt_bytes(data: bytes, *, secret: str | None = None) -> bytes:
     salt = os.urandom(_SALT_LEN)
     kid = _key_id().encode("utf-8")[:_KEY_ID_LEN]
     kid_padded = kid + b"\x00" * (_KEY_ID_LEN - len(kid))
-    key = _derive_key_v2(material, salt, kid.decode("utf-8", errors="replace").rstrip("\x00"))
+    key = _derive_key_v2(
+        material, salt, kid.decode("utf-8", errors="replace").rstrip("\x00")
+    )
     nonce = os.urandom(12)
     encrypted = AESGCM(key).encrypt(nonce, data, kid_padded)
     return _HEADER_V2 + salt + kid_padded + nonce + encrypted
@@ -138,7 +140,9 @@ def encryption_enabled(*, config_flag: bool = False) -> tuple[bool, str | None]:
     if config_flag and secret:
         return True, secret
     if config_flag and not secret:
-        raise ValidationError("evidence.encrypt is true but SENTINEL_EVIDENCE_KEY is not set")
+        raise ValidationError(
+            "evidence.encrypt is true but SENTINEL_EVIDENCE_KEY is not set"
+        )
     if secret:
         return True, secret
     return False, None

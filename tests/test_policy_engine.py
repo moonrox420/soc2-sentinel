@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from sentinel.policy.engine import PolicyEngine, SafeExpressionEvaluator, get_default_policy_engine
+from sentinel.policy.engine import (
+    PolicyEngine,
+    SafeExpressionEvaluator,
+    get_default_policy_engine,
+)
 from sentinel.policy.models import PolicyReport, PolicyRule
 
 
@@ -37,7 +41,12 @@ def test_safe_expression_evaluator_nested_dict_and_subscript_access() -> None:
         "counts": [10, 20, 30],
         "tags": {"env": "production"},
     }
-    assert evaluator.evaluate("iam.mfa_enforced == True and iam.root_active == False", state) is True
+    assert (
+        evaluator.evaluate(
+            "iam.mfa_enforced == True and iam.root_active == False", state
+        )
+        is True
+    )
     assert evaluator.evaluate("'logs' in s3.buckets", state) is True
     assert evaluator.evaluate("counts[0] == 10", state) is True
     assert evaluator.evaluate("tags['env'] == 'production'", state) is True
@@ -120,17 +129,19 @@ def test_policy_engine_rule_registration_and_file_loading(tmp_path: Path) -> Non
     # Test JSON rule file loading
     rules_file = tmp_path / "rules.json"
     rules_file.write_text(
-        json.dumps([
-            {
-                "rule_id": "CUSTOM-FILE-002",
-                "name": "Audit Logging",
-                "description": "Ensure audit logs are retained >= 365 days",
-                "category": "Logging",
-                "severity": "HIGH",
-                "collector_target": "log_aggregator",
-                "condition": "retention_days >= 365",
-            }
-        ]),
+        json.dumps(
+            [
+                {
+                    "rule_id": "CUSTOM-FILE-002",
+                    "name": "Audit Logging",
+                    "description": "Ensure audit logs are retained >= 365 days",
+                    "category": "Logging",
+                    "severity": "HIGH",
+                    "collector_target": "log_aggregator",
+                    "condition": "retention_days >= 365",
+                }
+            ]
+        ),
         encoding="utf-8",
     )
 

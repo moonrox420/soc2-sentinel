@@ -22,19 +22,23 @@ def encryption_snapshot(ctx: GcpContext) -> dict[str, Any]:
 
         client = StorageClient(project=ctx.project_id)
         ctx.attempt()
-        buckets = call_with_retry(lambda: list(client.list_buckets()), operation="gcp_list_buckets")
+        buckets = call_with_retry(
+            lambda: list(client.list_buckets()), operation="gcp_list_buckets"
+        )
         ctx.succeed()
         for bucket in buckets:
             bucket.reload()
             has_cmek = bool(getattr(bucket, "default_kms_key_name", None))
             # GCS enforces server-side encryption at rest by default; CMEK provides customer-managed keys
             encrypted = True
-            resources.append({
-                "resource": f"gs://{bucket.name}",
-                "encrypted": encrypted,
-                "cmek_enabled": has_cmek,
-                "type": "GCS",
-            })
+            resources.append(
+                {
+                    "resource": f"gs://{bucket.name}",
+                    "encrypted": encrypted,
+                    "cmek_enabled": has_cmek,
+                    "type": "GCS",
+                }
+            )
     except Exception as exc:
         ctx.record_error("storage", exc)
 

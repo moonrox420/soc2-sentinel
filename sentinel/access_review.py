@@ -24,6 +24,7 @@ logger = logging.getLogger("sentinel.access_review")
 
 class ReviewDecision(str, enum.Enum):
     """Reviewer decision on an identity access entitlement."""
+
     PENDING = "PENDING"
     MAINTAIN = "MAINTAIN"
     REVOKE = "REVOKE"
@@ -32,6 +33,7 @@ class ReviewDecision(str, enum.Enum):
 
 class CampaignStatus(str, enum.Enum):
     """Lifecycle status of an access certification campaign."""
+
     ACTIVE = "ACTIVE"
     COMPLETED = "COMPLETED"
     ARCHIVED = "ARCHIVED"
@@ -40,6 +42,7 @@ class CampaignStatus(str, enum.Enum):
 @dataclass
 class AccessReviewItem:
     """Individual identity access line item under review."""
+
     item_id: str
     identity_name: str
     identity_email: str
@@ -54,7 +57,9 @@ class AccessReviewItem:
     reviewed_by: Optional[str] = None
     reviewed_at: Optional[str] = None
 
-    def record_decision(self, decision: ReviewDecision, reviewer: str, notes: str = "") -> None:
+    def record_decision(
+        self, decision: ReviewDecision, reviewer: str, notes: str = ""
+    ) -> None:
         """Record a decision and timestamp the review."""
         self.decision = decision
         self.reviewed_by = reviewer
@@ -70,6 +75,7 @@ class AccessReviewItem:
 @dataclass
 class AccessCampaign:
     """Quarterly or annual user access review campaign."""
+
     campaign_id: str
     title: str
     period: str  # e.g. "2026-Q3"
@@ -105,20 +111,32 @@ class AccessCampaign:
     def is_complete(self) -> bool:
         return self.total_items > 0 and self.pending_count == 0
 
-    def complete_and_sign(self, signatory_name: str, signing_secret: Optional[str] = None) -> str:
+    def complete_and_sign(
+        self, signatory_name: str, signing_secret: Optional[str] = None
+    ) -> str:
         """Finalize campaign and compute cryptographic tamper-evident sign-off digest."""
         if not self.is_complete:
-            raise ValueError(f"Cannot sign campaign with {self.pending_count} pending reviews remaining.")
+            raise ValueError(
+                f"Cannot sign campaign with {self.pending_count} pending reviews remaining."
+            )
 
         self.status = CampaignStatus.COMPLETED
         self.completed_at = datetime.now(timezone.utc).isoformat()
         self.signatory = signatory_name
 
         # Calculate deterministic digest of all decisions and signatory metadata
-        summary_lines = [f"{i.item_id}:{i.identity_email}:{i.decision.value}:{i.reviewed_by}" for i in sorted(self.items, key=lambda x: x.item_id)]
-        payload = f"{self.campaign_id}|{self.period}|{self.completed_at}|{self.signatory}|" + ";".join(summary_lines)
+        summary_lines = [
+            f"{i.item_id}:{i.identity_email}:{i.decision.value}:{i.reviewed_by}"
+            for i in sorted(self.items, key=lambda x: x.item_id)
+        ]
+        payload = (
+            f"{self.campaign_id}|{self.period}|{self.completed_at}|{self.signatory}|"
+            + ";".join(summary_lines)
+        )
         if signing_secret:
-            self.sign_off_hash = hmac.new(signing_secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+            self.sign_off_hash = hmac.new(
+                signing_secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
+            ).hexdigest()
         else:
             self.sign_off_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         return self.sign_off_hash
@@ -177,7 +195,9 @@ class AccessReviewManager:
                         is_admin=it.get("is_admin", False),
                         mfa_enabled=it.get("mfa_enabled", True),
                         last_login_date=it.get("last_login_date"),
-                        decision=ReviewDecision(it.get("decision", ReviewDecision.PENDING.value)),
+                        decision=ReviewDecision(
+                            it.get("decision", ReviewDecision.PENDING.value)
+                        ),
                         reviewer_notes=it.get("reviewer_notes", ""),
                         reviewed_by=it.get("reviewed_by"),
                         reviewed_at=it.get("reviewed_at"),
@@ -190,7 +210,9 @@ class AccessReviewManager:
                     period=data["period"],
                     created_at=data["created_at"],
                     due_date=data["due_date"],
-                    status=CampaignStatus(data.get("status", CampaignStatus.ACTIVE.value)),
+                    status=CampaignStatus(
+                        data.get("status", CampaignStatus.ACTIVE.value)
+                    ),
                     completed_at=data.get("completed_at"),
                     signatory=data.get("signatory"),
                     sign_off_hash=data.get("sign_off_hash"),
@@ -202,7 +224,9 @@ class AccessReviewManager:
 
         return campaigns
 
-    def save_campaign(self, campaign: AccessCampaign, tenant_id: Optional[str] = None) -> AccessCampaign:
+    def save_campaign(
+        self, campaign: AccessCampaign, tenant_id: Optional[str] = None
+    ) -> AccessCampaign:
         """Persist campaign to storage."""
         tid = tenant_id or get_current_tenant_id()
         folder = self._get_storage_dir(tid)
@@ -210,7 +234,9 @@ class AccessReviewManager:
         cfile.write_text(json.dumps(campaign.to_dict(), indent=2), encoding="utf-8")
         return campaign
 
-    def get_campaign(self, campaign_id: str, tenant_id: Optional[str] = None) -> Optional[AccessCampaign]:
+    def get_campaign(
+        self, campaign_id: str, tenant_id: Optional[str] = None
+    ) -> Optional[AccessCampaign]:
         """Retrieve a campaign by ID."""
         for c in self.list_campaigns(tenant_id):
             if c.campaign_id == campaign_id:
@@ -228,11 +254,15 @@ class AccessReviewManager:
     ) -> AccessCampaign:
         """Initialize a new campaign populated with IAM identities from collector evidence."""
         items: List[AccessReviewItem] = []
-        raw_users = iam_evidence.get("users", []) or iam_evidence.get("raw_data", {}).get("users", [])
+        raw_users = iam_evidence.get("users", []) or iam_evidence.get(
+            "raw_data", {}
+        ).get("users", [])
         provider = iam_evidence.get("provider", "aws")
 
         if not raw_users:
-            raise ValueError(f"No IAM user identities found in evidence for campaign '{campaign_id}'. Cannot create campaign from empty evidence.")
+            raise ValueError(
+                f"No IAM user identities found in evidence for campaign '{campaign_id}'. Cannot create campaign from empty evidence."
+            )
 
         for idx, u in enumerate(raw_users):
             uname = u.get("user_name") or u.get("name") or f"user-{idx+1}"
@@ -243,7 +273,9 @@ class AccessReviewManager:
                     identity_name=uname,
                     identity_email=email,
                     provider=provider,
-                    role_or_policy=u.get("role") or u.get("policy") or "ReadWriteAccess",
+                    role_or_policy=u.get("role")
+                    or u.get("policy")
+                    or "ReadWriteAccess",
                     resource=u.get("arn") or u.get("resource") or "global",
                     is_admin=bool(u.get("is_admin", False)),
                     mfa_enabled=bool(u.get("mfa_active", True)),

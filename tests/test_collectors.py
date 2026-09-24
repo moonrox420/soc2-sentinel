@@ -236,7 +236,9 @@ from sentinel.collectors._helpers import (
 
 
 def test_failure_payload_shape():
-    p = failure_payload(control_id="CC6.1", provider_name="mock", collector="x", error="boom")
+    p = failure_payload(
+        control_id="CC6.1", provider_name="mock", collector="x", error="boom"
+    )
     assert p["collection_quality"] == "failed"
     assert p["errors"][0]["code"] == "CollectionFailed"
 
@@ -384,7 +386,9 @@ class ChaosProvider(Provider):
             "total_identities": 0,
             "orphaned_accounts": 0,
             "privileged_count": 0,
-            "errors": [{"code": "Timeout", "message": "API timeout", "severity": "high"}],
+            "errors": [
+                {"code": "Timeout", "message": "API timeout", "severity": "high"}
+            ],
             "collection_quality": "partial",
             "partial": True,
             "csv": "",
@@ -410,7 +414,9 @@ class ChaosProvider(Provider):
 
 
 def test_partial_collection_yellow_status(tmp_path):
-    path = collect_iam_access_review(ChaosProvider(), base=tmp_path, config=SentinelConfig())
+    path = collect_iam_access_review(
+        ChaosProvider(), base=tmp_path, config=SentinelConfig()
+    )
     import json
 
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -439,15 +445,22 @@ def auth_token() -> str:
 def test_phase3_server_endpoints(tmp_path: Path, auth_token: str):
     server = DashboardServer(("127.0.0.1", 0), DashboardHandler, output_base=tmp_path)
     import threading
+
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
     port = server.server_address[1]
 
     import urllib.request
-    headers = {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
+
+    headers = {
+        "Authorization": f"Bearer {auth_token}",
+        "Content-Type": "application/json",
+    }
 
     # 1. GET /api/trust-center
-    req = urllib.request.Request(f"http://127.0.0.1:{port}/api/trust-center", headers=headers)
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}/api/trust-center", headers=headers
+    )
     with urllib.request.urlopen(req, timeout=5) as resp:
         assert resp.status == 200
         data = json.loads(resp.read().decode())
@@ -461,28 +474,39 @@ def test_phase3_server_endpoints(tmp_path: Path, auth_token: str):
         assert "<!DOCTYPE html>" in html
 
     # 3. GET /api/dogfood
-    req = urllib.request.Request(f"http://127.0.0.1:{port}/api/dogfood", headers=headers)
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}/api/dogfood", headers=headers
+    )
     with urllib.request.urlopen(req, timeout=5) as resp:
         assert resp.status == 200
         data = json.loads(resp.read().decode())
         assert "compliance_score" in data
 
     # 4. POST /api/audit-rooms (create)
-    create_body = json.dumps({
-        "room_id": "REST-ROOM-001",
-        "title": "REST API Room",
-        "auditor_email": "auditor@rest.com",
-        "period_start": "2026-09-01",
-        "period_end": "2026-09-30",
-    }).encode()
-    req = urllib.request.Request(f"http://127.0.0.1:{port}/api/audit-rooms", data=create_body, headers=headers, method="POST")
+    create_body = json.dumps(
+        {
+            "room_id": "REST-ROOM-001",
+            "title": "REST API Room",
+            "auditor_email": "auditor@rest.com",
+            "period_start": "2026-09-01",
+            "period_end": "2026-09-30",
+        }
+    ).encode()
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}/api/audit-rooms",
+        data=create_body,
+        headers=headers,
+        method="POST",
+    )
     with urllib.request.urlopen(req, timeout=5) as resp:
         assert resp.status == 200
         room_data = json.loads(resp.read().decode())
         assert room_data["room_id"] == "REST-ROOM-001"
 
     # 5. GET /api/audit-rooms/REST-ROOM-001
-    req = urllib.request.Request(f"http://127.0.0.1:{port}/api/audit-rooms/REST-ROOM-001", headers=headers)
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}/api/audit-rooms/REST-ROOM-001", headers=headers
+    )
     with urllib.request.urlopen(req, timeout=5) as resp:
         assert resp.status == 200
         details = json.loads(resp.read().decode())
@@ -491,7 +515,12 @@ def test_phase3_server_endpoints(tmp_path: Path, auth_token: str):
 
     # 6. POST /api/audit-rooms/export
     export_body = json.dumps({"room_id": "REST-ROOM-001"}).encode()
-    req = urllib.request.Request(f"http://127.0.0.1:{port}/api/audit-rooms/export", data=export_body, headers=headers, method="POST")
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}/api/audit-rooms/export",
+        data=export_body,
+        headers=headers,
+        method="POST",
+    )
     with urllib.request.urlopen(req, timeout=5) as resp:
         assert resp.status == 200
         exp_res = json.loads(resp.read().decode())
@@ -499,7 +528,12 @@ def test_phase3_server_endpoints(tmp_path: Path, auth_token: str):
 
     # 7. POST /api/siem/export
     siem_body = json.dumps({"target": "NDJSON_FILE", "limit": 50}).encode()
-    req = urllib.request.Request(f"http://127.0.0.1:{port}/api/siem/export", data=siem_body, headers=headers, method="POST")
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}/api/siem/export",
+        data=siem_body,
+        headers=headers,
+        method="POST",
+    )
     with urllib.request.urlopen(req, timeout=5) as resp:
         assert resp.status == 200
         siem_res = json.loads(resp.read().decode())
@@ -511,41 +545,66 @@ def test_phase3_server_endpoints(tmp_path: Path, auth_token: str):
 
 def test_phase3_cli_commands(tmp_path: Path, monkeypatch, capsys):
     # Test CLI dogfood command
-    monkeypatch.setattr("sys.argv", ["sentinel", "dogfood", "--output-base", str(tmp_path), "--json"])
+    monkeypatch.setattr(
+        "sys.argv", ["sentinel", "dogfood", "--output-base", str(tmp_path), "--json"]
+    )
     main()
     captured = capsys.readouterr()
     res = json.loads(captured.out)
     assert "compliance_score" in res
 
     # Test CLI audit-room create & list
-    monkeypatch.setattr("sys.argv", [
-        "sentinel", "audit-room", "create",
-        "--id", "CLI-ROOM-001",
-        "--title", "CLI Audit Room",
-        "--auditor", "auditor@cli.com",
-        "--start", "2026-09-01",
-        "--end", "2026-09-30",
-        "--output-base", str(tmp_path),
-    ])
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "sentinel",
+            "audit-room",
+            "create",
+            "--id",
+            "CLI-ROOM-001",
+            "--title",
+            "CLI Audit Room",
+            "--auditor",
+            "auditor@cli.com",
+            "--start",
+            "2026-09-01",
+            "--end",
+            "2026-09-30",
+            "--output-base",
+            str(tmp_path),
+        ],
+    )
     main()
     captured = capsys.readouterr()
     res = json.loads(captured.out)
     assert res["room_id"] == "CLI-ROOM-001"
 
-    monkeypatch.setattr("sys.argv", [
-        "sentinel", "audit-room", "list",
-        "--output-base", str(tmp_path),
-    ])
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "sentinel",
+            "audit-room",
+            "list",
+            "--output-base",
+            str(tmp_path),
+        ],
+    )
     main()
     captured = capsys.readouterr()
     rooms_list = json.loads(captured.out)
     assert len(rooms_list) >= 1
 
     # Test CLI trust-center view
-    monkeypatch.setattr("sys.argv", [
-        "sentinel", "trust-center", "view",
-        "--output-base", str(tmp_path),
-    ])
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "sentinel",
+            "trust-center",
+            "view",
+            "--output-base",
+            str(tmp_path),
+        ],
+    )
     main()
     captured = capsys.readouterr()
     tc_data = json.loads(captured.out)
@@ -553,11 +612,18 @@ def test_phase3_cli_commands(tmp_path: Path, monkeypatch, capsys):
 
     # Test CLI siem export
     out_ndjson = tmp_path / "cli_siem.ndjson"
-    monkeypatch.setattr("sys.argv", [
-        "sentinel", "siem", "export",
-        "--output-ndjson", str(out_ndjson),
-        "--output-base", str(tmp_path),
-    ])
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "sentinel",
+            "siem",
+            "export",
+            "--output-ndjson",
+            str(out_ndjson),
+            "--output-base",
+            str(tmp_path),
+        ],
+    )
     main()
     captured = capsys.readouterr()
     siem_out = json.loads(captured.out)

@@ -11,7 +11,12 @@ from sentinel.providers.azure._client import AzureContext
 logger = logging.getLogger("sentinel.providers.azure.iam")
 
 _PRIVILEGED_ROLES = frozenset(
-    {"Global Administrator", "Privileged Role Administrator", "Security Administrator", "Owner"}
+    {
+        "Global Administrator",
+        "Privileged Role Administrator",
+        "Security Administrator",
+        "Owner",
+    }
 )
 
 
@@ -34,14 +39,18 @@ def iam_access_snapshot(ctx: AzureContext) -> dict[str, Any]:
                     privileged += 1
                 users.append(
                     {
-                        "username": member.get("userPrincipalName", member.get("id", "unknown")),
+                        "username": member.get(
+                            "userPrincipalName", member.get("id", "unknown")
+                        ),
                         "role": role_name,
                         "orphaned": False,
                         "privileged": is_priv,
                     }
                 )
 
-    signins = ctx.graph_get("/users?$select=id,userPrincipalName,signInActivity&$top=50")
+    signins = ctx.graph_get(
+        "/users?$select=id,userPrincipalName,signInActivity&$top=50"
+    )
     if signins:
         for user in signins.get("value", []):
             activity = user.get("signInActivity") or {}
@@ -60,7 +69,9 @@ def iam_access_snapshot(ctx: AzureContext) -> dict[str, Any]:
     csv_buf = io.StringIO()
     if users:
         writer = csv.DictWriter(
-            csv_buf, fieldnames=["username", "role", "orphaned", "privileged"], extrasaction="ignore"
+            csv_buf,
+            fieldnames=["username", "role", "orphaned", "privileged"],
+            extrasaction="ignore",
         )
         writer.writeheader()
         writer.writerows(users)

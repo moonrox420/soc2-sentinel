@@ -25,7 +25,10 @@ class GcpProvider(Provider):
     def validate_credentials(self) -> None:
         logger.info("validating GCP credentials", extra={"provider": "gcp"})
         self._ctx.validate_credentials()
-        logger.info("GCP credential validation succeeded", extra={"provider": "gcp", "outcome": "ok"})
+        logger.info(
+            "GCP credential validation succeeded",
+            extra={"provider": "gcp", "outcome": "ok"},
+        )
 
     def _fresh(self) -> GcpContext:
         return GcpContext(

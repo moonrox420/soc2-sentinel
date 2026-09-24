@@ -38,7 +38,9 @@ def _control_dir_lock(out_dir: Path) -> Iterator[None]:
         yield
 
 
-def _atomic_write_text(path: Path, content: str, *, encrypt: bool, secret: str | None) -> str:
+def _atomic_write_text(
+    path: Path, content: str, *, encrypt: bool, secret: str | None
+) -> str:
     data = content.encode("utf-8")
     written_name = path.name
     if encrypt and secret:
@@ -59,7 +61,9 @@ def _verify_artifacts_exist(out_dir: Path, artifacts: list[str]) -> None:
         raise SentinelValidationError(f"evidence artifacts missing on disk: {missing}")
 
 
-def _backup_manifest(out_dir: Path, *, run_day: date, safe_base: Path, control_id: str) -> None:
+def _backup_manifest(
+    out_dir: Path, *, run_day: date, safe_base: Path, control_id: str
+) -> None:
     manifest = out_dir / "manifest.json"
     if not manifest.exists():
         return
@@ -144,10 +148,14 @@ def write_evidence(
             safe_file_mode(stub_path)
             written_files.append(stub_path.name)
 
-        manifest = build_manifest(out_dir, control_id=control_id, written_files=written_files)
+        manifest = build_manifest(
+            out_dir, control_id=control_id, written_files=written_files
+        )
         write_manifest(out_dir, manifest)
 
         if cfg.evidence.manifest_backup:
-            _backup_manifest(out_dir, run_day=run_day, safe_base=safe_base, control_id=control_id)
+            _backup_manifest(
+                out_dir, run_day=run_day, safe_base=safe_base, control_id=control_id
+            )
 
     return out_dir / report_written

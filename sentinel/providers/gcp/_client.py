@@ -11,7 +11,9 @@ logger = logging.getLogger("sentinel.providers.gcp")
 
 
 class GcpContext:
-    def __init__(self, project_id: str | None = None, credentials: Any | None = None) -> None:
+    def __init__(
+        self, project_id: str | None = None, credentials: Any | None = None
+    ) -> None:
         resolved_project_id = project_id or os.environ.get("GOOGLE_CLOUD_PROJECT")
         self.credentials = credentials
         self.errors: list[dict[str, Any]] = []
@@ -47,5 +49,7 @@ class GcpContext:
     def succeed(self) -> None:
         self._checks_succeeded += 1
 
-    def record_error(self, service: str, exc: Exception, *, code: str = "ApiError") -> None:
+    def record_error(
+        self, service: str, exc: Exception, *, code: str = "ApiError"
+    ) -> None:
         self.errors.append(api_error(code, str(exc), service=service, severity="high"))

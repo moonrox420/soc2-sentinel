@@ -24,22 +24,29 @@ def test_trust_center_profile_generation(tmp_path: Path):
     # Seed evidence and subprocessor
     ev_dir = tmp_path / "evidence" / "2026-09-24" / "iam_access_review"
     ev_dir.mkdir(parents=True, exist_ok=True)
-    (ev_dir / "report.json").write_text(json.dumps({
-        "status": "PASS",
-        "collection_quality": "complete",
-        "users": [{"mfa_enabled": True}],
-        "mfa_coverage_pct": 100.0,
-    }), encoding="utf-8")
+    (ev_dir / "report.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "collection_quality": "complete",
+                "users": [{"mfa_enabled": True}],
+                "mfa_coverage_pct": 100.0,
+            }
+        ),
+        encoding="utf-8",
+    )
 
     vrm = VendorRiskManager(base_root=tmp_path)
-    vrm.save_vendor(Vendor(
-        vendor_id="aws",
-        name="Amazon Web Services",
-        service_description="Cloud Hosting",
-        tier=VendorTier.TIER_1_CRITICAL,
-        data_classification=DataClassification.CONFIDENTIAL,
-        questionnaire=SecurityQuestionnaire(has_soc2_type2=True, dpa_executed=True),
-    ))
+    vrm.save_vendor(
+        Vendor(
+            vendor_id="aws",
+            name="Amazon Web Services",
+            service_description="Cloud Hosting",
+            tier=VendorTier.TIER_1_CRITICAL,
+            data_classification=DataClassification.CONFIDENTIAL,
+            questionnaire=SecurityQuestionnaire(has_soc2_type2=True, dpa_executed=True),
+        )
+    )
 
     profile = tcm.get_profile()
     assert profile.overall_compliance_score > 0.0

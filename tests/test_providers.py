@@ -1,4 +1,3 @@
-
 # --- Consolidated from test_providers_init.py ---
 
 from sentinel.config import SentinelConfig
@@ -49,7 +48,9 @@ def test_azure_provider_delegates():
     with patch("sentinel.providers.azure._client.ResourceManagementClient"):
         with patch("sentinel.providers.azure._client.StorageManagementClient"):
             with patch("sentinel.providers.azure._client.DefaultAzureCredential"):
-                p = AzureProvider(subscription_id="00000000-0000-0000-0000-000000000001")
+                p = AzureProvider(
+                    subscription_id="00000000-0000-0000-0000-000000000001"
+                )
     with patch("sentinel.providers.azure.encryption.encryption_snapshot") as mock:
         mock.return_value = {"collection_quality": "complete", "errors": []}
         snap = p.encryption_snapshot()
@@ -160,7 +161,6 @@ def test_s3_unencrypted_bucket_found():
 # --- Consolidated from test_aws_encryption_full.py ---
 
 
-
 def test_kms_and_acm_paths():
     ctx = AwsClients(region="us-east-1")
     with patch.object(ctx, "client") as mock_client:
@@ -170,21 +170,36 @@ def test_kms_and_acm_paths():
         from botocore.exceptions import ClientError
 
         s3.get_bucket_encryption.side_effect = ClientError(
-            {"Error": {"Code": "ServerSideEncryptionConfigurationNotFoundError"}}, "GetBucketEncryption"
+            {"Error": {"Code": "ServerSideEncryptionConfigurationNotFoundError"}},
+            "GetBucketEncryption",
         )
         rds = MagicMock()
-        rds.describe_db_instances.return_value = {"DBInstances": [{"DBInstanceIdentifier": "db1", "StorageEncrypted": True}]}
+        rds.describe_db_instances.return_value = {
+            "DBInstances": [{"DBInstanceIdentifier": "db1", "StorageEncrypted": True}]
+        }
         kms = MagicMock()
         kms.list_keys.return_value = {"Keys": [{"KeyId": "k1"}]}
         kms.describe_key.return_value = {
-            "KeyMetadata": {"KeyManager": "CUSTOMER", "KeyState": "Enabled", "KeySpec": "SYMMETRIC_DEFAULT"}
+            "KeyMetadata": {
+                "KeyManager": "CUSTOMER",
+                "KeyState": "Enabled",
+                "KeySpec": "SYMMETRIC_DEFAULT",
+            }
         }
         kms.get_key_rotation_status.return_value = {"KeyRotationEnabled": True}
         acm = MagicMock()
         acm.list_certificates.return_value = {"CertificateSummaryList": []}
         elbv2 = MagicMock()
-        elbv2.describe_ssl_policies.return_value = {"SslPolicies": [{"Name": "ELBSecurityPolicy-TLS-1-2-2016-01"}]}
-        mock_client.side_effect = lambda s: {"s3": s3, "rds": rds, "kms": kms, "acm": acm, "elbv2": elbv2}[s]
+        elbv2.describe_ssl_policies.return_value = {
+            "SslPolicies": [{"Name": "ELBSecurityPolicy-TLS-1-2-2016-01"}]
+        }
+        mock_client.side_effect = lambda s: {
+            "s3": s3,
+            "rds": rds,
+            "kms": kms,
+            "acm": acm,
+            "elbv2": elbv2,
+        }[s]
         with patch("sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()):
             snap = encryption_snapshot(ctx)
     assert snap["fips_compliant_keys"] >= 1
@@ -230,16 +245,24 @@ def test_no_trails_sets_coverage_error():
 
 def test_trail_logging_coverage():
     ctx = AwsClients(region="us-east-1")
-    trail = {"TrailARN": "arn:aws:cloudtrail:us-east-1:123:trail/t1", "Name": "t1", "IsMultiRegionTrail": True}
+    trail = {
+        "TrailARN": "arn:aws:cloudtrail:us-east-1:123:trail/t1",
+        "Name": "t1",
+        "IsMultiRegionTrail": True,
+    }
     with patch.object(ctx, "client") as mock_client:
         trails = MagicMock()
         trails.describe_trails.return_value = {"trailList": [trail]}
         trails.get_trail_status.return_value = {
             "IsLogging": True,
-            "LatestDeliveryTime": __import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+            "LatestDeliveryTime": __import__("datetime").datetime.now(
+                __import__("datetime").timezone.utc
+            ),
         }
         cfg = MagicMock()
-        cfg.describe_configuration_recorders.return_value = {"ConfigurationRecorders": []}
+        cfg.describe_configuration_recorders.return_value = {
+            "ConfigurationRecorders": []
+        }
         logs = MagicMock()
         logs.describe_log_groups.return_value = {"logGroups": [{"retentionInDays": 30}]}
         trails.lookup_events.return_value = {"Events": []}
@@ -322,7 +345,9 @@ def test_zt_derives_pillar_scores():
     ctx = AwsClients(region="us-east-1")
     with patch("sentinel.providers.aws.iam.iam_access_snapshot") as mock_iam:
         with patch("sentinel.providers.aws.encryption.encryption_snapshot") as mock_enc:
-            with patch("sentinel.providers.aws.config.config_and_auth_snapshot") as mock_cfg:
+            with patch(
+                "sentinel.providers.aws.config.config_and_auth_snapshot"
+            ) as mock_cfg:
                 mock_iam.return_value = {
                     "users": [{"privileged": True}],
                     "orphaned_accounts": 0,
@@ -403,9 +428,12 @@ def test_azure_encryption_storage():
     ctx.storage.storage_accounts.list = MagicMock(return_value=[account])
     with patch("azure.mgmt.resourcegraph.ResourceGraphClient") as mock_rg:
         mock_rg.return_value.resources.return_value = MagicMock(data=[])
-        with patch.object(ctx, "graph_get", return_value={"value": []}), patch(
-            "sentinel.cloud.call_with_retry",
-            side_effect=lambda fn, **kw: fn(),
+        with (
+            patch.object(ctx, "graph_get", return_value={"value": []}),
+            patch(
+                "sentinel.cloud.call_with_retry",
+                side_effect=lambda fn, **kw: fn(),
+            ),
         ):
             snap = encryption_snapshot(ctx)
     assert snap["total_confidential_resources"] >= 1
@@ -440,9 +468,12 @@ def test_azure_config_mfa_registration_is_not_enforcement():
     }
     with patch("azure.mgmt.resourcegraph.ResourceGraphClient") as mock_rg:
         mock_rg.return_value.resources.return_value = MagicMock(data=[])
-        with patch.object(ctx, "graph_get", return_value=mfa), patch(
-            "sentinel.cloud.call_with_retry",
-            side_effect=lambda fn, **kw: fn(),
+        with (
+            patch.object(ctx, "graph_get", return_value=mfa),
+            patch(
+                "sentinel.cloud.call_with_retry",
+                side_effect=lambda fn, **kw: fn(),
+            ),
         ):
             snap = config_and_auth_snapshot(ctx)
 
@@ -465,9 +496,7 @@ def _completed_backup_job():
 
 
 def test_recovery_services_backup_jobs():
-    ctx = AzureContext(
-        subscription_id="00000000-0000-0000-0000-000000000001"
-    )
+    ctx = AzureContext(subscription_id="00000000-0000-0000-0000-000000000001")
     mock_vault = MagicMock()
     mock_vault.name = "vault1"
     mock_vault.id = (
@@ -489,9 +518,7 @@ def test_recovery_services_backup_jobs():
 
 
 def test_backup_success_does_not_imply_restore_or_failover():
-    ctx = AzureContext(
-        subscription_id="00000000-0000-0000-0000-000000000001"
-    )
+    ctx = AzureContext(subscription_id="00000000-0000-0000-0000-000000000001")
     mock_vault = MagicMock()
     mock_vault.name = "vault1"
     mock_vault.id = (
@@ -512,10 +539,7 @@ def test_backup_success_does_not_imply_restore_or_failover():
     assert snap["failover_test_days_ago"] is None
     assert snap["failover_test_passed"] is None
     assert snap["collection_quality"] == "partial"
-    assert any(
-        error["code"] == "FailoverTestNotCollected"
-        for error in snap["errors"]
-    )
+    assert any(error["code"] == "FailoverTestNotCollected" for error in snap["errors"])
 
 
 # --- Consolidated from test_azure_zt.py ---
@@ -529,13 +553,32 @@ def test_azure_zt_merge():
             with patch("sentinel.providers.azure._client.DefaultAzureCredential"):
                 from sentinel.providers.azure._client import AzureContext
 
-                ctx = AzureContext(subscription_id="00000000-0000-0000-0000-000000000001")
+                ctx = AzureContext(
+                    subscription_id="00000000-0000-0000-0000-000000000001"
+                )
     with patch("sentinel.providers.azure.iam.iam_access_snapshot") as mock_iam:
-        with patch("sentinel.providers.azure.encryption.encryption_snapshot") as mock_enc:
-            with patch("sentinel.providers.azure.config.config_and_auth_snapshot") as mock_cfg:
-                mock_iam.return_value = {"orphaned_accounts": 0, "privileged_count": 1, "errors": [], "collection_quality": "complete"}
-                mock_enc.return_value = {"unencrypted_cui_count": 1, "errors": [], "collection_quality": "complete"}
-                mock_cfg.return_value = {"mfa_enforcement_percent": 80.0, "errors": [], "collection_quality": "partial"}
+        with patch(
+            "sentinel.providers.azure.encryption.encryption_snapshot"
+        ) as mock_enc:
+            with patch(
+                "sentinel.providers.azure.config.config_and_auth_snapshot"
+            ) as mock_cfg:
+                mock_iam.return_value = {
+                    "orphaned_accounts": 0,
+                    "privileged_count": 1,
+                    "errors": [],
+                    "collection_quality": "complete",
+                }
+                mock_enc.return_value = {
+                    "unencrypted_cui_count": 1,
+                    "errors": [],
+                    "collection_quality": "complete",
+                }
+                mock_cfg.return_value = {
+                    "mfa_enforcement_percent": 80.0,
+                    "errors": [],
+                    "collection_quality": "partial",
+                }
                 snap = zt_verification_snapshot(ctx)
     assert snap["encryption_status"] == "red"
 
@@ -563,7 +606,9 @@ def test_gcp_config_firewall_http():
         mock_org.return_value.list_policies.return_value = [policy]
         with patch("google.cloud.compute_v1.FirewallsClient") as mock_fw_client:
             mock_fw_client.return_value.list.return_value = [fw]
-            with patch("sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()):
+            with patch(
+                "sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()
+            ):
                 snap = config_and_auth_snapshot(ctx)
     assert snap["open_http_listeners"] >= 1
     assert snap["issues"] >= 1
@@ -633,9 +678,7 @@ def test_gcp_encryption_buckets():
     ctx = _ctx()
     bucket = MagicMock()
     bucket.name = "b1"
-    bucket.default_kms_key_name = (
-        "projects/p/locations/l/keyRings/k/cryptoKeys/c"
-    )
+    bucket.default_kms_key_name = "projects/p/locations/l/keyRings/k/cryptoKeys/c"
     bucket.iam_configuration.uniform_bucket_level_access_enabled = True
     with patch("google.cloud.storage.Client") as mock_st:
         mock_st.return_value.list_buckets.return_value = [bucket]
@@ -705,14 +748,15 @@ def test_compute_snapshot_timestamp():
             mock_build.return_value.instances.return_value.list.return_value.execute.return_value = {
                 "items": []
             }
-            with patch("sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()):
+            with patch(
+                "sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()
+            ):
                 snap = resilience_snapshot(ctx)
     assert snap.get("last_backup_hours_ago") is not None
     assert snap["backup_jobs_success_30d"] >= 1
 
 
 # --- Consolidated from test_gcp_resilience_sql.py ---
-
 
 
 def test_sql_backup_run_timestamp():
@@ -729,7 +773,9 @@ def test_sql_backup_run_timestamp():
                 "items": [{"status": "SUCCESSFUL", "endTime": end}]
             }
             mock_build.return_value = service
-            with patch("sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()):
+            with patch(
+                "sentinel.cloud.call_with_retry", side_effect=lambda fn, **kw: fn()
+            ):
                 snap = resilience_snapshot(ctx)
     assert snap.get("last_backup_hours_ago") is not None
     assert snap["backup_jobs_success_30d"] >= 1
@@ -744,9 +790,24 @@ def test_gcp_zt_merge():
     ctx = GcpContext(project_id="p")
     with patch("sentinel.providers.gcp.iam.iam_access_snapshot") as mock_iam:
         with patch("sentinel.providers.gcp.encryption.encryption_snapshot") as mock_enc:
-            with patch("sentinel.providers.gcp.config.config_and_auth_snapshot") as mock_cfg:
-                mock_iam.return_value = {"orphaned_accounts": 1, "privileged_count": 2, "errors": [], "collection_quality": "complete"}
-                mock_enc.return_value = {"unencrypted_cui_count": 0, "errors": [], "collection_quality": "complete"}
-                mock_cfg.return_value = {"mfa_enforcement_percent": 100.0, "errors": [], "collection_quality": "complete"}
+            with patch(
+                "sentinel.providers.gcp.config.config_and_auth_snapshot"
+            ) as mock_cfg:
+                mock_iam.return_value = {
+                    "orphaned_accounts": 1,
+                    "privileged_count": 2,
+                    "errors": [],
+                    "collection_quality": "complete",
+                }
+                mock_enc.return_value = {
+                    "unencrypted_cui_count": 0,
+                    "errors": [],
+                    "collection_quality": "complete",
+                }
+                mock_cfg.return_value = {
+                    "mfa_enforcement_percent": 100.0,
+                    "errors": [],
+                    "collection_quality": "complete",
+                }
                 snap = zt_verification_snapshot(ctx)
     assert snap["encryption_status"] == "green"

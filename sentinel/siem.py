@@ -36,7 +36,9 @@ class SIEMEvent:
     timestamp: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
-    event_type: str = "COMPLIANCE_AUDIT"  # "COMPLIANCE_AUDIT" | "DRIFT_ALERT" | "VAULT_SEAL" | "ACCESS_REVIEW"
+    event_type: str = (
+        "COMPLIANCE_AUDIT"  # "COMPLIANCE_AUDIT" | "DRIFT_ALERT" | "VAULT_SEAL" | "ACCESS_REVIEW"
+    )
     severity: str = "INFO"  # "INFO" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
     source: str = "soc2-sentinel"
     host: str = field(default_factory=lambda: socket.gethostname())
@@ -161,10 +163,16 @@ class SIEMExporter:
             endpoint_url, data=body, headers=headers, method="POST"
         )
         try:
-            with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:  # nosec B310
+            with urllib.request.urlopen(
+                req, timeout=timeout_seconds
+            ) as resp:  # nosec B310
                 resp_code = resp.getcode()
                 if 200 <= resp_code < 300:
-                    return True, len(events), f"Successfully posted {len(events)} events to Splunk"
+                    return (
+                        True,
+                        len(events),
+                        f"Successfully posted {len(events)} events to Splunk",
+                    )
                 return False, 0, f"Splunk returned status code {resp_code}"
         except urllib.error.HTTPError as e:
             return False, 0, f"Splunk HTTP error {e.code}: {e.reason}"
@@ -210,10 +218,16 @@ class SIEMExporter:
             endpoint_url, data=body, headers=headers, method="POST"
         )
         try:
-            with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:  # nosec B310
+            with urllib.request.urlopen(
+                req, timeout=timeout_seconds
+            ) as resp:  # nosec B310
                 resp_code = resp.getcode()
                 if 200 <= resp_code < 300:
-                    return True, len(events), f"Successfully posted {len(events)} events to Datadog"
+                    return (
+                        True,
+                        len(events),
+                        f"Successfully posted {len(events)} events to Datadog",
+                    )
                 return False, 0, f"Datadog returned status code {resp_code}"
         except urllib.error.HTTPError as e:
             return False, 0, f"Datadog HTTP error {e.code}: {e.reason}"
@@ -250,19 +264,23 @@ class SIEMExporter:
             "User-Agent": "SOC2-Sentinel-SIEM/2.5.0",
         }
         if secret_key:
-            sig = hmac.new(
-                secret_key.encode("utf-8"), body, sha256
-            ).hexdigest()
+            sig = hmac.new(secret_key.encode("utf-8"), body, sha256).hexdigest()
             headers["X-Sentinel-Signature"] = f"sha256={sig}"
 
         req = urllib.request.Request(
             webhook_url, data=body, headers=headers, method="POST"
         )
         try:
-            with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:  # nosec B310
+            with urllib.request.urlopen(
+                req, timeout=timeout_seconds
+            ) as resp:  # nosec B310
                 resp_code = resp.getcode()
                 if 200 <= resp_code < 300:
-                    return True, len(events), f"Delivered {len(events)} events to webhook"
+                    return (
+                        True,
+                        len(events),
+                        f"Delivered {len(events)} events to webhook",
+                    )
                 return False, 0, f"Webhook returned status code {resp_code}"
         except urllib.error.HTTPError as e:
             return False, 0, f"Webhook HTTP error {e.code}: {e.reason}"

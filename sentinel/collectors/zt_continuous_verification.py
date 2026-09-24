@@ -26,7 +26,9 @@ def collect_zt_continuous_verification(
 ) -> Path:
     cfg = config or SentinelConfig()
     try:
-        snap = fetch_snapshot(provider.zt_verification_snapshot, collector="zt_continuous_verification")
+        snap = fetch_snapshot(
+            provider.zt_verification_snapshot, collector="zt_continuous_verification"
+        )
     except ProviderError as exc:
         return write_failure_evidence(
             control_id=control_id,
@@ -71,7 +73,9 @@ def collect_zt_continuous_verification(
         "status": status,
         "metrics": metrics,
         "evidence_artifacts": [],
-        "findings": [{"issue": f"failed: {name}", "severity": "medium"} for name in failed],
+        "findings": [
+            {"issue": f"failed: {name}", "severity": "medium"} for name in failed
+        ],
         "notes": "Zero Trust evidence gate. Unmeasured controls fail closed; pillar maturity is only emitted where provenance exists.",
         "provider": provider.name,
         "composite_checks": checks,

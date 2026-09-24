@@ -15,7 +15,9 @@ logger = logging.getLogger("sentinel.trust_center")
 class TrustBadge:
     name: str
     standard: str
-    status: str  # "CONTINUOUSLY_MONITORED" | "EVALUATED" | "IN_PROGRESS" | "NOT_ASSESSED"
+    status: (
+        str  # "CONTINUOUSLY_MONITORED" | "EVALUATED" | "IN_PROGRESS" | "NOT_ASSESSED"
+    )
     description: str
     icon: str
     valid_until: str = "Continuous"
@@ -82,7 +84,9 @@ class TrustCenterManager:
             if ev_dir.exists() and any(ev_dir.iterdir()):
                 card = compute_compliance_scorecard(ev_dir)
                 score = card.overall_posture_score
-                mon_status = "ACTIVE_MONITORING" if score >= 85.0 else "REMEDIATION_REQUIRED"
+                mon_status = (
+                    "ACTIVE_MONITORING" if score >= 85.0 else "REMEDIATION_REQUIRED"
+                )
         except Exception as e:
             logger.debug("Failed computing live scorecard for Trust Center: %s", e)
 
@@ -96,7 +100,9 @@ class TrustCenterManager:
                     "tier": v.tier.value,
                     "data_classification": v.data_classification.value,
                     "dpa_executed": v.questionnaire.dpa_executed,
-                    "soc2_status": "VALID" if v.questionnaire.has_soc2_type2 else "PENDING_REVIEW",
+                    "soc2_status": (
+                        "VALID" if v.questionnaire.has_soc2_type2 else "PENDING_REVIEW"
+                    ),
                     "soc2_expiration": v.soc2_valid_until or "N/A",
                 }
             )
@@ -106,28 +112,44 @@ class TrustCenterManager:
             TrustBadge(
                 name="SOC 2 Type II",
                 standard="AICPA Trust Services Criteria (Security, Availability, Confidentiality)",
-                status="CONTINUOUSLY_MONITORED" if (card and card.soc2.overall_score >= 85.0) else "IN_EVALUATION",
+                status=(
+                    "CONTINUOUSLY_MONITORED"
+                    if (card and card.soc2.overall_score >= 85.0)
+                    else "IN_EVALUATION"
+                ),
                 description="Automated continuous evidence collection against AICPA Trust Services Criteria.",
                 icon="shield-check",
             ),
             TrustBadge(
                 name="NIST SP 800-171 Rev 2",
                 standard="Protecting Controlled Unclassified Information (CUI)",
-                status="CONTINUOUSLY_MONITORED" if (card and card.nist.overall_score >= 85.0) else "IN_EVALUATION",
+                status=(
+                    "CONTINUOUSLY_MONITORED"
+                    if (card and card.nist.overall_score >= 85.0)
+                    else "IN_EVALUATION"
+                ),
                 description="Telemetry checks mapped across Access Control, Audit, and System Protection families.",
                 icon="document-check",
             ),
             TrustBadge(
                 name="CMMC 2.0 Level 2",
                 standard="Cybersecurity Maturity Model Certification (Automated Telemetry Subset)",
-                status="CONTINUOUSLY_MONITORED" if (card and card.cmmc.overall_score >= 85.0) else "IN_EVALUATION",
+                status=(
+                    "CONTINUOUSLY_MONITORED"
+                    if (card and card.cmmc.overall_score >= 85.0)
+                    else "IN_EVALUATION"
+                ),
                 description="Continuous automated practice verification and configuration drift detection.",
                 icon="check-badge",
             ),
             TrustBadge(
                 name="Zero Trust Architecture",
                 standard="CISA Zero Trust Maturity Model (Version 2.0)",
-                status="CONTINUOUSLY_MONITORED" if (card and card.zero_trust.overall_score >= 85.0) else "IN_EVALUATION",
+                status=(
+                    "CONTINUOUSLY_MONITORED"
+                    if (card and card.zero_trust.overall_score >= 85.0)
+                    else "IN_EVALUATION"
+                ),
                 description="Continuous identity verification, least privilege standing access, and encryption.",
                 icon="cpu-chip",
             ),
@@ -137,8 +159,16 @@ class TrustCenterManager:
         controls = []
         if card and card.controls:
             for c in card.controls:
-                ctrl_status = "PASS" if c.status == "PASS" else ("PARTIAL" if c.status == "PARTIAL" else "FAIL")
-                finding_desc = "; ".join(c.findings) if c.findings else f"Evaluated score: {c.score:.0f}% with quality '{c.evidence_quality}'"
+                ctrl_status = (
+                    "PASS"
+                    if c.status == "PASS"
+                    else ("PARTIAL" if c.status == "PARTIAL" else "FAIL")
+                )
+                finding_desc = (
+                    "; ".join(c.findings)
+                    if c.findings
+                    else f"Evaluated score: {c.score:.0f}% with quality '{c.evidence_quality}'"
+                )
                 controls.append(
                     SecurityControlHighlight(
                         category=c.category,
@@ -182,7 +212,9 @@ class TrustCenterManager:
             b_std = html.escape(b.standard)
             b_desc = html.escape(b.description)
             b_val = html.escape(b.valid_until)
-            pill_color = "#10b981" if b.status == "CONTINUOUSLY_MONITORED" else "#f59e0b"
+            pill_color = (
+                "#10b981" if b.status == "CONTINUOUSLY_MONITORED" else "#f59e0b"
+            )
             badges_html += f"""
             <div class="badge-card">
                 <div class="badge-header">
@@ -201,7 +233,11 @@ class TrustCenterManager:
             c_title = html.escape(c.title)
             c_desc = html.escape(c.details)
             c_status = html.escape(c.status)
-            pill_color = "#10b981" if c.status == "PASS" else ("#f59e0b" if c.status == "PARTIAL" else "#ef4444")
+            pill_color = (
+                "#10b981"
+                if c.status == "PASS"
+                else ("#f59e0b" if c.status == "PARTIAL" else "#ef4444")
+            )
             controls_html += f"""
             <div class="control-row">
                 <div>

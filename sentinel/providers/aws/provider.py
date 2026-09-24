@@ -25,7 +25,10 @@ class AwsProvider(Provider):
     def validate_credentials(self) -> None:
         logger.info("validating AWS credentials", extra={"provider": "aws"})
         self._ctx.validate_credentials()
-        logger.info("AWS credential validation succeeded", extra={"provider": "aws", "outcome": "ok"})
+        logger.info(
+            "AWS credential validation succeeded",
+            extra={"provider": "aws", "outcome": "ok"},
+        )
 
     def _fresh_ctx(self) -> AwsClients:
         return AwsClients(region=self._ctx.region)

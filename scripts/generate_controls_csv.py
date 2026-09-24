@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate controls-matrix.csv and notion-import CSVs."""
+
 from __future__ import annotations
 
 import csv

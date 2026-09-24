@@ -24,7 +24,11 @@ def config_and_auth_snapshot(ctx: AwsClients) -> dict[str, Any]:
     unapproved = 0
     config_noncompliant_resources = 0
 
-    pages = ctx.call("iam", "aws_iam_list_users", lambda: list(iam.get_paginator("list_users").paginate()))
+    pages = ctx.call(
+        "iam",
+        "aws_iam_list_users",
+        lambda: list(iam.get_paginator("list_users").paginate()),
+    )
     if pages:
         for page in pages:
             for user in page.get("Users", []):
@@ -63,7 +67,9 @@ def config_and_auth_snapshot(ctx: AwsClients) -> dict[str, Any]:
                 listeners_resp = ctx.call(
                     "elbv2",
                     "aws_elb_listeners",
-                    lambda a=lb: elbv2.describe_listeners(LoadBalancerArn=a["LoadBalancerArn"]),
+                    lambda a=lb: elbv2.describe_listeners(
+                        LoadBalancerArn=a["LoadBalancerArn"]
+                    ),
                 )
                 if listeners_resp:
                     for listener in listeners_resp.get("Listeners", []):
@@ -83,7 +89,9 @@ def config_and_auth_snapshot(ctx: AwsClients) -> dict[str, Any]:
                 detail_resp = ctx.call(
                     "config",
                     "aws_config_compliance",
-                    lambda n=name: cfg.get_compliance_details_by_config_rule(ConfigRuleName=n),
+                    lambda n=name: cfg.get_compliance_details_by_config_rule(
+                        ConfigRuleName=n
+                    ),
                 )
                 if detail_resp:
                     for result in detail_resp.get("EvaluationResults", []):
@@ -98,12 +106,14 @@ def config_and_auth_snapshot(ctx: AwsClients) -> dict[str, Any]:
     )
     if summary_resp:
         for summary in summary_resp.get("ComplianceSummaries", []):
-            if summary.get("ComplianceSummary", {}).get("NonCompliantResourceCount", {}).get(
-                "CappedCount", 0
+            if (
+                summary.get("ComplianceSummary", {})
+                .get("NonCompliantResourceCount", {})
+                .get("CappedCount", 0)
             ):
-                config_noncompliant_resources += summary["ComplianceSummary"]["NonCompliantResourceCount"][
-                    "CappedCount"
-                ]
+                config_noncompliant_resources += summary["ComplianceSummary"][
+                    "NonCompliantResourceCount"
+                ]["CappedCount"]
 
     mfa_pct = round((mfa_enforced / total_users) * 100, 1) if total_users else None
 

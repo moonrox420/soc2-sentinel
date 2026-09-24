@@ -91,7 +91,15 @@ def test_main_run_all_mock(tmp_path, capsys):
     with patch.object(
         sys,
         "argv",
-        ["sentinel", "run-all", "--provider", "mock", "--output-base", str(tmp_path), "--continue-on-error"],
+        [
+            "sentinel",
+            "run-all",
+            "--provider",
+            "mock",
+            "--output-base",
+            str(tmp_path),
+            "--continue-on-error",
+        ],
     ):
         cli.main()
     data = json.loads(capsys.readouterr().out)
@@ -99,7 +107,11 @@ def test_main_run_all_mock(tmp_path, capsys):
 
 
 def test_main_dry_run(capsys):
-    with patch.object(sys, "argv", ["sentinel", "run", "iam_access_review", "--provider", "mock", "--dry-run"]):
+    with patch.object(
+        sys,
+        "argv",
+        ["sentinel", "run", "iam_access_review", "--provider", "mock", "--dry-run"],
+    ):
         cli.main()
     data = json.loads(capsys.readouterr().out)
     assert data["dry_run"] is True
@@ -109,11 +121,23 @@ def test_main_verify(tmp_path, capsys):
     with patch.object(
         sys,
         "argv",
-        ["sentinel", "run", "iam_access_review", "--provider", "mock", "--output-base", str(tmp_path)],
+        [
+            "sentinel",
+            "run",
+            "iam_access_review",
+            "--provider",
+            "mock",
+            "--output-base",
+            str(tmp_path),
+        ],
     ):
         cli.main()
     capsys.readouterr()
-    day_dirs = [p for p in (tmp_path / "evidence").iterdir() if p.is_dir() and p.name != "manifests"]
+    day_dirs = [
+        p
+        for p in (tmp_path / "evidence").iterdir()
+        if p.is_dir() and p.name != "manifests"
+    ]
     day_dir = day_dirs[0]
     with patch.object(sys, "argv", ["sentinel", "verify", str(day_dir)]):
         cli.main()
@@ -251,7 +275,9 @@ def test_cli_parser_new_commands():
 
 
 def test_cli_scorecard_execution(tmp_path: Path, capsys, monkeypatch):
-    monkeypatch.setattr("sys.argv", ["sentinel", "scorecard", "--output-base", str(tmp_path)])
+    monkeypatch.setattr(
+        "sys.argv", ["sentinel", "scorecard", "--output-base", str(tmp_path)]
+    )
     main()
     captured = capsys.readouterr()
     data = json.loads(captured.out)
@@ -259,7 +285,9 @@ def test_cli_scorecard_execution(tmp_path: Path, capsys, monkeypatch):
 
 
 def test_cli_drift_execution(tmp_path: Path, capsys, monkeypatch):
-    monkeypatch.setattr("sys.argv", ["sentinel", "drift", "--output-base", str(tmp_path)])
+    monkeypatch.setattr(
+        "sys.argv", ["sentinel", "drift", "--output-base", str(tmp_path)]
+    )
     main()
     captured = capsys.readouterr()
     data = json.loads(captured.out)
@@ -269,7 +297,10 @@ def test_cli_drift_execution(tmp_path: Path, capsys, monkeypatch):
 def test_cli_audit_pack_execution(tmp_path: Path, capsys, monkeypatch):
     ev_dir = tmp_path / "2026-09-23"
     ev_dir.mkdir(parents=True)
-    monkeypatch.setattr("sys.argv", ["sentinel", "audit-pack", str(ev_dir), "--output-dir", str(tmp_path)])
+    monkeypatch.setattr(
+        "sys.argv",
+        ["sentinel", "audit-pack", str(ev_dir), "--output-dir", str(tmp_path)],
+    )
     main()
     captured = capsys.readouterr()
     data = json.loads(captured.out)
@@ -279,7 +310,9 @@ def test_cli_audit_pack_execution(tmp_path: Path, capsys, monkeypatch):
 
 def test_cli_serve_dispatch(monkeypatch):
     with patch("sentinel.dashboard.server.run_dashboard_server") as mock_server:
-        monkeypatch.setattr("sys.argv", ["sentinel", "serve", "--port", "8888", "--no-browser"])
+        monkeypatch.setattr(
+            "sys.argv", ["sentinel", "serve", "--port", "8888", "--no-browser"]
+        )
         main()
         mock_server.assert_called_once()
 
@@ -291,7 +324,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_dry_run_mock():
     result = subprocess.run(
-        [sys.executable, "-m", "sentinel.cli", "run", "iam_access_review", "--provider", "mock", "--dry-run"],
+        [
+            sys.executable,
+            "-m",
+            "sentinel.cli",
+            "run",
+            "iam_access_review",
+            "--provider",
+            "mock",
+            "--dry-run",
+        ],
         capture_output=True,
         text=True,
         cwd=str(ROOT),
@@ -355,7 +397,16 @@ def test_main_report_cmmc(tmp_path, capsys):
     with patch.object(
         sys,
         "argv",
-        ["sentinel", "report", "--input", str(sample), "--output-dir", str(tmp_path / "out"), "--mode", "cmmc"],
+        [
+            "sentinel",
+            "report",
+            "--input",
+            str(sample),
+            "--output-dir",
+            str(tmp_path / "out"),
+            "--mode",
+            "cmmc",
+        ],
     ):
         cli.main()
     data = json.loads(capsys.readouterr().out)
@@ -436,6 +487,7 @@ import pytest
 
 def test_cli_policy_list(capsys: pytest.CaptureFixture) -> None:
     import sys
+
     sys.argv = ["sentinel", "policy", "list"]
     main()
     captured = capsys.readouterr()
@@ -446,16 +498,22 @@ def test_cli_policy_list(capsys: pytest.CaptureFixture) -> None:
 
 def test_cli_policy_evaluate(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
     state_file = tmp_path / "state.json"
-    state_file.write_text(json.dumps({
-        "iam_access_review": {
-            "metrics": {
-                "mfa_enforced_percentage": 100.0,
-                "orphaned_accounts": 0,
+    state_file.write_text(
+        json.dumps(
+            {
+                "iam_access_review": {
+                    "metrics": {
+                        "mfa_enforced_percentage": 100.0,
+                        "orphaned_accounts": 0,
+                    }
+                }
             }
-        }
-    }), encoding="utf-8")
+        ),
+        encoding="utf-8",
+    )
 
     import sys
+
     sys.argv = ["sentinel", "policy", "evaluate", "--state-file", str(state_file)]
     try:
         main()
@@ -468,6 +526,7 @@ def test_cli_policy_evaluate(tmp_path: Path, capsys: pytest.CaptureFixture) -> N
 
 def test_cli_github_audit_mock(capsys: pytest.CaptureFixture) -> None:
     import sys
+
     sys.argv = ["sentinel", "github", "audit", "--repo", "demo/app", "--mock"]
     main()
     captured = capsys.readouterr()
@@ -478,8 +537,16 @@ def test_cli_github_audit_mock(capsys: pytest.CaptureFixture) -> None:
 
 def test_cli_tenant_and_token(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
     import sys
+
     # Tenant create
-    sys.argv = ["sentinel", "tenant", "create", "cli-tenant-test", "--output-base", str(tmp_path)]
+    sys.argv = [
+        "sentinel",
+        "tenant",
+        "create",
+        "cli-tenant-test",
+        "--output-base",
+        str(tmp_path),
+    ]
     main()
     captured = capsys.readouterr()
     t_data = json.loads(captured.out)
@@ -495,11 +562,17 @@ def test_cli_tenant_and_token(tmp_path: Path, capsys: pytest.CaptureFixture) -> 
 
     # Token create
     sys.argv = [
-        "sentinel", "token", "create",
-        "--user", "cli_admin",
-        "--role", "SECURITY_ADMIN",
-        "--tenant", "cli-tenant-test",
-        "--expires", "3600",
+        "sentinel",
+        "token",
+        "create",
+        "--user",
+        "cli_admin",
+        "--role",
+        "SECURITY_ADMIN",
+        "--tenant",
+        "cli-tenant-test",
+        "--expires",
+        "3600",
     ]
     main()
     captured_tok = capsys.readouterr()
@@ -508,14 +581,26 @@ def test_cli_tenant_and_token(tmp_path: Path, capsys: pytest.CaptureFixture) -> 
     assert tok_data["user"]["user_id"] == "cli_admin"
 
 
-def test_cli_vault_seal_and_verify(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+def test_cli_vault_seal_and_verify(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
     import sys
+
     ev_date_dir = tmp_path / "evidence" / "2026-09-24" / "iam"
     ev_date_dir.mkdir(parents=True)
-    (ev_date_dir / "report.json").write_text(json.dumps({"test": "data"}), encoding="utf-8")
+    (ev_date_dir / "report.json").write_text(
+        json.dumps({"test": "data"}), encoding="utf-8"
+    )
 
     # Vault Seal
-    sys.argv = ["sentinel", "vault", "seal", str(tmp_path / "evidence" / "2026-09-24"), "--output-base", str(tmp_path)]
+    sys.argv = [
+        "sentinel",
+        "vault",
+        "seal",
+        str(tmp_path / "evidence" / "2026-09-24"),
+        "--output-base",
+        str(tmp_path),
+    ]
     main()
     captured_seal = capsys.readouterr()
     seal_data = json.loads(captured_seal.out)
@@ -530,18 +615,31 @@ def test_cli_vault_seal_and_verify(tmp_path: Path, capsys: pytest.CaptureFixture
     assert ver_data["total_blocks"] == 1
 
 
-def test_cli_vendor_risk_workflow(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+def test_cli_vendor_risk_workflow(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
     import sys
+
     # Add vendor
     sys.argv = [
-        "sentinel", "vendor-risk", "add",
-        "--id", "v-github",
-        "--name", "GitHub Enterprise",
-        "--tier", "TIER_1_CRITICAL",
-        "--classification", "CONFIDENTIAL",
-        "--soc2-expires", "2030-01-01T00:00:00Z",
-        "--dpa", "--mfa", "--encryption",
-        "--output-base", str(tmp_path),
+        "sentinel",
+        "vendor-risk",
+        "add",
+        "--id",
+        "v-github",
+        "--name",
+        "GitHub Enterprise",
+        "--tier",
+        "TIER_1_CRITICAL",
+        "--classification",
+        "CONFIDENTIAL",
+        "--soc2-expires",
+        "2030-01-01T00:00:00Z",
+        "--dpa",
+        "--mfa",
+        "--encryption",
+        "--output-base",
+        str(tmp_path),
     ]
     main()
     captured_add = capsys.readouterr()
@@ -564,22 +662,39 @@ def test_cli_vendor_risk_workflow(tmp_path: Path, capsys: pytest.CaptureFixture)
     assert rep_data["total_vendors"] == 1
 
 
-def test_cli_access_review_workflow(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+def test_cli_access_review_workflow(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
     import sys
+
     ev_file = tmp_path / "iam_evidence.json"
-    ev_file.write_text(json.dumps({
-        "provider": "aws",
-        "users": [{"user_id": "alice", "roles": ["Admin"], "mfa_enabled": True}],
-    }), encoding="utf-8")
+    ev_file.write_text(
+        json.dumps(
+            {
+                "provider": "aws",
+                "users": [
+                    {"user_id": "alice", "roles": ["Admin"], "mfa_enabled": True}
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
 
     # Start campaign
     sys.argv = [
-        "sentinel", "access-review", "start",
-        "--id", "CAMP-CLI-1",
-        "--title", "CLI Test Campaign",
-        "--period", "2026-Q3",
-        "--evidence-file", str(ev_file),
-        "--output-base", str(tmp_path),
+        "sentinel",
+        "access-review",
+        "start",
+        "--id",
+        "CAMP-CLI-1",
+        "--title",
+        "CLI Test Campaign",
+        "--period",
+        "2026-Q3",
+        "--evidence-file",
+        str(ev_file),
+        "--output-base",
+        str(tmp_path),
     ]
     main()
     captured_start = capsys.readouterr()
@@ -595,11 +710,17 @@ def test_cli_access_review_workflow(tmp_path: Path, capsys: pytest.CaptureFixtur
 
     # Make review decision on pending user
     sys.argv = [
-        "sentinel", "access-review", "decide",
-        "--id", "CAMP-CLI-1",
-        "--item-id", "CAMP-CLI-1-item-001",
-        "--decision", "MAINTAIN",
-        "--output-base", str(tmp_path),
+        "sentinel",
+        "access-review",
+        "decide",
+        "--id",
+        "CAMP-CLI-1",
+        "--item-id",
+        "CAMP-CLI-1-item-001",
+        "--decision",
+        "MAINTAIN",
+        "--output-base",
+        str(tmp_path),
     ]
     main()
     captured_dec = capsys.readouterr()
@@ -608,10 +729,15 @@ def test_cli_access_review_workflow(tmp_path: Path, capsys: pytest.CaptureFixtur
 
     # Signoff campaign
     sys.argv = [
-        "sentinel", "access-review", "signoff",
-        "--id", "CAMP-CLI-1",
-        "--signer", "Chief Security Officer",
-        "--output-base", str(tmp_path),
+        "sentinel",
+        "access-review",
+        "signoff",
+        "--id",
+        "CAMP-CLI-1",
+        "--signer",
+        "Chief Security Officer",
+        "--output-base",
+        str(tmp_path),
     ]
     main()
     captured_sign = capsys.readouterr()

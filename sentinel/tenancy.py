@@ -19,6 +19,7 @@ DEFAULT_TENANT_ID = "default"
 @dataclass(frozen=True)
 class TenantContext:
     """Immutable context containing active tenant identity, configuration, and storage boundaries."""
+
     tenant_id: str
     tenant_name: str = ""
     environment: str = "production"
@@ -26,7 +27,9 @@ class TenantContext:
     key_id: str | None = None
 
     def __post_init__(self) -> None:
-        if self.tenant_id != DEFAULT_TENANT_ID and not TENANT_SLUG_REGEX.match(self.tenant_id):
+        if self.tenant_id != DEFAULT_TENANT_ID and not TENANT_SLUG_REGEX.match(
+            self.tenant_id
+        ):
             raise ValidationError(
                 f"Invalid tenant_id format '{self.tenant_id}'. Must be 3-64 chars, lowercase alphanumeric with hyphens or underscores."
             )
@@ -38,7 +41,11 @@ class TenantContext:
 # Thread-safe contextvar for async and multi-threaded worker tenant propagation
 _CURRENT_TENANT: contextvars.ContextVar[TenantContext] = contextvars.ContextVar(
     "current_tenant",
-    default=TenantContext(tenant_id=DEFAULT_TENANT_ID, tenant_name="Default Organization", environment="production")
+    default=TenantContext(
+        tenant_id=DEFAULT_TENANT_ID,
+        tenant_name="Default Organization",
+        environment="production",
+    ),
 )
 
 

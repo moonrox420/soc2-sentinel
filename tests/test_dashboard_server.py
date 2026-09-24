@@ -14,7 +14,9 @@ from sentinel.dashboard.server import DashboardHandler, DashboardServer
 
 @pytest.fixture(scope="module")
 def admin_token() -> str:
-    admin_user = UserIdentity(user_id="test_admin", role=Role.SUPER_ADMIN, tenant_id="default")
+    admin_user = UserIdentity(
+        user_id="test_admin", role=Role.SUPER_ADMIN, tenant_id="default"
+    )
     return TokenManager.create_token(admin_user)
 
 
@@ -33,11 +35,20 @@ def server_instance(tmp_path_factory):
     day_dir = base / "evidence" / "2026-09-23"
     ctrl_dir = day_dir / "CC6.1"
     ctrl_dir.mkdir(parents=True)
-    payload = {"collector": "iam_access_review", "control_id": "CC6.1", "provider": "mock", "metrics": {}}
+    payload = {
+        "collector": "iam_access_review",
+        "control_id": "CC6.1",
+        "provider": "mock",
+        "metrics": {},
+    }
     (ctrl_dir / "evidence.json").write_text(json.dumps(payload), encoding="utf-8")
-    (day_dir / "manifest.json").write_text(json.dumps({"files": {"CC6.1/evidence.json": "hash"}}), encoding="utf-8")
+    (day_dir / "manifest.json").write_text(
+        json.dumps({"files": {"CC6.1/evidence.json": "hash"}}), encoding="utf-8"
+    )
 
-    daemon = ContinuousMonitoringDaemon(provider_name="mock", interval_seconds=1000, output_base=base)
+    daemon = ContinuousMonitoringDaemon(
+        provider_name="mock", interval_seconds=1000, output_base=base
+    )
 
     server = DashboardServer(
         ("127.0.0.1", 0),
@@ -146,7 +157,9 @@ def test_post_scan(server_instance, admin_headers):
     url, _ = server_instance
     req = urllib.request.Request(
         f"{url}/api/scan",
-        data=json.dumps({"provider": "mock", "collector": "iam_access_review"}).encode("utf-8"),
+        data=json.dumps({"provider": "mock", "collector": "iam_access_review"}).encode(
+            "utf-8"
+        ),
         headers=admin_headers,
     )
     resp = urllib.request.urlopen(req)
@@ -169,7 +182,9 @@ def test_post_export_and_download(server_instance, admin_headers):
     assert "download_url" in data
 
     # Test download with auth header
-    dl_req = urllib.request.Request(f"{url}{data['download_url']}", headers=admin_headers)
+    dl_req = urllib.request.Request(
+        f"{url}{data['download_url']}", headers=admin_headers
+    )
     dl_resp = urllib.request.urlopen(dl_req)
     assert dl_resp.status == 200
     assert dl_resp.headers.get("Content-Type") in {
@@ -227,7 +242,13 @@ def test_tenants_and_tokens_endpoints(server_instance, admin_headers):
     # Create signed token
     req_tok = urllib.request.Request(
         f"{url}/api/tokens/create",
-        data=json.dumps({"user_id": "auditor_user", "role": "AUDITOR", "tenant_id": "org-dashboard-test"}).encode("utf-8"),
+        data=json.dumps(
+            {
+                "user_id": "auditor_user",
+                "role": "AUDITOR",
+                "tenant_id": "org-dashboard-test",
+            }
+        ).encode("utf-8"),
         headers=admin_headers,
     )
     create_tok_resp = urllib.request.urlopen(req_tok)
@@ -246,7 +267,9 @@ def test_vcs_and_telemetry_endpoints(server_instance, admin_headers):
     assert gh_data["compliant"] is True
 
     # Telemetry events
-    req_tel = urllib.request.Request(f"{url}/api/telemetry/events", headers=admin_headers)
+    req_tel = urllib.request.Request(
+        f"{url}/api/telemetry/events", headers=admin_headers
+    )
     resp_tel = urllib.request.urlopen(req_tel)
     assert resp_tel.status == 200
     tel_data = json.loads(resp_tel.read().decode("utf-8"))
@@ -276,15 +299,17 @@ def test_phase2_vault_and_vrm_endpoints(server_instance, admin_headers):
     # 3. VRM Vendors
     req_vrm = urllib.request.Request(
         f"{url}/api/vendor-risk/vendors",
-        data=json.dumps({
-            "vendor": {
-                "vendor_id": "v-dash-test",
-                "name": "Cloud CDN Provider",
-                "tier": "TIER_2_HIGH",
-                "data_classification": "INTERNAL",
-                "questionnaire": {"has_soc2_type2": True, "enforces_mfa": True},
+        data=json.dumps(
+            {
+                "vendor": {
+                    "vendor_id": "v-dash-test",
+                    "name": "Cloud CDN Provider",
+                    "tier": "TIER_2_HIGH",
+                    "data_classification": "INTERNAL",
+                    "questionnaire": {"has_soc2_type2": True, "enforces_mfa": True},
+                }
             }
-        }).encode("utf-8"),
+        ).encode("utf-8"),
         headers=admin_headers,
     )
     save_v_resp = urllib.request.urlopen(req_vrm)
@@ -304,6 +329,7 @@ def test_phase2_vault_and_vrm_endpoints(server_instance, admin_headers):
 def test_phase2_uar_and_notification_endpoints(server_instance, admin_headers):
     url, base = server_instance
     from sentinel.access_review import AccessReviewManager
+
     uar = AccessReviewManager(base)
     camp = uar.create_campaign_from_evidence(
         campaign_id="CAMP-DASH-1",
@@ -312,7 +338,9 @@ def test_phase2_uar_and_notification_endpoints(server_instance, admin_headers):
         due_date="2026-10-01",
         iam_evidence={
             "provider": "mock",
-            "users": [{"user_id": "dash_user_1", "roles": ["Engineer"], "mfa_enabled": True}],
+            "users": [
+                {"user_id": "dash_user_1", "roles": ["Engineer"], "mfa_enabled": True}
+            ],
         },
     )
 
@@ -326,7 +354,9 @@ def test_phase2_uar_and_notification_endpoints(server_instance, admin_headers):
     item_id = camp.items[0].item_id
     req_decide = urllib.request.Request(
         f"{url}/api/access-review/decide",
-        data=json.dumps({"campaign_id": "CAMP-DASH-1", "item_id": item_id, "decision": "MAINTAIN"}).encode("utf-8"),
+        data=json.dumps(
+            {"campaign_id": "CAMP-DASH-1", "item_id": item_id, "decision": "MAINTAIN"}
+        ).encode("utf-8"),
         headers=admin_headers,
     )
     dec_resp = urllib.request.urlopen(req_decide)
@@ -335,7 +365,9 @@ def test_phase2_uar_and_notification_endpoints(server_instance, admin_headers):
     # Notification test
     req_notif = urllib.request.Request(
         f"{url}/api/notifications/test",
-        data=json.dumps({"webhook_url": "http://127.0.0.1:65520/test", "channel": "slack"}).encode("utf-8"),
+        data=json.dumps(
+            {"webhook_url": "http://127.0.0.1:65520/test", "channel": "slack"}
+        ).encode("utf-8"),
         headers=admin_headers,
     )
     notif_resp = urllib.request.urlopen(req_notif)

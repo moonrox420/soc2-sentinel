@@ -20,13 +20,17 @@ def retention_snapshot(ctx: GcpContext) -> dict[str, Any]:
 
         client = StorageClient(project=ctx.project_id)
         ctx.attempt()
-        buckets = call_with_retry(lambda: list(client.list_buckets()), operation="gcp_list_buckets")
+        buckets = call_with_retry(
+            lambda: list(client.list_buckets()), operation="gcp_list_buckets"
+        )
         ctx.succeed()
         for bucket in buckets:
             bucket.reload()
             if not bucket.lifecycle_rules:
                 missing_lifecycle += 1
-                findings.append({"resource": f"gs://{bucket.name}", "issue": "no lifecycle rules"})
+                findings.append(
+                    {"resource": f"gs://{bucket.name}", "issue": "no lifecycle rules"}
+                )
     except Exception as exc:
         ctx.record_error("storage", exc)
 

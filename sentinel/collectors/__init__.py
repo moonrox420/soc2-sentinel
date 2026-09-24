@@ -7,7 +7,9 @@ from sentinel.collectors.retention_check import collect_retention_check
 from sentinel.collectors.self_assessment_report import (
     generate_self_assessment_report as generate_self_assessment_report,
 )
-from sentinel.collectors.zt_continuous_verification import collect_zt_continuous_verification
+from sentinel.collectors.zt_continuous_verification import (
+    collect_zt_continuous_verification,
+)
 
 __all__ = ["COLLECTORS", "generate_self_assessment_report"]
 

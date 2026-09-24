@@ -41,7 +41,13 @@ def test_audit_event_rfc5424_formatting() -> None:
 def test_memory_sink_ring_buffer() -> None:
     sink = MemorySink(max_size=5)
     for i in range(10):
-        sink.send(AuditEvent(action=f"ACTION_{i}", resource=f"res_{i}", tenant_id="t1" if i % 2 == 0 else "t2"))
+        sink.send(
+            AuditEvent(
+                action=f"ACTION_{i}",
+                resource=f"res_{i}",
+                tenant_id="t1" if i % 2 == 0 else "t2",
+            )
+        )
 
     events = sink.get_events(limit=10)
     assert len(events) == 5
@@ -95,7 +101,9 @@ def test_syslog_and_http_sink_resilience() -> None:
     # Testing network resilience / error tolerance when sinks point to closed test ports
     syslog_sink = SyslogSink(host="127.0.0.1", port=65500, protocol="UDP")
     ev = AuditEvent(action="UDP_TEST", resource="test")
-    assert syslog_sink.send(ev) is True  # UDP socket send is non-blocking/fire-and-forget
+    assert (
+        syslog_sink.send(ev) is True
+    )  # UDP socket send is non-blocking/fire-and-forget
 
     http_sink = HttpSink(endpoint_url="http://127.0.0.1:65501/logs", timeout=0.5)
     # Should catch exception and safely return False without crashing

@@ -25,7 +25,10 @@ class AzureProvider(Provider):
     def validate_credentials(self) -> None:
         logger.info("validating Azure credentials", extra={"provider": "azure"})
         self._ctx.validate_credentials()
-        logger.info("Azure credential validation succeeded", extra={"provider": "azure", "outcome": "ok"})
+        logger.info(
+            "Azure credential validation succeeded",
+            extra={"provider": "azure", "outcome": "ok"},
+        )
 
     def _fresh(self) -> AzureContext:
         return AzureContext(subscription_id=self._ctx.subscription_id)
