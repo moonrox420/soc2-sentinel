@@ -284,8 +284,18 @@ def _parser() -> argparse.ArgumentParser:
     vrm_add_p = vrm_sub.add_parser(
         "add", help="Add or update a third-party vendor assessment"
     )
-    vrm_add_p.add_argument("--id", required=True, help="Unique vendor identifier")
+    vrm_add_p.add_argument(
+        "--id",
+        default=None,
+        help="Unique vendor identifier (auto-generated from name if omitted)",
+    )
     vrm_add_p.add_argument("--name", required=True, help="Vendor legal name")
+    vrm_add_p.add_argument(
+        "--service", default="Enterprise Cloud Service", help="Service description"
+    )
+    vrm_add_p.add_argument(
+        "--owner", default="", help="Vendor owner email / point of contact"
+    )
     vrm_add_p.add_argument(
         "--tier",
         default="TIER_3_MEDIUM",
@@ -450,10 +460,18 @@ def _parser() -> argparse.ArgumentParser:
         "export", help="Export audit logs to local NDJSON file"
     )
     siem_exp_p.add_argument(
+        "--output-file",
         "--output-ndjson",
+        dest="output_ndjson",
         type=Path,
         default=Path("siem_export.ndjson"),
         help="Output NDJSON file",
+    )
+    siem_exp_p.add_argument(
+        "--target",
+        default="ndjson",
+        choices=["ndjson"],
+        help="Target export format",
     )
     siem_exp_p.add_argument(
         "--limit", type=int, default=500, help="Max records to export"
@@ -951,6 +969,7 @@ def main() -> None:
                 sys.exit(1)
             return
         elif args.vrm_command == "add":
+            vid = args.id or f"vdr-{args.name.lower().replace(' ', '-').replace('_', '-')}"
             q = SecurityQuestionnaire(
                 has_soc2_type2=bool(args.soc2_expires),
                 soc2_report_date=args.soc2_expires,
@@ -959,9 +978,10 @@ def main() -> None:
                 encrypts_data_at_rest=args.encryption,
             )
             vendor = Vendor(
-                vendor_id=args.id,
+                vendor_id=vid,
                 name=args.name,
-                service_description="Enterprise vendor service",
+                service_description=args.service or "Enterprise Cloud Service",
+                owner_email=args.owner or "",
                 tier=VendorTier(args.tier),
                 data_classification=DataClassification(args.classification),
                 soc2_valid_until=args.soc2_expires,
