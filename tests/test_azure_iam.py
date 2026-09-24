@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
-from sentinel.providers.azure.iam import iam_access_snapshot
 from sentinel.providers.azure._client import AzureContext
+from sentinel.providers.azure.iam import iam_access_snapshot
 
 
 def test_graph_drives_assignments():

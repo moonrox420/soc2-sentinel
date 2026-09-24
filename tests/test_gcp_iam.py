@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
-from sentinel.providers.gcp.iam import iam_access_snapshot
 from sentinel.providers.gcp._client import GcpContext
+from sentinel.providers.gcp.iam import iam_access_snapshot
 
 
 def test_asset_api_drives_user_counts():

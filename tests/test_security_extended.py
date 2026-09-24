@@ -1,6 +1,5 @@
 import os
 
-
 from sentinel.security import (
     decrypt_bytes,
     encryption_enabled,
@@ -11,8 +10,9 @@ from sentinel.security import (
 
 def test_v1_decrypt_legacy(monkeypatch):
     monkeypatch.setenv("SENTINEL_EVIDENCE_KEY", "legacy-key")
-    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     import hashlib
+
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
     key = hashlib.sha256(b"sentinel-evidence-v1:legacy-key").digest()
     nonce = os.urandom(12)

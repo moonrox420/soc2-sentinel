@@ -63,8 +63,6 @@ def merge_results(*snapshots: dict[str, Any]) -> dict[str, Any]:
                 continue
             if key not in merged:
                 merged[key] = value
-            elif isinstance(value, list) and isinstance(merged.get(key), list):
-                merged[key] = merged[key] + value
-            elif isinstance(value, int) and isinstance(merged.get(key), int):
+            elif isinstance(value, list) and isinstance(merged.get(key), list) or isinstance(value, int) and isinstance(merged.get(key), int):
                 merged[key] = merged[key] + value
     return finalize_snapshot(merged, all_errors, checks_attempted=attempted, checks_succeeded=succeeded)

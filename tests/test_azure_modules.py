@@ -39,12 +39,11 @@ def test_azure_encryption_storage():
     ctx.storage.storage_accounts.list = MagicMock(return_value=[account])
     with patch("azure.mgmt.resourcegraph.ResourceGraphClient") as mock_rg:
         mock_rg.return_value.resources.return_value = MagicMock(data=[])
-        with patch.object(ctx, "graph_get", return_value={"value": []}):
-            with patch(
-                "sentinel.cloud.call_with_retry",
-                side_effect=lambda fn, **kw: fn(),
-            ):
-                snap = encryption_snapshot(ctx)
+        with patch.object(ctx, "graph_get", return_value={"value": []}), patch(
+            "sentinel.cloud.call_with_retry",
+            side_effect=lambda fn, **kw: fn(),
+        ):
+            snap = encryption_snapshot(ctx)
     assert snap["total_confidential_resources"] >= 1
 
 
@@ -77,12 +76,11 @@ def test_azure_config_mfa_registration_is_not_enforcement():
     }
     with patch("azure.mgmt.resourcegraph.ResourceGraphClient") as mock_rg:
         mock_rg.return_value.resources.return_value = MagicMock(data=[])
-        with patch.object(ctx, "graph_get", return_value=mfa):
-            with patch(
-                "sentinel.cloud.call_with_retry",
-                side_effect=lambda fn, **kw: fn(),
-            ):
-                snap = config_and_auth_snapshot(ctx)
+        with patch.object(ctx, "graph_get", return_value=mfa), patch(
+            "sentinel.cloud.call_with_retry",
+            side_effect=lambda fn, **kw: fn(),
+        ):
+            snap = config_and_auth_snapshot(ctx)
 
     assert snap["mfa_enforcement_percent"] is None
     assert snap["mfa_registered_percent"] == 50.0

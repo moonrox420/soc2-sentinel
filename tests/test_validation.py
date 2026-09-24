@@ -1,7 +1,11 @@
 import pytest
 
 from sentinel.errors import ValidationError
-from sentinel.validation import resolve_safe_output_base, sanitize_artifact_name, sanitize_control_id
+from sentinel.validation import (
+    resolve_safe_output_base,
+    sanitize_artifact_name,
+    sanitize_control_id,
+)
 
 
 def test_sanitize_control_id_rejects_traversal():

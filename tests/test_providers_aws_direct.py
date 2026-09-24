@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
-from sentinel.providers.aws.provider import AwsProvider
 from sentinel.providers.aws._client import AwsClients
+from sentinel.providers.aws.provider import AwsProvider
 
 
 def test_aws_validate_credentials():

@@ -2,7 +2,6 @@ import json
 import sys
 from unittest.mock import patch
 
-
 from sentinel import cli
 
 

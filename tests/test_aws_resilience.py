@@ -2,8 +2,8 @@ from unittest.mock import MagicMock, patch
 
 from moto import mock_aws
 
-from sentinel.providers.aws.resilience import resilience_snapshot
 from sentinel.providers.aws._client import AwsClients
+from sentinel.providers.aws.resilience import resilience_snapshot
 
 
 def test_no_backup_jobs_returns_failed_quality():

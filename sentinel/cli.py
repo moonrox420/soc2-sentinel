@@ -38,6 +38,7 @@ DEFAULT_CONTROL = dict(RUN_ALL_MAPPING)
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=f"SOC2 Sentinel evidence automation v{__version__}")
+    parser.add_argument("--version", action="version", version=f"SOC2 Sentinel v{__version__}")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging")
     parser.add_argument("--config", type=Path, default=None, help="Path to sentinel.yaml")
     parser.add_argument("--redact-pii", action="store_true", help="Redact PII in exports")
@@ -76,6 +77,38 @@ def _parser() -> argparse.ArgumentParser:
     report_p.add_argument("--input", type=Path, required=True)
     report_p.add_argument("--output-dir", type=Path, default=None)
     report_p.add_argument("--mode", default="cmmc", choices=["cmmc", "zt"])
+
+    serve_p = sub.add_parser("serve", help="Launch interactive compliance dashboard web UI")
+    serve_p.add_argument("--host", default="127.0.0.1", help="Host address to bind")
+    serve_p.add_argument("--port", type=int, default=8080, help="Port to listen on")
+    serve_p.add_argument("--output-base", type=Path, default=Path.cwd(), help="Evidence output directory")
+    serve_p.add_argument("--provider", default="mock", choices=["aws", "gcp", "azure", "mock"])
+    serve_p.add_argument("--daemon", action="store_true", help="Enable continuous background polling daemon")
+    serve_p.add_argument("--poll-interval", type=int, default=3600, help="Daemon interval in seconds")
+    serve_p.add_argument("--no-browser", action="store_true", help="Do not open default browser")
+
+    dash_p = sub.add_parser("dashboard", help="Alias for 'serve'")
+    dash_p.add_argument("--host", default="127.0.0.1")
+    dash_p.add_argument("--port", type=int, default=8080)
+    dash_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    dash_p.add_argument("--provider", default="mock", choices=["aws", "gcp", "azure", "mock"])
+    dash_p.add_argument("--daemon", action="store_true")
+    dash_p.add_argument("--poll-interval", type=int, default=3600)
+    dash_p.add_argument("--no-browser", action="store_true")
+
+    score_p = sub.add_parser("scorecard", help="Display multi-framework compliance posture scorecard")
+    score_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    score_p.add_argument("--date", default=None, help="Evidence date folder")
+    score_p.add_argument("--provider", default=None)
+
+    drift_p = sub.add_parser("drift", help="Detect configuration drift between evidence snapshots")
+    drift_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    drift_p.add_argument("--baseline", default=None, help="Baseline date")
+    drift_p.add_argument("--current", default=None, help="Current date")
+
+    pack_p = sub.add_parser("audit-pack", help="Generate executive HTML report and signed evidence ZIP archive")
+    pack_p.add_argument("evidence_dir", type=Path, help="Evidence date directory to package")
+    pack_p.add_argument("--output-dir", type=Path, default=None, help="Directory to save generated ZIP")
     return parser
 
 
@@ -354,6 +387,48 @@ def main() -> None:
         except ValidationError as exc:
             logger.error("%s", exc.message)
             sys.exit(2)
+        return
+
+    if args.command in {"serve", "dashboard"}:
+        from sentinel.dashboard.server import run_dashboard_server
+
+        run_dashboard_server(
+            host=args.host,
+            port=args.port,
+            output_base=args.output_base,
+            config=cfg,
+            enable_daemon=args.daemon,
+            daemon_interval=args.poll_interval,
+            provider=args.provider,
+            open_browser=not args.no_browser,
+        )
+        return
+
+    if args.command == "scorecard":
+        from sentinel.scoring import compute_compliance_scorecard
+
+        ev_base = (args.output_base / "evidence") if args.output_base else None
+        sc = compute_compliance_scorecard(ev_base, date_str=args.date, provider=args.provider)
+        print(json.dumps(sc.to_dict(), indent=2))
+        return
+
+    if args.command == "drift":
+        from sentinel.drift import detect_configuration_drift
+
+        ev_base = (args.output_base / "evidence") if args.output_base else None
+        dr = detect_configuration_drift(ev_base, baseline_date=args.baseline, current_date=args.current)
+        print(json.dumps(dr.to_dict(), indent=2))
+        return
+
+    if args.command == "audit-pack":
+        from sentinel.reporting import export_audit_pack
+
+        try:
+            zip_p = export_audit_pack(args.evidence_dir, output_dir=args.output_dir)
+            print(json.dumps({"status": "ok", "audit_pack_zip": str(zip_p)}, indent=2))
+        except Exception as exc:
+            logger.error("%s", exc)
+            sys.exit(1)
         return
 
     if args.command == "run":

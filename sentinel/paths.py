@@ -15,3 +15,7 @@ def install_root() -> Path:
 def evidence_root(base: Path | None = None) -> Path:
     root = base or Path.cwd()
     return root / "evidence"
+
+
+def data_root() -> Path:
+    return install_root() / "data"

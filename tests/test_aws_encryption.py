@@ -1,8 +1,8 @@
 import boto3
 from moto import mock_aws
 
-from sentinel.providers.aws.encryption import encryption_snapshot
 from sentinel.providers.aws._client import AwsClients
+from sentinel.providers.aws.encryption import encryption_snapshot
 
 
 @mock_aws

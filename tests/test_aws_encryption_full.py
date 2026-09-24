@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
-from sentinel.providers.aws.encryption import encryption_snapshot
 from sentinel.providers.aws._client import AwsClients
+from sentinel.providers.aws.encryption import encryption_snapshot
 
 
 def test_kms_and_acm_paths():

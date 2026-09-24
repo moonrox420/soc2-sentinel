@@ -33,7 +33,7 @@ def redact_pii(text: str) -> str:
     return _EMAIL_RE.sub("[REDACTED_EMAIL]", text)
 
 
-def sanitize_csv_cell(value: str | int | float | None) -> str:
+def sanitize_csv_cell(value: str | float | None) -> str:
     if value is None:
         return ""
     text = str(value)
@@ -54,16 +54,16 @@ def _load_secret(secret: str | None = None) -> str:
 
 
 def _derive_key_v1(secret: str) -> bytes:
-    return hashlib.sha256(f"sentinel-evidence-v1:{secret}".encode("utf-8")).digest()
+    return hashlib.sha256(f"sentinel-evidence-v1:{secret}".encode()).digest()
 
 
 def _derive_key_v2(secret: str, salt: bytes, key_id: str) -> bytes:
     try:
-        from cryptography.hazmat.primitives.kdf.hkdf import HKDF
         from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.kdf.hkdf import HKDF
     except ImportError as exc:
         raise ValidationError("cryptography package required for encryption") from exc
-    info = f"sentinel-evidence-v2:{key_id}".encode("utf-8")
+    info = f"sentinel-evidence-v2:{key_id}".encode()
     return HKDF(algorithm=hashes.SHA256(), length=32, salt=salt, info=info).derive(
         secret.encode("utf-8")
     )

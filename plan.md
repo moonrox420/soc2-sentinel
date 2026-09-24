@@ -372,29 +372,29 @@ These are **integration hooks** documented in SECURITY.md, not fake implementati
 
 ## Definition of done (every criterion must pass)
 
-- [ ] `rg -i "placeholder|hardcoded|source.*placeholder" sentinel/providers/` → **0 matches**
-- [ ] AWS `resilience_snapshot` uses Backup/RDS APIs or returns `failed`—never static hours
-- [ ] GCP/Azure IAM/logging/config/resilience all live—no hardcoded coverage percentages
-- [ ] `sentinel validate --provider aws|gcp|azure` passes with sandbox creds
-- [ ] Evidence always has `collection_quality` + `errors[]`; auditors can parse programmatically
-- [ ] Strict allowlist on by default; path traversal still blocked
-- [ ] `encrypt: true` without key fails at startup
-- [ ] HKDF + key_id in encrypted blobs; HMAC enforced when key set
-- [ ] Concurrent collector runs do not corrupt evidence
-- [ ] pytest green, coverage ≥80%, bandit no high severity
-- [ ] All cloud IAM/setup docs match actual API calls
-- [ ] Gumroad zip v2.5.0 built and smoke-tested
+- [x] `rg -i "placeholder|hardcoded|source.*placeholder" sentinel/providers/` → **0 matches**
+- [x] AWS `resilience_snapshot` uses Backup/RDS APIs or returns `failed`—never static hours
+- [x] GCP/Azure IAM/logging/config/resilience all live—no hardcoded coverage percentages
+- [x] `sentinel validate --provider aws|gcp|azure` passes with sandbox creds
+- [x] Evidence always has `collection_quality` + `errors[]`; auditors can parse programmatically
+- [x] Strict allowlist on by default; path traversal still blocked
+- [x] `encrypt: true` without key fails at startup
+- [x] HKDF + key_id in encrypted blobs; HMAC enforced when key set
+- [x] Concurrent collector runs do not corrupt evidence
+- [x] pytest green, coverage ≥80%, bandit no high severity
+- [x] All cloud IAM/setup docs match actual API calls
+- [x] Gumroad zip v2.5.0 built and smoke-tested
 
 ---
 
 ## Work items (complete checklist)
 
-- [ ] **snapshot-contract** — SnapshotResult, schema errors+collection_quality, metrics oneOf, output lock+verify+manifest backup
-- [ ] **aws-complete** — 7 service modules, Backup/resilience, credential report, Config compliance, ACM/TLS, IAM policy doc
-- [ ] **gcp-complete** — 7 service modules, Cloud Asset IAM, logging entries, Org Policy, KMS, compute/SQL backup, custom role doc
-- [ ] **azure-complete** — 7 service modules, Graph IAM/MFA, Monitor diagnostics, Resource Graph, Recovery Services, app registration doc
-- [ ] **collectors-honesty** — structured errors end-to-end, logging, status mapping, self_assessment atomic writes
-- [ ] **security-cli** — HKDF+key_id, config.validate(), validate/verify commands, strict allowlist, --log-file
-- [ ] **threat-controls** — manifest backup, concurrent lock, audit extensions, INCIDENT_RESPONSE.md
-- [ ] **tests-ci-80** — full test matrix above, chaos tests, CI gate 80%
-- [ ] **release-250** — all docs, gumroad copy, pyinstaller spec, consumer zip
+- [x] **snapshot-contract** — SnapshotResult, schema errors+collection_quality, metrics oneOf, output lock+verify+manifest backup
+- [x] **aws-complete** — 7 service modules, Backup/resilience, credential report, Config compliance, ACM/TLS, IAM policy doc
+- [x] **gcp-complete** — 7 service modules, Cloud Asset IAM, logging entries, Org Policy, KMS, compute/SQL backup, custom role doc
+- [x] **azure-complete** — 7 service modules, Graph IAM/MFA, Monitor diagnostics, Resource Graph, Recovery Services, app registration doc
+- [x] **collectors-honesty** — structured errors end-to-end, logging, status mapping, self_assessment atomic writes
+- [x] **security-cli** — HKDF+key_id, config.validate(), validate/verify commands, strict allowlist, --log-file
+- [x] **threat-controls** — manifest backup, concurrent lock, audit extensions, INCIDENT_RESPONSE.md
+- [x] **tests-ci-80** — full test matrix above, chaos tests, CI gate 80%
+- [x] **release-250** — all docs, gumroad copy, pyinstaller spec, consumer zip

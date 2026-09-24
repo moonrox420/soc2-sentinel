@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
-from sentinel.providers.aws.logging import log_monitoring_snapshot
 from sentinel.providers.aws._client import AwsClients
+from sentinel.providers.aws.logging import log_monitoring_snapshot
 
 
 def test_no_trails_sets_coverage_error():

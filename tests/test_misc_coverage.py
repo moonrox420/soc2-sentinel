@@ -4,10 +4,10 @@ from unittest.mock import patch
 import pytest
 
 from sentinel.cloud import call_with_retry, is_retryable_error, snapshot_errors
+from sentinel.config import ProviderConfig, SentinelConfig
 from sentinel.errors import ProviderError, ValidationError
 from sentinel.paths import evidence_root, install_root
 from sentinel.providers import get_provider
-from sentinel.config import ProviderConfig, SentinelConfig
 
 
 def test_snapshot_errors_helper():

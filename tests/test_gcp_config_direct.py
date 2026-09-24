@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
-from sentinel.providers.gcp.config import config_and_auth_snapshot
 from sentinel.providers.gcp._client import GcpContext
+from sentinel.providers.gcp.config import config_and_auth_snapshot
 
 
 def test_gcp_config_firewall_http():

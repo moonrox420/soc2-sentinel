@@ -1,4 +1,9 @@
-from sentinel.providers._snapshot import api_error, collection_quality, finalize_snapshot, merge_results
+from sentinel.providers._snapshot import (
+    api_error,
+    collection_quality,
+    finalize_snapshot,
+    merge_results,
+)
 
 
 def test_collection_quality_states():

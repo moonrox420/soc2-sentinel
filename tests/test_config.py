@@ -12,7 +12,7 @@ def test_load_config_defaults():
 
 
 def test_validate_encrypt_requires_key(monkeypatch):
-    from sentinel.config import SentinelConfig, EvidenceConfig
+    from sentinel.config import EvidenceConfig, SentinelConfig
 
     cfg = SentinelConfig(evidence=EvidenceConfig(encrypt=True))
     monkeypatch.delenv("SENTINEL_EVIDENCE_KEY", raising=False)

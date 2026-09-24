@@ -1,4 +1,4 @@
-from sentinel.security import encrypt_bytes, decrypt_bytes, redact_pii, sanitize_csv_cell
+from sentinel.security import decrypt_bytes, encrypt_bytes, redact_pii, sanitize_csv_cell
 
 
 def test_sanitize_csv_cell_formula():

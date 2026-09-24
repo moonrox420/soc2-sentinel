@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
-from sentinel.providers.gcp._zt import zt_verification_snapshot
 from sentinel.providers.gcp._client import GcpContext
+from sentinel.providers.gcp._zt import zt_verification_snapshot
 
 
 def test_gcp_zt_merge():

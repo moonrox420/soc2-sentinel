@@ -3,10 +3,11 @@ from __future__ import annotations
 import json
 import os
 import shutil
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from sentinel.config import SentinelConfig
 from sentinel.errors import ValidationError as SentinelValidationError
@@ -14,7 +15,11 @@ from sentinel.integrity import build_manifest, write_manifest
 from sentinel.paths import evidence_root
 from sentinel.schema import validate_evidence
 from sentinel.security import encrypt_bytes, encryption_enabled, safe_file_mode
-from sentinel.validation import resolve_safe_output_base, sanitize_artifact_name, sanitize_control_id
+from sentinel.validation import (
+    resolve_safe_output_base,
+    sanitize_artifact_name,
+    sanitize_control_id,
+)
 
 try:
     import portalocker

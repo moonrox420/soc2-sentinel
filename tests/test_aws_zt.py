@@ -2,8 +2,8 @@ from unittest.mock import patch
 
 from moto import mock_aws
 
-from sentinel.providers.aws._zt import zt_verification_snapshot
 from sentinel.providers.aws._client import AwsClients
+from sentinel.providers.aws._zt import zt_verification_snapshot
 
 
 @mock_aws

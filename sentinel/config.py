@@ -87,7 +87,7 @@ class SentinelConfig:
                     f"sentinel.yaml is world-readable ({oct(mode & 0o777)}); "
                     "recommend chmod 600"
                 )
-            if self.source_path.stat().st_uid != os.getuid():
+            if hasattr(os, "getuid") and self.source_path.stat().st_uid != os.getuid():
                 warnings.append("sentinel.yaml is not owned by the current user")
 
         return warnings

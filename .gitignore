@@ -1,23 +1,55 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+bin/
+dist/
+build/*
+!build/sentinel.spec
 *.egg-info/
+.installed.cfg
+*.egg
+
+# Testing & Coverage
 .pytest_cache/
+.pytest_temp/
 .mypy_cache/
 .ruff_cache/
 .coverage
 .coverage.*
 htmlcov/
+test-results/
 
-# Virtual environments
+# Virtual Environments
 .venv/
 venv/
+env/
+ENV/
 
-# Runtime evidence and reports
+# Runtime evidence, reports & logs
 evidence/
+*.log
+sentinel-audit.jsonl
+scratch/
 
-# Generated Windows/package artifacts
-bin/
-dist/
-build/*
-!build/sentinel.spec
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+
+# IDEs & Text Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
