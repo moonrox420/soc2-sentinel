@@ -1,0 +1,48 @@
+{
+  "campaign_id": "2026-Q3-IAM",
+  "title": "Q3 All IAM Users",
+  "period": "2026-Q3",
+  "created_at": "2026-09-24T12:07:31.529043+00:00",
+  "due_date": "2026-09-30",
+  "status": "ACTIVE",
+  "completed_at": null,
+  "signatory": null,
+  "sign_off_hash": null,
+  "total_items": 2,
+  "pending_count": 2,
+  "maintained_count": 0,
+  "revoked_count": 0,
+  "modified_count": 0,
+  "items": [
+    {
+      "item_id": "2026-Q3-IAM-item-001",
+      "identity_name": "dev_1",
+      "identity_email": "dev_1@sentinel.local",
+      "provider": "aws",
+      "role_or_policy": "DevRole",
+      "resource": "global",
+      "is_admin": false,
+      "mfa_enabled": true,
+      "last_login_date": null,
+      "decision": "PENDING",
+      "reviewer_notes": "",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    {
+      "item_id": "2026-Q3-IAM-item-002",
+      "identity_name": "admin_1",
+      "identity_email": "admin_1@sentinel.local",
+      "provider": "aws",
+      "role_or_policy": "AdminRole",
+      "resource": "global",
+      "is_admin": true,
+      "mfa_enabled": true,
+      "last_login_date": null,
+      "decision": "PENDING",
+      "reviewer_notes": "",
+      "reviewed_by": null,
+      "reviewed_at": null
+    }
+  ]
+}

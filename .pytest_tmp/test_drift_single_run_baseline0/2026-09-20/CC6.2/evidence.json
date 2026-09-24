@@ -1,0 +1,1 @@
+{"collector": "config_drift", "control_id": "CC6.2", "provider": "mock", "metrics": {"open_security_groups": 1, "unencrypted_data_stores": 1, "orphaned_accounts": 2}}

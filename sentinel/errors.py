@@ -15,7 +15,7 @@ class SentinelError(Exception):
         return {"error": self.__class__.__name__, "message": self.message, "details": self.details}
 
 
-class ValidationError(SentinelError):
+class ValidationError(SentinelError, ValueError):
     """Input or path validation failed."""
 
 

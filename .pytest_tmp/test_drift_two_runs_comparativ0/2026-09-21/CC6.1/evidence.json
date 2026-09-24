@@ -1,0 +1,1 @@
+{"collector": "iam_access_review", "control_id": "CC6.1", "provider": "mock", "metrics": {"orphaned_accounts": 0, "mfa_enforced_percentage": 100.0, "privileged_users": 2}}

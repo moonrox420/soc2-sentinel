@@ -109,6 +109,140 @@ def _parser() -> argparse.ArgumentParser:
     pack_p = sub.add_parser("audit-pack", help="Generate executive HTML report and signed evidence ZIP archive")
     pack_p.add_argument("evidence_dir", type=Path, help="Evidence date directory to package")
     pack_p.add_argument("--output-dir", type=Path, default=None, help="Directory to save generated ZIP")
+
+    # Enterprise Extensions: Policy, VCS, Multi-Tenant, RBAC Tokens
+    policy_p = sub.add_parser("policy", help="Evaluate declarative compliance policy rules")
+    policy_sub = policy_p.add_subparsers(dest="policy_command", required=True)
+    policy_eval_p = policy_sub.add_parser("evaluate", help="Evaluate policy rules against evidence state")
+    policy_eval_p.add_argument("--state-file", type=Path, default=None, help="JSON state file to evaluate")
+    policy_eval_p.add_argument("--rules-file", type=Path, default=None, help="Optional custom rules YAML/JSON")
+    policy_sub.add_parser("list", help="List default enterprise policy rules")
+
+    github_p = sub.add_parser("github", help="Audit GitHub repository for SOC 2 VCS controls")
+    github_sub = github_p.add_subparsers(dest="github_command", required=True)
+    gh_audit_p = github_sub.add_parser("audit", help="Audit repository branch protection and security features")
+    gh_audit_p.add_argument("--repo", default="enterprise-org/soc2-sentinel", help="GitHub repo owner/name")
+    gh_audit_p.add_argument("--branch", default="main", help="Target branch to audit")
+    gh_audit_p.add_argument("--token", default=None, help="GitHub PAT token (or GITHUB_TOKEN env var)")
+    gh_audit_p.add_argument("--mock", action="store_true", help="Run in mock/offline mode")
+
+    tenant_p = sub.add_parser("tenant", help="Manage multi-tenant isolated workspaces")
+    tenant_sub = tenant_p.add_subparsers(dest="tenant_command", required=True)
+    tenant_list_p = tenant_sub.add_parser("list", help="List registered tenant workspaces")
+    tenant_list_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    tenant_create_p = tenant_sub.add_parser("create", help="Create a new tenant workspace")
+    tenant_create_p.add_argument("slug", help="Unique alphanumeric tenant slug")
+    tenant_create_p.add_argument("--output-base", type=Path, default=Path.cwd())
+
+    token_p = sub.add_parser("token", help="Manage cryptographically signed RBAC tokens")
+    token_sub = token_p.add_subparsers(dest="token_command", required=True)
+    token_create_p = token_sub.add_parser("create", help="Generate a signed bearer token")
+    token_create_p.add_argument("--user", default="admin", help="User identifier")
+    token_create_p.add_argument(
+        "--role",
+        default="SUPER_ADMIN",
+        choices=["SUPER_ADMIN", "SECURITY_ADMIN", "COMPLIANCE_OFFICER", "AUDITOR", "SYSTEM_USER"],
+        help="RBAC role assigned to the token",
+    )
+    token_create_p.add_argument("--tenant", default="default", help="Tenant workspace ID")
+    token_create_p.add_argument("--expires", type=int, default=86400, help="Expiration in seconds")
+
+    # Phase 2: Vault, VRM, UAR, Notifications
+    vault_p = sub.add_parser("vault", help="Cryptographic evidence chain-of-custody ledger")
+    vault_sub = vault_p.add_subparsers(dest="vault_command", required=True)
+    vault_verify_p = vault_sub.add_parser("verify", help="Verify unbroken cryptographic chain integrity")
+    vault_verify_p.add_argument("--tenant", default="default", help="Tenant workspace ID")
+    vault_verify_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    vault_seal_p = vault_sub.add_parser("seal", help="Seal evidence run into blockchain ledger")
+    vault_seal_p.add_argument("evidence_dir", type=Path, help="Evidence run date folder")
+    vault_seal_p.add_argument("--tenant", default="default")
+    vault_seal_p.add_argument("--output-base", type=Path, default=Path.cwd())
+
+    vrm_p = sub.add_parser("vendor-risk", help="Third-party vendor risk assessment & SOC 2 CC9.2")
+    vrm_sub = vrm_p.add_subparsers(dest="vrm_command", required=True)
+    vrm_list_p = vrm_sub.add_parser("list", help="List registered vendor risk assessments")
+    vrm_list_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    vrm_report_p = vrm_sub.add_parser("report", help="Generate SOC 2 CC9.2 vendor risk audit report")
+    vrm_report_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    vrm_add_p = vrm_sub.add_parser("add", help="Add or update a third-party vendor assessment")
+    vrm_add_p.add_argument("--id", required=True, help="Unique vendor identifier")
+    vrm_add_p.add_argument("--name", required=True, help="Vendor legal name")
+    vrm_add_p.add_argument("--tier", default="TIER_3_MEDIUM", choices=["TIER_1_CRITICAL", "TIER_2_HIGH", "TIER_3_MEDIUM", "TIER_4_LOW"])
+    vrm_add_p.add_argument("--classification", default="INTERNAL", choices=["RESTRICTED", "CONFIDENTIAL", "INTERNAL", "PUBLIC"])
+    vrm_add_p.add_argument("--soc2-expires", default=None, help="SOC 2 expiration ISO date")
+    vrm_add_p.add_argument("--dpa", action="store_true", help="DPA executed")
+    vrm_add_p.add_argument("--mfa", action="store_true", help="MFA enforced")
+    vrm_add_p.add_argument("--encryption", action="store_true", help="Encryption at rest verified")
+    vrm_add_p.add_argument("--output-base", type=Path, default=Path.cwd())
+
+    uar_p = sub.add_parser("access-review", help="User Access Review & Certification Campaign Manager")
+    uar_sub = uar_p.add_subparsers(dest="uar_command", required=True)
+    uar_list_p = uar_sub.add_parser("list", help="List access certification campaigns")
+    uar_list_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    uar_start_p = uar_sub.add_parser("start", help="Start new UAR campaign from IAM evidence")
+    uar_start_p.add_argument("--id", required=True, help="Campaign identifier, e.g. 2026-Q3-IAM")
+    uar_start_p.add_argument("--title", required=True, help="Campaign title")
+    uar_start_p.add_argument("--period", default="2026-Q3", help="Review period")
+    uar_start_p.add_argument("--due-date", default="2026-10-15", help="Review deadline")
+    uar_start_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    uar_sign_p = uar_sub.add_parser("signoff", help="Cryptographically sign and complete campaign")
+    uar_sign_p.add_argument("--id", required=True, help="Campaign identifier")
+    uar_sign_p.add_argument("--signer", default="Security Officer", help="Signatory name")
+    uar_sign_p.add_argument("--output-base", type=Path, default=Path.cwd())
+
+    notify_p = sub.add_parser("notify", help="Dispatch compliance violation alerts to webhooks")
+    notify_p.add_argument("--webhook", required=True, help="Target webhook URL")
+    notify_p.add_argument("--channel", default="webhook", choices=["slack", "teams", "pagerduty", "webhook"])
+    notify_p.add_argument("--title", default="Compliance Alert", help="Alert title")
+    notify_p.add_argument("--message", required=True, help="Alert body message")
+    notify_p.add_argument("--severity", default="WARNING", choices=["INFO", "WARNING", "CRITICAL"])
+    notify_p.add_argument("--control", default=None, help="Associated control ID")
+
+    # Phase 3: Audit Rooms, Dogfooding, Trust Center, SIEM
+    ar_p = sub.add_parser("audit-room", help="Auditor Portal and time-bounded audit room manager")
+    ar_sub = ar_p.add_subparsers(dest="audit_room_command", required=True)
+    ar_list_p = ar_sub.add_parser("list", help="List active and historical audit rooms")
+    ar_list_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    ar_create_p = ar_sub.add_parser("create", help="Create scoped audit room for external auditor")
+    ar_create_p.add_argument("--id", required=True, help="Audit room ID, e.g. 2026-TYPE2-PWC")
+    ar_create_p.add_argument("--title", required=True, help="Audit room title")
+    ar_create_p.add_argument("--auditor", default="auditor@firm.com", help="Auditor contact email")
+    ar_create_p.add_argument("--start", required=True, help="Audit period start YYYY-MM-DD")
+    ar_create_p.add_argument("--end", required=True, help="Audit period end YYYY-MM-DD")
+    ar_create_p.add_argument("--expires-days", type=int, default=90, help="Room validity in days")
+    ar_create_p.add_argument("--notes", default="", help="Auditor notes")
+    ar_create_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    ar_export_p = ar_sub.add_parser("export", help="Export self-contained auditor ZIP package")
+    ar_export_p.add_argument("--id", required=True, help="Audit room ID")
+    ar_export_p.add_argument("--output-zip", type=Path, default=None, help="Destination ZIP file path")
+    ar_export_p.add_argument("--output-base", type=Path, default=Path.cwd())
+
+    dogfood_p = sub.add_parser("dogfood", help="Evaluate Sentinel's own SOC 2 Type II compliance posture")
+    dogfood_p.add_argument("--strict", action="store_true", help="Fail if compliance score < 95%% or any check fails")
+    dogfood_p.add_argument("--json", action="store_true", help="Output full JSON report")
+    dogfood_p.add_argument("--output-base", type=Path, default=Path.cwd())
+
+    tc_p = sub.add_parser("trust-center", help="Enterprise Security & Trust Center operations")
+    tc_sub = tc_p.add_subparsers(dest="trust_center_command", required=True)
+    tc_view_p = tc_sub.add_parser("view", help="View current Trust Center security metrics")
+    tc_view_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    tc_export_p = tc_sub.add_parser("export-html", help="Generate standalone Trust Center HTML file")
+    tc_export_p.add_argument("--output-file", type=Path, default=Path("TRUST_CENTER.html"), help="Destination HTML path")
+    tc_export_p.add_argument("--output-base", type=Path, default=Path.cwd())
+
+    siem_p = sub.add_parser("siem", help="Export and stream RFC 5424 audit logs to SIEM platforms")
+    siem_sub = siem_p.add_subparsers(dest="siem_command", required=True)
+    siem_exp_p = siem_sub.add_parser("export", help="Export audit logs to local NDJSON file")
+    siem_exp_p.add_argument("--output-ndjson", type=Path, default=Path("siem_export.ndjson"), help="Output NDJSON file")
+    siem_exp_p.add_argument("--limit", type=int, default=500, help="Max records to export")
+    siem_exp_p.add_argument("--output-base", type=Path, default=Path.cwd())
+    siem_fwd_p = siem_sub.add_parser("forward", help="Forward audit events to live SIEM endpoint")
+    siem_fwd_p.add_argument("--target", required=True, choices=["splunk", "datadog", "webhook"], help="SIEM target type")
+    siem_fwd_p.add_argument("--url", default="", help="Splunk HEC or Webhook URL")
+    siem_fwd_p.add_argument("--token", default="", help="Splunk HEC token or Datadog API key")
+    siem_fwd_p.add_argument("--limit", type=int, default=100, help="Max records to stream")
+    siem_fwd_p.add_argument("--output-base", type=Path, default=Path.cwd())
+
     return parser
 
 
@@ -430,6 +564,279 @@ def main() -> None:
             logger.error("%s", exc)
             sys.exit(1)
         return
+
+    if args.command == "policy":
+        from sentinel.policy import PolicyEngine
+
+        engine = PolicyEngine()
+        if args.policy_command == "list":
+            print(json.dumps([r.to_dict() for r in engine.rules.values()], indent=2))
+            return
+        elif args.policy_command == "evaluate":
+            state = {}
+            if args.state_file and args.state_file.exists():
+                try:
+                    state = json.loads(args.state_file.read_text(encoding="utf-8"))
+                except Exception as ex:
+                    logger.error("Failed to read state file: %s", ex)
+                    sys.exit(1)
+            report = engine.evaluate(state)
+            print(json.dumps(report.to_dict(), indent=2))
+            if report.rules_failed > 0:
+                sys.exit(1)
+            return
+
+    if args.command == "github":
+        from sentinel.connectors.github import GitHubConnector
+
+        if args.github_command == "audit":
+            connector = GitHubConnector(
+                repo=args.repo,
+                token=args.token,
+                mock=args.mock,
+            )
+            gh_report = connector.audit(default_branch=args.branch)
+            print(json.dumps(gh_report.to_dict(), indent=2))
+            if not gh_report.compliant:
+                sys.exit(1)
+            return
+
+    if args.command == "tenant":
+        from sentinel.tenancy import TenantStorageManager
+
+        mgr = TenantStorageManager(args.output_base)
+        if args.tenant_command == "list":
+            print(json.dumps({"tenants": mgr.list_tenants()}, indent=2))
+            return
+        elif args.tenant_command == "create":
+            try:
+                t_ctx = mgr.create_tenant(args.slug)
+                print(json.dumps({"status": "created", "tenant_id": t_ctx.tenant_id, "paths": t_ctx.to_dict()}, indent=2))
+                return
+            except Exception as ex:
+                logger.error("Failed creating tenant: %s", ex)
+                sys.exit(1)
+
+    if args.command == "token":
+        from sentinel.auth import Role, TokenManager, UserIdentity
+
+        if args.token_command == "create":
+            role_enum = getattr(Role, args.role, Role.SYSTEM_USER)
+            user_identity = UserIdentity(user_id=args.user, role=role_enum, tenant_id=args.tenant)
+            token = TokenManager.create_token(user_identity, expires_in_seconds=args.expires)
+            print(json.dumps({"token": token, "user": user_identity.to_dict()}, indent=2))
+            return
+
+    if args.command == "vault":
+        from sentinel.vault import EvidenceVault
+
+        vault = EvidenceVault(args.output_base)
+        if args.vault_command == "verify":
+            res = vault.verify_chain(tenant_id=args.tenant)
+            print(json.dumps(res, indent=2))
+            if not res.get("valid", False):
+                sys.exit(1)
+            return
+        elif args.vault_command == "seal":
+            try:
+                block = vault.seal_run(args.evidence_dir, tenant_id=args.tenant)
+                print(json.dumps(block.to_dict(), indent=2))
+                return
+            except Exception as ex:
+                logger.error("Failed to seal evidence run: %s", ex)
+                sys.exit(1)
+
+    if args.command == "vendor-risk":
+        from sentinel.vendor_risk import (
+            DataClassification,
+            SecurityQuestionnaire,
+            Vendor,
+            VendorRiskManager,
+            VendorTier,
+        )
+
+        vrm = VendorRiskManager(args.output_base)
+        if args.vrm_command == "list":
+            print(json.dumps([v.to_dict() for v in vrm.list_vendors()], indent=2))
+            return
+        elif args.vrm_command == "report":
+            vrm_report = vrm.generate_cc92_report()
+            print(json.dumps(vrm_report, indent=2))
+            if not vrm_report.get("compliant", False):
+                sys.exit(1)
+            return
+        elif args.vrm_command == "add":
+            q = SecurityQuestionnaire(
+                has_soc2_type2=bool(args.soc2_expires),
+                soc2_report_date=args.soc2_expires,
+                dpa_executed=args.dpa,
+                enforces_mfa=args.mfa,
+                encrypts_data_at_rest=args.encryption,
+            )
+            vendor = Vendor(
+                vendor_id=args.id,
+                name=args.name,
+                service_description="Enterprise vendor service",
+                tier=VendorTier(args.tier),
+                data_classification=DataClassification(args.classification),
+                soc2_valid_until=args.soc2_expires,
+                questionnaire=q,
+            )
+            saved = vrm.save_vendor(vendor)
+            print(json.dumps(saved.to_dict(), indent=2))
+            return
+
+    if args.command == "access-review":
+        from sentinel.access_review import AccessReviewManager, ReviewDecision
+
+        uar = AccessReviewManager(args.output_base)
+        if args.uar_command == "list":
+            print(json.dumps([c.to_dict() for c in uar.list_campaigns()], indent=2))
+            return
+        elif args.uar_command == "start":
+            camp = uar.create_campaign_from_evidence(
+                campaign_id=args.id,
+                title=args.title,
+                period=args.period,
+                due_date=args.due_date,
+                iam_evidence={"provider": "cli_admin"},
+            )
+            print(json.dumps(camp.to_dict(), indent=2))
+            return
+        elif args.uar_command == "signoff":
+            camp_target = uar.get_campaign(args.id)
+            if camp_target is None:
+                logger.error("Campaign '%s' not found", args.id)
+                sys.exit(1)
+            # Auto-mark remaining pending as maintain for CLI demonstration signoff if any
+            for it in camp_target.items:
+                if it.decision == ReviewDecision.PENDING:
+                    it.record_decision(
+                        decision=ReviewDecision.MAINTAIN,
+                        reviewer=args.signer,
+                        notes="Auto-maintained at signoff",
+                    )
+            sig_hash = camp_target.complete_and_sign(args.signer)
+            uar.save_campaign(camp_target)
+            print(json.dumps({"campaign_id": camp_target.campaign_id, "sign_off_hash": sig_hash, "status": "COMPLETED"}, indent=2))
+            return
+
+    if args.command == "notify":
+        from sentinel.notifications import (
+            AlertSeverity,
+            ComplianceAlert,
+            NotificationChannel,
+            NotificationManager,
+        )
+
+        channel = getattr(NotificationChannel, args.channel.upper(), NotificationChannel.GENERIC_WEBHOOK)
+        severity = getattr(AlertSeverity, args.severity.upper(), AlertSeverity.WARNING)
+        alert = ComplianceAlert(
+            title=args.title,
+            message=args.message,
+            severity=severity,
+            control_id=args.control,
+        )
+        delivered = NotificationManager.send_webhook(
+            webhook_url=args.webhook,
+            alert=alert,
+            channel=channel,
+        )
+        print(json.dumps({"delivered": delivered, "alert": alert.to_dict()}, indent=2))
+        if not delivered:
+            sys.exit(1)
+        return
+
+    if args.command == "audit-room":
+        from sentinel.audit_room import AuditRoomManager
+
+        arm = AuditRoomManager(args.output_base)
+        if args.audit_room_command == "list":
+            print(json.dumps([r.to_dict() for r in arm.list_rooms()], indent=2))
+            return
+        elif args.audit_room_command == "create":
+            created_room = arm.create_room(
+                room_id=args.id,
+                title=args.title,
+                auditor_email=args.auditor,
+                period_start=args.start,
+                period_end=args.end,
+                expires_days=args.expires_days,
+                notes=args.notes,
+            )
+            print(json.dumps(created_room.to_dict(), indent=2))
+            return
+        elif args.audit_room_command == "export":
+            try:
+                pkg_path = arm.export_audit_package_zip(args.id, output_path=args.output_zip)
+                print(json.dumps({"status": "exported", "room_id": args.id, "package_path": str(pkg_path)}, indent=2))
+            except Exception as e:
+                logger.error("Failed exporting audit room package: %s", e)
+                sys.exit(1)
+            return
+
+    if args.command == "dogfood":
+        from sentinel.dogfood import DogfoodAssessor
+
+        assessor = DogfoodAssessor(args.output_base)
+        dogfood_rep = assessor.run_assessment()
+        if args.json:
+            print(json.dumps(dogfood_rep.to_dict(), indent=2))
+        else:
+            print("=" * 60)
+            print(f"SOC2 Sentinel Dogfooding Assessment — Grade: {dogfood_rep.grade} ({dogfood_rep.compliance_score:.1f}%)")
+            print("=" * 60)
+            print(f"Status: {dogfood_rep.status} | Passed: {dogfood_rep.passed_checks} | Failed: {dogfood_rep.failed_checks} | Warnings: {dogfood_rep.warning_checks}")
+            print("-" * 60)
+            for chk in dogfood_rep.checks:
+                status_sym = "[PASS]" if chk.status == "PASS" else "[WARN]" if chk.status == "WARN" else "[FAIL]"
+                print(f"  {status_sym:7s} {chk.criterion:6s} {chk.title}")
+                if chk.status != "PASS" and chk.remediation:
+                    print(f"          Remediation: {chk.remediation}")
+            print("=" * 60)
+
+        if args.strict and (dogfood_rep.failed_checks > 0 or dogfood_rep.compliance_score < 95.0):
+            sys.exit(1)
+        return
+
+    if args.command == "trust-center":
+        from sentinel.trust_center import TrustCenterManager
+
+        tcm = TrustCenterManager(args.output_base)
+        if args.trust_center_command == "view":
+            print(json.dumps(tcm.get_profile().to_dict(), indent=2))
+            return
+        elif args.trust_center_command == "export-html":
+            tc_html = tcm.generate_trust_center_html()
+            args.output_file.write_text(tc_html, encoding="utf-8")
+            print(json.dumps({"status": "exported", "file": str(args.output_file)}, indent=2))
+            return
+
+    if args.command == "siem":
+        from sentinel.siem import SIEMExporter
+
+        siem_exp = SIEMExporter(args.output_base)
+        if args.siem_command == "export":
+            rec_cnt = siem_exp.export_to_ndjson_file(args.output_ndjson, limit=args.limit)
+            print(json.dumps({"status": "exported", "records": rec_cnt, "file": str(args.output_ndjson)}, indent=2))
+            return
+        elif args.siem_command == "forward":
+            if args.target == "splunk":
+                s_ok, s_cnt, s_msg = siem_exp.forward_to_splunk_hec(args.url, args.token)
+                print(json.dumps({"success": s_ok, "forwarded": s_cnt, "message": s_msg}, indent=2))
+                if not s_ok:
+                    sys.exit(1)
+            elif args.target == "datadog":
+                d_ok, d_cnt, d_msg = siem_exp.forward_to_datadog(args.token)
+                print(json.dumps({"success": d_ok, "forwarded": d_cnt, "message": d_msg}, indent=2))
+                if not d_ok:
+                    sys.exit(1)
+            elif args.target == "webhook":
+                w_ok, w_cnt, w_msg = siem_exp.forward_to_webhook(args.url, secret_key=args.token)
+                print(json.dumps({"success": w_ok, "forwarded": w_cnt, "message": w_msg}, indent=2))
+                if not w_ok:
+                    sys.exit(1)
+            return
 
     if args.command == "run":
         if args.control_id:

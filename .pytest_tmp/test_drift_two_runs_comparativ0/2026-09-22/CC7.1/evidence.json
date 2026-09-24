@@ -1,0 +1,1 @@
+{"collector": "log_aggregator", "control_id": "CC7.1", "provider": "mock", "metrics": {"critical_events_logged_percentage": 80.0}}

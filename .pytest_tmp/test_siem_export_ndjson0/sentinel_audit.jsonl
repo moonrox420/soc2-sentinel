@@ -1,0 +1,2 @@
+{"event": "LOGIN_SUCCESS", "severity": "INFO", "user": "admin"}
+{"event": "DRIFT_DETECTED", "severity": "HIGH", "control": "CC6.6"}

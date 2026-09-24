@@ -1,0 +1,1 @@
+{"event_id": "b8e26db1096636f4", "timestamp": "2026-09-24T12:07:52.554198+00:00", "action": "TEST_ACTION", "resource": "test_res", "outcome": "SUCCESS", "severity": "INFORMATIONAL", "facility": "AUTHPRIV", "tenant_id": "default", "user_id": "anonymous", "role": "SUPER_ADMIN", "details": {}}
