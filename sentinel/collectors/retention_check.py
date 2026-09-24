@@ -39,7 +39,8 @@ def collect_retention_check(
         )
 
     metrics = {
-        "objects_past_retention": snap.get("objects_past_retention", 0),
+        "objects_past_retention": snap.get("objects_past_retention"),
+        "buckets_missing_lifecycle": snap.get("buckets_missing_lifecycle", 0),
         "retention_policy_cutoff": snap.get("retention_policy_cutoff"),
     }
     findings = [{**f, "severity": "high"} for f in snap.get("findings", [])]

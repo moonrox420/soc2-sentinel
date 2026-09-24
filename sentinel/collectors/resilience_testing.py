@@ -43,11 +43,12 @@ def collect_resilience_testing(
     issues = 0
     restore_age = snap.get("last_restore_test_days_ago")
     failover_passed = snap.get("failover_test_passed")
-    if restore_age is None or restore_age > 90:
+    if restore_age is None or (isinstance(restore_age, (int, float)) and restore_age > 90):
         issues += 1
     if failover_passed is not True:
         issues += 1
-    if snap.get("backup_jobs_failed_30d", 0) > 0:
+    failed_backups = snap.get("backup_jobs_failed_30d")
+    if failed_backups is not None and isinstance(failed_backups, (int, float)) and failed_backups > 0:
         issues += 1
 
     metrics = {
