@@ -25,9 +25,8 @@ def test_manifest_verify_roundtrip(tmp_path, monkeypatch):
 
 
 # --- Consolidated from test_integrity_extended.py ---
-import json
 
-from sentinel.integrity import build_manifest, verify_evidence_tree, verify_manifest
+from sentinel.integrity import build_manifest, verify_evidence_tree
 
 
 def test_verify_manifest_roundtrip(tmp_path):
@@ -53,15 +52,12 @@ def test_verify_tree(tmp_path):
 
 
 # --- Consolidated from test_integrity_hmac.py ---
-import json
 
 import pytest
 
 from sentinel.errors import ValidationError
 from sentinel.integrity import (
-    build_manifest,
     verify_and_decrypt_artifact,
-    verify_manifest,
 )
 from sentinel.security import encrypt_bytes
 

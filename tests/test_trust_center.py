@@ -4,7 +4,13 @@ import json
 from pathlib import Path
 
 from sentinel.trust_center import TrustCenterManager, TrustCenterProfile
-from sentinel.vendor_risk import VendorRiskManager, Vendor, VendorTier, DataClassification, SecurityQuestionnaire
+from sentinel.vendor_risk import (
+    DataClassification,
+    SecurityQuestionnaire,
+    Vendor,
+    VendorRiskManager,
+    VendorTier,
+)
 
 
 def test_trust_center_profile_generation(tmp_path: Path):

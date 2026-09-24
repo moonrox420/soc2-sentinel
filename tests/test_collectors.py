@@ -80,11 +80,8 @@ def test_cmmc_generator_row_count():
 
 
 # --- Consolidated from test_collectors_extended.py ---
-import json
 
-from sentinel.collectors import COLLECTORS
 from sentinel.config import SentinelConfig
-from sentinel.providers.mock import MockProvider
 
 
 def test_all_collectors_have_collection_quality(tmp_path):
@@ -111,10 +108,8 @@ def test_all_collectors_have_collection_quality(tmp_path):
 
 
 # --- Consolidated from test_resilience_collector.py ---
-import json
 
 from sentinel.collectors.resilience_testing import collect_resilience_testing
-from sentinel.config import SentinelConfig
 from sentinel.providers.base import Provider
 
 
@@ -238,7 +233,6 @@ from sentinel.collectors._helpers import (
     worst_status,
     write_failure_evidence,
 )
-from sentinel.config import SentinelConfig
 
 
 def test_failure_payload_shape():
@@ -269,13 +263,12 @@ def test_worst_status_order():
 
 
 # --- Consolidated from test_misc_coverage.py ---
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from sentinel.cloud import call_with_retry, is_retryable_error, snapshot_errors
-from sentinel.config import ProviderConfig, SentinelConfig
+from sentinel.cloud import is_retryable_error, snapshot_errors
+from sentinel.config import ProviderConfig
 from sentinel.errors import ProviderError, ValidationError
 from sentinel.paths import evidence_root, install_root
 from sentinel.providers import get_provider
@@ -328,10 +321,8 @@ def test_get_provider_clouds():
 
 
 # --- Consolidated from test_concurrent_write.py ---
-import json
 import threading
 
-from sentinel.config import SentinelConfig
 from sentinel.output import write_evidence
 from sentinel.schema import utc_now_iso
 
@@ -378,7 +369,6 @@ def test_concurrent_writes_do_not_corrupt(tmp_path):
 
 
 from sentinel.collectors.iam_access_review import collect_iam_access_review
-from sentinel.config import SentinelConfig
 from sentinel.providers.base import Provider
 
 
@@ -432,8 +422,6 @@ def test_partial_collection_yellow_status(tmp_path):
 # --- Consolidated from test_phase3_integration.py ---
 """Integration tests for Phase 3 REST endpoints and CLI subcommands."""
 
-import json
-from pathlib import Path
 
 import pytest
 

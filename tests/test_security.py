@@ -22,7 +22,6 @@ def test_encrypt_roundtrip():
 import os
 
 from sentinel.security import (
-    decrypt_bytes,
     encryption_enabled,
     encryption_header_version,
     hmac_sign,
@@ -59,8 +58,6 @@ def test_hmac_sign_deterministic():
 # --- Consolidated from test_security_hkdf.py ---
 import pytest
 
-from sentinel.security import decrypt_bytes, encrypt_bytes, encryption_header_version
-
 
 def test_hkdf_roundtrip(monkeypatch):
     monkeypatch.setenv("SENTINEL_EVIDENCE_KEY", "super-secret-key-material")
@@ -88,14 +85,10 @@ def test_low_level_decrypt_authenticates_ciphertext_not_manifest(monkeypatch):
 
 # --- Consolidated from test_security_paths.py ---
 
-import pytest
 
 from sentinel.errors import ValidationError
 from sentinel.security import (
-    encrypt_bytes,
-    encryption_enabled,
     safe_file_mode,
-    sanitize_csv_cell,
 )
 
 
@@ -130,7 +123,6 @@ from sentinel.config import EvidenceConfig, SentinelConfig
 from sentinel.integrity import verify_manifest
 from sentinel.output import write_evidence
 from sentinel.schema import utc_now_iso, validate_evidence
-from sentinel.security import decrypt_bytes
 
 
 def _payload(control_id: str = "CC6.1") -> dict:

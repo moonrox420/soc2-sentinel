@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 import subprocess
 import sys
@@ -55,8 +56,6 @@ def test_cli_dry_run_mock(tmp_path):
 
 
 # --- Consolidated from test_cli_direct.py ---
-import json
-import sys
 from unittest.mock import patch
 
 from sentinel import cli
@@ -223,9 +222,6 @@ def test_windows_launcher_help_invalid_and_back_paths(tmp_path, capsys):
 
 # --- Consolidated from test_cli_enterprise.py ---
 
-import json
-from pathlib import Path
-from unittest.mock import patch
 
 from sentinel.cli import _parser, main
 
@@ -289,10 +285,6 @@ def test_cli_serve_dispatch(monkeypatch):
 
 
 # --- Consolidated from test_cli_extended.py ---
-import json
-import subprocess
-import sys
-from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -351,12 +343,7 @@ def test_unknown_control_rejected():
 
 
 # --- Consolidated from test_cli_report.py ---
-import json
-import sys
 from pathlib import Path
-from unittest.mock import patch
-
-from sentinel import cli
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -376,9 +363,6 @@ def test_main_report_cmmc(tmp_path, capsys):
 
 
 # --- Consolidated from test_cli_validate.py ---
-import json
-import subprocess
-import sys
 
 
 def test_sentinel_validate_mock():
@@ -395,9 +379,6 @@ def test_sentinel_validate_mock():
 
 
 # --- Consolidated from test_cli_verify.py ---
-import json
-import subprocess
-import sys
 from pathlib import Path
 
 from sentinel.config import SentinelConfig
@@ -448,12 +429,9 @@ def test_verify_detects_tamper(tmp_path):
 # --- Consolidated from test_enterprise_cli.py ---
 """Unit tests for new Enterprise CLI subcommands."""
 
-import json
 from pathlib import Path
 
 import pytest
-
-from sentinel.cli import main
 
 
 def test_cli_policy_list(capsys: pytest.CaptureFixture) -> None:

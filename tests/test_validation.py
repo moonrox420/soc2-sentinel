@@ -28,10 +28,7 @@ def test_resolve_safe_output_base_writable(tmp_path):
 
 
 # --- Consolidated from test_validation_extended.py ---
-import pytest
 
-from sentinel.errors import ValidationError
-from sentinel.validation import sanitize_artifact_name, sanitize_control_id
 
 
 def test_control_id_reserved():
@@ -50,10 +47,7 @@ def test_control_id_empty():
 
 
 # --- Consolidated from test_validation_paths.py ---
-import pytest
 
-from sentinel.errors import ValidationError
-from sentinel.validation import resolve_safe_output_base, sanitize_artifact_name
 
 
 def test_output_base_not_directory(tmp_path):
@@ -69,10 +63,7 @@ def test_artifact_empty_name():
 
 
 # --- Consolidated from test_validation_strict.py ---
-import pytest
 
-from sentinel.errors import ValidationError
-from sentinel.validation import sanitize_control_id
 
 
 def test_unknown_control_rejected_by_default():
@@ -89,9 +80,7 @@ def test_known_control_passes():
 
 
 # --- Consolidated from test_schema_errors.py ---
-import pytest
 
-from sentinel.errors import ValidationError
 from sentinel.schema import utc_now_iso, validate_evidence
 
 

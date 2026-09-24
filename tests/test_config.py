@@ -50,10 +50,7 @@ def test_validate_bad_threshold_int(tmp_path):
 import os
 import stat
 
-import pytest
-
-from sentinel.config import EvidenceConfig, SentinelConfig, load_config
-from sentinel.errors import ValidationError
+from sentinel.config import EvidenceConfig, SentinelConfig
 
 
 def test_validate_key_file_missing(tmp_path, monkeypatch):

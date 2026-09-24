@@ -60,7 +60,6 @@ def test_azure_provider_delegates():
 import pytest
 
 from sentinel.errors import ProviderError
-from sentinel.providers.mock import MockProvider
 
 
 def test_mock_missing_fixture_raises(tmp_path, monkeypatch):
@@ -74,10 +73,8 @@ def test_mock_missing_fixture_raises(tmp_path, monkeypatch):
 
 
 # --- Consolidated from test_providers_aws_direct.py ---
-from unittest.mock import patch
 
 from sentinel.providers.aws._client import AwsClients
-from sentinel.providers.aws.provider import AwsProvider
 
 
 def test_aws_validate_credentials():
@@ -105,9 +102,8 @@ def test_aws_all_snapshot_methods():
 
 
 # --- Consolidated from test_aws_config.py ---
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from sentinel.providers.aws._client import AwsClients
 from sentinel.providers.aws.config import config_and_auth_snapshot
 
 
@@ -148,7 +144,6 @@ def test_mfa_counts_from_users():
 import boto3
 from moto import mock_aws
 
-from sentinel.providers.aws._client import AwsClients
 from sentinel.providers.aws.encryption import encryption_snapshot
 
 
@@ -163,10 +158,7 @@ def test_s3_unencrypted_bucket_found():
 
 
 # --- Consolidated from test_aws_encryption_full.py ---
-from unittest.mock import MagicMock, patch
 
-from sentinel.providers.aws._client import AwsClients
-from sentinel.providers.aws.encryption import encryption_snapshot
 
 
 def test_kms_and_acm_paths():
@@ -200,10 +192,8 @@ def test_kms_and_acm_paths():
 
 
 # --- Consolidated from test_aws_iam.py ---
-import boto3
 from moto import mock_aws
 
-from sentinel.providers.aws._client import AwsClients
 from sentinel.providers.aws.iam import iam_access_snapshot
 
 
@@ -222,9 +212,7 @@ def test_credential_report_is_not_access_review_age():
 
 
 # --- Consolidated from test_aws_logging.py ---
-from unittest.mock import MagicMock, patch
 
-from sentinel.providers.aws._client import AwsClients
 from sentinel.providers.aws.logging import log_monitoring_snapshot
 
 
@@ -266,11 +254,9 @@ def test_trail_logging_coverage():
 
 
 # --- Consolidated from test_aws_resilience.py ---
-from unittest.mock import MagicMock, patch
 
 from moto import mock_aws
 
-from sentinel.providers.aws._client import AwsClients
 from sentinel.providers.aws.resilience import resilience_snapshot
 
 
@@ -310,10 +296,8 @@ def test_rds_snapshot_drives_backup_hours():
 
 
 # --- Consolidated from test_aws_retention.py ---
-import boto3
 from moto import mock_aws
 
-from sentinel.providers.aws._client import AwsClients
 from sentinel.providers.aws.retention import retention_snapshot
 
 
@@ -327,11 +311,9 @@ def test_bucket_missing_lifecycle():
 
 
 # --- Consolidated from test_aws_zt.py ---
-from unittest.mock import patch
 
 from moto import mock_aws
 
-from sentinel.providers.aws._client import AwsClients
 from sentinel.providers.aws._zt import zt_verification_snapshot
 
 
@@ -366,7 +348,6 @@ def test_zt_derives_pillar_scores():
 
 
 # --- Consolidated from test_azure_iam.py ---
-from unittest.mock import patch
 
 from sentinel.providers.azure._client import AzureContext
 from sentinel.providers.azure.iam import iam_access_snapshot
@@ -383,9 +364,7 @@ def test_graph_drives_assignments():
 
 
 # --- Consolidated from test_azure_modules.py ---
-from unittest.mock import MagicMock, patch
 
-from sentinel.providers.azure._client import AzureContext
 from sentinel.providers.azure.config import config_and_auth_snapshot
 from sentinel.providers.azure.encryption import encryption_snapshot
 from sentinel.providers.azure.logging import log_monitoring_snapshot
@@ -473,9 +452,7 @@ def test_azure_config_mfa_registration_is_not_enforcement():
 
 # --- Consolidated from test_azure_resilience.py ---
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
 
-from sentinel.providers.azure._client import AzureContext
 from sentinel.providers.azure.resilience import resilience_snapshot
 
 
@@ -542,7 +519,6 @@ def test_backup_success_does_not_imply_restore_or_failover():
 
 
 # --- Consolidated from test_azure_zt.py ---
-from unittest.mock import patch
 
 from sentinel.providers.azure._zt import zt_verification_snapshot
 
@@ -565,7 +541,6 @@ def test_azure_zt_merge():
 
 
 # --- Consolidated from test_gcp_config_direct.py ---
-from unittest.mock import MagicMock, patch
 
 from sentinel.providers.gcp._client import GcpContext
 from sentinel.providers.gcp.config import config_and_auth_snapshot
@@ -595,9 +570,7 @@ def test_gcp_config_firewall_http():
 
 
 # --- Consolidated from test_gcp_iam.py ---
-from unittest.mock import MagicMock, patch
 
-from sentinel.providers.gcp._client import GcpContext
 from sentinel.providers.gcp.iam import iam_access_snapshot
 
 
@@ -617,10 +590,7 @@ def test_asset_api_drives_user_counts():
 
 
 # --- Consolidated from test_gcp_modules.py ---
-from unittest.mock import MagicMock, patch
 
-from sentinel.providers.gcp._client import GcpContext
-from sentinel.providers.gcp.config import config_and_auth_snapshot
 from sentinel.providers.gcp.encryption import encryption_snapshot
 from sentinel.providers.gcp.logging import log_monitoring_snapshot
 from sentinel.providers.gcp.retention import retention_snapshot
@@ -719,10 +689,7 @@ def test_gcp_config_org_policy_does_not_claim_mfa_enforcement():
 
 
 # --- Consolidated from test_gcp_resilience.py ---
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
 
-from sentinel.providers.gcp._client import GcpContext
 from sentinel.providers.gcp.resilience import resilience_snapshot
 
 
@@ -745,11 +712,7 @@ def test_compute_snapshot_timestamp():
 
 
 # --- Consolidated from test_gcp_resilience_sql.py ---
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
 
-from sentinel.providers.gcp._client import GcpContext
-from sentinel.providers.gcp.resilience import resilience_snapshot
 
 
 def test_sql_backup_run_timestamp():
@@ -773,9 +736,7 @@ def test_sql_backup_run_timestamp():
 
 
 # --- Consolidated from test_gcp_zt.py ---
-from unittest.mock import patch
 
-from sentinel.providers.gcp._client import GcpContext
 from sentinel.providers.gcp._zt import zt_verification_snapshot
 
 
