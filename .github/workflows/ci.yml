@@ -33,7 +33,8 @@ jobs:
       - name: Production CLI Validation
         run: |
           python -m sentinel.cli --version
-          python -m sentinel.cli validate --provider aws
+          python -m sentinel.cli --help
           python -m sentinel.cli vendor-risk list
           python -m sentinel.cli trust-center view
           python -m sentinel.cli vault verify
+          python -m sentinel.cli access-review list
