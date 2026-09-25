@@ -1,0 +1,33 @@
+{
+  "campaign_id": "UAR-2026-Q3",
+  "title": "Q3 Cloud IAM Certification",
+  "period": "2026-Q3",
+  "created_at": "2026-09-25T00:06:21.514448+00:00",
+  "due_date": "2026-10-15",
+  "status": "COMPLETED",
+  "completed_at": "2026-09-25T00:06:22.671204+00:00",
+  "signatory": "Lead Compliance Officer",
+  "sign_off_hash": "d924d1e2afc4683cc776be2854c3024b4b7929824c0aadd7955f6a5818c4c878",
+  "total_items": 1,
+  "pending_count": 0,
+  "maintained_count": 1,
+  "revoked_count": 0,
+  "modified_count": 0,
+  "items": [
+    {
+      "item_id": "UAR-2026-Q3-item-001",
+      "identity_name": "AWS Identity Baseline",
+      "identity_email": "security@aws.local",
+      "provider": "aws",
+      "role_or_policy": "Zero Standing IAM Users Baseline",
+      "resource": "arn:aws:iam::account:root",
+      "is_admin": true,
+      "mfa_enabled": true,
+      "last_login_date": "2026-09-25T00:06:21.514435+00:00",
+      "decision": "MAINTAIN",
+      "reviewer_notes": "Zero standing IAM users verified. SSO enforced.",
+      "reviewed_by": "Security Officer",
+      "reviewed_at": "2026-09-25T00:06:22.113447+00:00"
+    }
+  ]
+}
