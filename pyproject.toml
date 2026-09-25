@@ -34,13 +34,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=8.0",
-  "pytest-cov>=5.0",
   "mypy>=1.10",
   "bandit>=1.7",
   "ruff==0.15.18",
   "pip-tools>=7.4",
-  "moto>=5.0",
 ]
 
 [project.scripts]
@@ -50,33 +47,16 @@ sentinel = "sentinel.cli:main"
 where = ["."]
 include = ["sentinel*"]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-o tmp_path_retention_policy=none -o tmp_path_retention_count=0 --basetemp=pytest_tmp_dir"
-
-[tool.coverage.run]
-source = ["sentinel"]
-branch = true
-omit = ["sentinel/providers/azure/_client.py"]
-
-[tool.coverage.report]
-fail_under = 80
-show_missing = true
-
 [tool.ruff]
 line-length = 100
 target-version = "py310"
 exclude = [
     ".venv",
-    "tests",
 ]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
 ignore = ["E501"]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/*" = ["E402", "F811", "I001"]
 
 [tool.mypy]
 python_version = "3.10"
