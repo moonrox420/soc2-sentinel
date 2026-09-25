@@ -694,7 +694,6 @@ def _eval_resilience(data: dict[str, Any] | None) -> ControlScore:
 
     metrics = data.get("metrics", {})
     failed_30d = _safe_int(metrics.get("backup_jobs_failed_30d"), 0)
-    success_30d = _safe_int(metrics.get("backup_jobs_success_30d"), 0)
 
     last_backup_hours = metrics.get("last_backup_hours_ago")
     if "successful_backups_24h" in metrics:
@@ -702,9 +701,6 @@ def _eval_resilience(data: dict[str, Any] | None) -> ControlScore:
         jobs = _safe_int(metrics.get("backup_jobs_evaluated"), success_24h)
     elif last_backup_hours is not None:
         success_24h = 1 if _safe_float(last_backup_hours, 999.0) <= 24.0 else 0
-        jobs = 1
-    elif success_30d > 0:
-        success_24h = 1
         jobs = 1
     else:
         success_24h = 0
@@ -718,16 +714,11 @@ def _eval_resilience(data: dict[str, Any] | None) -> ControlScore:
     else:
         restore_tested = False
 
-    rto_met = bool(
-        metrics.get(
-            "rto_target_met", True if (success_24h > 0 and restore_tested) else False
-        )
-    )
-    rpo_met = bool(
-        metrics.get(
-            "rpo_target_met", True if (success_24h > 0 and restore_tested) else False
-        )
-    )
+    rto_raw = metrics.get("rto_target_met")
+    rpo_raw = metrics.get("rpo_target_met")
+
+    rto_met = None if rto_raw is None else bool(rto_raw)
+    rpo_met = None if rpo_raw is None else bool(rpo_raw)
 
     score = 100.0
     findings = []
@@ -751,15 +742,24 @@ def _eval_resilience(data: dict[str, Any] | None) -> ControlScore:
         findings.append(
             "Disaster recovery restore test has not been executed within the 90-day SLA window"
         )
-    if not rto_met:
+    if rto_met is False:
         score -= 15.0
         findings.append(
-            "Recovery Time Objective (RTO) SLA targets are exceeded in current architecture"
+            "Recovery Time Objective (RTO) target was not met"
         )
-    if not rpo_met:
+    elif rto_met is None:
+        findings.append(
+            "Recovery Time Objective (RTO) attainment was not verified"
+        )
+
+    if rpo_met is False:
         score -= 15.0
         findings.append(
-            "Recovery Point Objective (RPO) SLA targets exceeded in recovery plan"
+            "Recovery Point Objective (RPO) target was not met"
+        )
+    elif rpo_met is None:
+        findings.append(
+            "Recovery Point Objective (RPO) attainment was not verified"
         )
     if quality == "partial":
         score = min(70.0, score)

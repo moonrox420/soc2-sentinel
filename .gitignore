@@ -57,3 +57,9 @@ scratch/
 .DS_Store
 Thumbs.db
 desktop.ini
+data/sentinel_telemetry.jsonl
+data/siem_export.ndjson
+access_reviews/
+vault/
+audit_rooms/
+config/vendors.json

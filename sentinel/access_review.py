@@ -257,27 +257,7 @@ class AccessReviewManager:
         raw_users = iam_evidence.get("users", []) or iam_evidence.get(
             "raw_data", {}
         ).get("users", [])
-        raw_roles = iam_evidence.get("roles", []) or iam_evidence.get(
-            "raw_data", {}
-        ).get("roles", [])
         provider = iam_evidence.get("provider", "aws")
-
-        if not raw_users and not raw_roles:
-            # Clean baseline: 0 standing IAM users (e.g. AWS IAM Identity Center / SSO account)
-            items.append(
-                AccessReviewItem(
-                    item_id=f"{campaign_id}-item-001",
-                    identity_name=f"{provider.upper()} Identity Baseline",
-                    identity_email=f"security@{provider}.local",
-                    provider=provider,
-                    role_or_policy="Zero Standing IAM Users Baseline",
-                    resource="arn:aws:iam::account:root",
-                    is_admin=True,
-                    mfa_enabled=True,
-                    last_login_date=datetime.now(timezone.utc).isoformat(),
-                    reviewer_notes="Verified zero standing IAM credentials. Identity governance baseline compliant.",
-                )
-            )
 
         for idx, u in enumerate(raw_users):
             uname = u.get("user_name") or u.get("name") or f"user-{idx+1}"

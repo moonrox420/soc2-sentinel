@@ -40,11 +40,11 @@ class TrustCenterProfile:
     )
     overall_compliance_score: float = 0.0
     continuous_monitoring_status: str = "INITIALIZING"
-    uptime_sla_percentage: float = 100.0
-    encryption_at_rest: str = "AES-256-GCM / KMS Verified"
-    encryption_in_transit: str = "TLS 1.2+ Enforced"
-    penetration_test_cadence: str = "Continuous SAST & Dependency Scanning"
-    incident_response_sla: str = "< 1 Hour P0 / Continuous Alerting"
+    uptime_sla_percentage: float | None = None
+    encryption_at_rest: str = "NOT_VERIFIED"
+    encryption_in_transit: str = "NOT_VERIFIED"
+    penetration_test_cadence: str = "NOT_VERIFIED"
+    incident_response_sla: str = "NOT_VERIFIED"
     badges: list[TrustBadge] = field(default_factory=list)
     controls: list[SecurityControlHighlight] = field(default_factory=list)
     subprocessors: list[dict[str, Any]] = field(default_factory=list)
