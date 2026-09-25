@@ -135,10 +135,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if tenant_id == "default":
             return self.server.output_base
         mgr = TenantStorageManager(self.server.output_base)
-        t_ctx = mgr.get_tenant(tenant_id)
-        if not t_ctx:
-            t_ctx = mgr.create_tenant(tenant_id)
-        return t_ctx.workspace_dir
+        return mgr.get_workspace_dir(tenant_id)
 
     def _extract_context(self) -> tuple[str, UserIdentity]:
         """Extract tenant ID and user identity from request headers with strict validation."""

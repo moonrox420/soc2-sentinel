@@ -98,6 +98,16 @@ class TenantStorageManager:
     def __init__(self, base_root: Path | None = None) -> None:
         self.base_root = base_root or Path.cwd()
 
+    def get_workspace_dir(self, tenant_id: str | None = None) -> Path:
+        """Resolve tenant-isolated root workspace directory."""
+        tid = tenant_id or get_current_tenant_id()
+        if tid == DEFAULT_TENANT_ID:
+            path = self.base_root
+        else:
+            path = self.base_root / "tenants" / tid
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
     def create_tenant(
         self,
         tenant_id: str,
@@ -112,6 +122,7 @@ class TenantStorageManager:
             environment=environment,
             metadata=metadata or {},
         )
+        self.get_workspace_dir(tenant_id)
         self.get_evidence_root(context)
         self.get_config_dir(context)
         return context
