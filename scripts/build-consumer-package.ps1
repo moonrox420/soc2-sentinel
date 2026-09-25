@@ -66,11 +66,11 @@ function Test-StagedExe {
     if (-not (Test-Path $exe)) { return }
     Push-Location $StageDir
     try {
-        & $exe run encryption_status --provider mock | Out-Null
+        & $exe run encryption_status --provider aws --dry-run | Out-Null
         if ($LASTEXITCODE -ne 0) {
             throw "Collector smoke test failed with exit code $LASTEXITCODE"
         }
-        Write-Host "Smoke test passed: run encryption_status --provider mock"
+        Write-Host "Smoke test passed: run encryption_status --provider aws --dry-run"
     } finally {
         Pop-Location
     }
