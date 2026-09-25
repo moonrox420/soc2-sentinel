@@ -38,9 +38,19 @@ def collect_retention_check(
             config=cfg,
         )
 
+    repos_checked = snap.get(
+        "repositories_checked", snap.get("buckets_checked", snap.get("policies_checked", 0))
+    )
+    missing_lc = snap.get(
+        "repositories_missing_lifecycle",
+        snap.get("buckets_missing_lifecycle", snap.get("accounts_missing_lifecycle", 0)),
+    )
     metrics = {
+        "repositories_checked": repos_checked,
+        "repositories_missing_lifecycle": missing_lc,
         "objects_past_retention": snap.get("objects_past_retention"),
-        "buckets_missing_lifecycle": snap.get("buckets_missing_lifecycle", 0),
+        "buckets_missing_lifecycle": missing_lc,
+        "policies_checked": repos_checked,
         "retention_policy_cutoff": snap.get("retention_policy_cutoff"),
     }
     findings = [{**f, "severity": "high"} for f in snap.get("findings", [])]

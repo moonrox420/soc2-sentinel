@@ -6,8 +6,6 @@ Built for **SOC 2 Type II**, **NIST SP 800-171 / 800-172**, **CMMC 2.0 Level 2**
 
 [![Version](https://img.shields.io/badge/version-2.5.0-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-239%20passed-success.svg)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-81.45%25-brightgreen.svg)](pyproject.toml)
 [![Security: Bandit](https://img.shields.io/badge/security-bandit%20clean-brightgreen.svg)](sentinel/)
 [![Type Checked: Mypy](https://img.shields.io/badge/type%20checker-mypy%20clean-blue.svg)](pyproject.toml)
 
@@ -39,8 +37,8 @@ For complete step-by-step instructions, see the comprehensive [DIRECTIONS.md](DI
 1. Download and extract `dist\SOC2-Sentinel-Toolkit-v2.5.0-Windows.zip`.
 2. Double-click `bin\sentinel.exe` for the interactive menu, or run via PowerShell:
 ```powershell
-# Run full mock demo
-.\bin\sentinel.exe run-all --provider mock
+# Validate cloud credentials
+.\bin\sentinel.exe validate --provider aws
 
 # Launch interactive web dashboard & REST API
 .\bin\sentinel.exe serve --port 8443
@@ -65,15 +63,14 @@ The Web Dashboard opens automatically at `http://127.0.0.1:8443` featuring live 
 
 ---
 
-## ☁️ Tri-Cloud & Mock Parity
+## ☁️ Tri-Cloud Evidence Collection
 
 SOC2 Sentinel implements strict honest failure semantics (`collection_quality: "complete" | "partial" | "failed"` with structured `errors[]`).
 
 | Provider | Collection Flag | Setup Documentation | Authentication Mechanism |
 |:---|:---:|:---|:---|
-| **Mock (Offline Demo)** | `--provider mock` | *None required (instant demo)* | Built-in offline fixtures |
 | **Amazon Web Services** | `--provider aws` | [docs/AWS_IAM_POLICY.json](docs/AWS_IAM_POLICY.json) | Standard AWS CLI / Environment Variables |
-| **Google Cloud Platform** | `--provider GCP` | [docs/GCP_SETUP.md](docs/GCP_SETUP.md) | Application Default Credentials (ADC) / SA Key |
+| **Google Cloud Platform** | `--provider gcp` | [docs/GCP_SETUP.md](docs/GCP_SETUP.md) | Application Default Credentials (ADC) / SA Key |
 | **Microsoft Azure** | `--provider azure` | [docs/AZURE_SETUP.md](docs/AZURE_SETUP.md) | Azure CLI / Service Principal Environment Variables |
 
 ---
@@ -100,7 +97,7 @@ SOC2 Sentinel implements strict honest failure semantics (`collection_quality: "
 sentinel serve --port 8443
 
 # 2. Run all evidence collectors
-sentinel run-all --provider mock
+sentinel run-all --provider aws
 
 # 3. Evaluate multi-framework compliance posture
 sentinel scorecard
@@ -112,82 +109,74 @@ sentinel drift
 sentinel onboarding --provider aws
 
 # 6. Cryptographically verify evidence authenticity
-sentinel verify evidence
+sentinel verify evidence/2026-09-25
 
 # 7. Generate 1-Click Executive Audit Pack (HTML + signed ZIP)
-sentinel audit-pack evidence
+sentinel audit-pack evidence/2026-09-25
 ```
 
 ### Merkle Vault & Evidence Provenance (Phase 2)
 ```powershell
-# Ingest evidence into tamper-evident Merkle tree vault
-sentinel vault ingest evidence/
+# Seal evidence run into tamper-evident Merkle tree vault
+sentinel vault seal --date 2026-09-25
 
-# Verify Merkle cryptographic integrity & generate inclusion proofs
+# Verify Merkle cryptographic continuity and integrity against disk evidence
 sentinel vault verify
-
-# Query immutable vault status
-sentinel vault status
 ```
 
 ### Vendor Risk Management CC9.2 & Access Reviews CC6.1 (Phase 2)
 ```powershell
 # Register vendor and record SOC 2 / ISO assessment
-sentinel vendor-risk add --name "AWS" --tier 1 --soc2-status "Valid" --soc2-expiry "2027-12-31"
+sentinel vendor-risk add --vendor-id "v-aws" --name "AWS" --tier 1 --status ACTIVE
 
-# Check upcoming vendor review expirations
-sentinel vendor-risk check-expirations --within-days 90
+# Generate CC9.2 third-party risk report
+sentinel vendor-risk report
 
-# Launch quarterly user access review campaign
-sentinel access-review create --title "Q3 2026 Privilege Review" --deadline "2026-10-31"
+# Start quarterly user access review campaign
+sentinel access-review start --id "uar-2026-q3" --title "Q3 2026 Access Review" --period "2026-Q3" --due-date "2026-10-31"
 
-# Record manager sign-off on access entitlement
-sentinel access-review review --campaign-id "<id>" --user "alice@example.com" --action approve
+# Record decision on access review entitlement
+sentinel access-review decide --id "uar-2026-q3" --item-id "item-001" --decision MAINTAIN --notes "Approved"
+
+# Cryptographically sign off completed access review
+sentinel access-review signoff --id "uar-2026-q3" --signer "CISO" --secret "secure-sign-key"
 ```
 
 ### Auditor Rooms, Dogfooding, Trust Center & SIEM (Phase 3)
 ```powershell
 # Create a 30-day time-bounded auditor room
-sentinel audit-room create --name "FY26 Type II Audit" --auditor "Assessor Corp" --email "auditor@assessor.com" --days 30
+sentinel audit-room create --id "room_2026" --title "SOC 2 Type II Audit Room" --email "auditor@assessor.com" --days 30
 
-# Export complete auditor ZIP evidence package
-sentinel audit-room export-package --room-id "<id>" --output ./audit_package.zip
+# Export verified auditor ZIP evidence package
+sentinel audit-room export --id "room_2026"
 
 # Run self-attestation dogfooding engine
-sentinel dogfood run
+sentinel dogfood
 
 # Generate standalone Public / Auditor Trust Center HTML
-sentinel trust-center export --output ./trust_center.html
+sentinel trust-center export-html --output ./trust_center.html
 
-# Stream or export security audit logs to SIEM (RFC 5424, ECS, Splunk, Datadog)
-sentinel siem export --format ecs --output ./siem_logs.ndjson
+# Stream or export security audit logs to SIEM
+sentinel siem export --format ECS --output ./siem_logs.ndjson
+sentinel siem forward --target SPLUNK_HEC --endpoint https://splunk.internal:8088/services/collector --token $HEC_TOKEN
 ```
 
 ---
 
-## 🧪 Testing & Code Quality
+## 🧪 Verification & Code Quality
 
 SOC2 Sentinel enforces strict continuous quality gates:
 
 ```powershell
-# Run full Pytest test suite with code coverage
-pytest --cov=sentinel --cov-report=term-missing --basetemp=.pytest_temp
-
 # Linting & code style (Ruff)
-ruff check sentinel tests
+ruff check sentinel
 
 # Static type checking (Mypy)
-mypy sentinel
+mypy sentinel --ignore-missing-imports
 
 # Security vulnerability analysis (Bandit)
 bandit -r sentinel -ll
 ```
-
-- **Pytest**: 239 passed, 1 skipped in ~24s.
-- **Coverage**: 81.45% (strictly exceeds ≥80.0% mandate).
-- **Ruff**: 0 errors / clean.
-- **Mypy**: 0 errors across 82 source files.
-- **Bandit**: 0 high/medium issues.
 
 ---
 
@@ -215,7 +204,7 @@ soc2-sentinel/
 ├── sentinel/
 │   ├── collectors/                   # 7 automated evidence collectors
 │   ├── dashboard/                    # Embedded web UI & native REST server
-│   ├── providers/                    # Tri-cloud providers (AWS, GCP, Azure, Mock)
+│   ├── providers/                    # Tri-cloud providers (AWS, GCP, Azure)
 │   ├── access_review.py              # User access review campaigns (CC6.1-CC6.3)
 │   ├── audit_room.py                 # Auditor portal & time-bounded rooms
 │   ├── cli.py                        # Unified command-line interface & interactive menu
@@ -233,11 +222,11 @@ soc2-sentinel/
 │   ├── trust_center.py               # Enterprise trust center & subprocessor portal
 │   ├── vault.py                      # Merkle tree cryptographic evidence vault
 │   └── vendor_risk.py                # Third-party vendor risk management (CC9.2)
-├── tests/                            # Comprehensive unit & integration test suite (239 tests)
 ├── DIRECTIONS.md                     # Step-by-step user and operator guide
 ├── pyproject.toml                    # Package metadata & build configuration
 ├── requirements.txt                  # Locked production runtime dependencies
 └── requirements-dev.txt              # Development, test, and packaging tooling
+```
 ```
 
 ---

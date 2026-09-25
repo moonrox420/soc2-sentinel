@@ -40,10 +40,14 @@ def status_iam_access_review(metrics: dict[str, Any]) -> str:
 
 
 def status_encryption(metrics: dict[str, Any]) -> str:
+    total_resources = _to_int(metrics.get("total_confidential_resources"))
+    tls_checked = _to_int(metrics.get("tls_endpoints_checked"))
     unencrypted = _to_int(metrics.get("unencrypted_cui_count"))
     weak = _to_int(metrics.get("weak_cipher_endpoints"))
     if unencrypted > 0 or weak > 0:
         return "red"
+    if total_resources == 0 or tls_checked == 0:
+        return "yellow"
     pending_rotation = _to_int(metrics.get("keys_pending_rotation"))
     if pending_rotation > 0:
         return "yellow"

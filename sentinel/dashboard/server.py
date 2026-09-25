@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
 import mimetypes
 import os
 import re
+import socket
 import urllib.parse
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -17,6 +19,7 @@ from sentinel import __version__
 from sentinel.access_review import AccessReviewManager, ReviewDecision
 from sentinel.audit_room import AuditRoomManager
 from sentinel.auth import (
+    AuthError,
     Permission,
     Role,
     TokenManager,
@@ -67,20 +70,53 @@ from sentinel.vendor_risk import (
 logger = logging.getLogger("sentinel.dashboard.server")
 
 
+def _is_allowed_origin(origin: str) -> bool:
+    if not origin:
+        return False
+    try:
+        parsed = urllib.parse.urlparse(origin)
+        if parsed.scheme not in {"http", "https"}:
+            return False
+        hostname = (parsed.hostname or "").lower()
+        return hostname in {"localhost", "127.0.0.1", "::1"}
+    except Exception:
+        return False
+
+
 def _validate_outbound_url(url: str) -> None:
     """Ensure outbound destination URL is safe from SSRF attacks."""
     if not url or not url.startswith(("http://", "https://")):
         raise ValueError("Invalid URL scheme: must start with http:// or https://")
     parsed = urllib.parse.urlparse(url)
     hostname = (parsed.hostname or "").lower()
-    blocked_hosts = {
-        "169.254.169.254",
-        "metadata.google.internal",
-        "instance-data",
-        "metadata",
-    }
-    if hostname in blocked_hosts or hostname.startswith("169.254."):
-        raise ValueError(f"Prohibited destination host: {hostname}")
+    if not hostname:
+        raise ValueError("Missing hostname in URL")
+
+    # Resolve destination hostname to inspect IP addresses
+    try:
+        addr_info = socket.getaddrinfo(hostname, None)
+    except Exception as exc:
+        raise ValueError(
+            f"Failed to resolve destination hostname '{hostname}': {exc}"
+        )
+
+    for entry in addr_info:
+        ip_str = entry[4][0]
+        try:
+            ip_obj = ipaddress.ip_address(ip_str)
+            if (
+                ip_obj.is_loopback
+                or ip_obj.is_private
+                or ip_obj.is_link_local
+                or ip_obj.is_multicast
+                or ip_obj.is_reserved
+                or ip_obj.is_unspecified
+            ):
+                raise ValueError(
+                    f"Prohibited destination IP address range: {ip_str} ({hostname})"
+                )
+        except ValueError as ve:
+            raise ve
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
@@ -94,9 +130,19 @@ class DashboardHandler(BaseHTTPRequestHandler):
             format % args,
         )
 
+    def _get_tenant_base(self, tenant_id: str) -> Path:
+        """Resolve isolated storage directory for the active tenant."""
+        if tenant_id == "default":
+            return self.server.output_base
+        mgr = TenantStorageManager(self.server.output_base)
+        t_ctx = mgr.get_tenant(tenant_id)
+        if not t_ctx:
+            t_ctx = mgr.create_tenant(tenant_id)
+        return t_ctx.workspace_dir
+
     def _extract_context(self) -> tuple[str, UserIdentity]:
-        """Extract tenant ID and user identity from request headers."""
-        tenant_id = self.headers.get("X-Tenant-ID", "default").strip()
+        """Extract tenant ID and user identity from request headers with strict validation."""
+        tenant_hdr = self.headers.get("X-Tenant-ID", "").strip()
         auth_hdr = self.headers.get("Authorization", "")
         token = (
             auth_hdr.replace("Bearer ", "").strip()
@@ -104,13 +150,23 @@ class DashboardHandler(BaseHTTPRequestHandler):
             else ""
         )
 
-        user = UserIdentity.anonymous(tenant_id=tenant_id)
         if token:
             verified = TokenManager.verify_token(token)
             if verified:
-                user = verified
+                if tenant_hdr and tenant_hdr != verified.tenant_id:
+                    raise AuthError(
+                        f"Header tenant '{tenant_hdr}' conflicts with token tenant '{verified.tenant_id}'",
+                        status_code=403,
+                    )
+                return verified.tenant_id, verified
+            else:
+                return tenant_hdr or "default", UserIdentity.anonymous(
+                    tenant_id=tenant_hdr or "default"
+                )
 
-        return tenant_id, user
+        return tenant_hdr or "default", UserIdentity.anonymous(
+            tenant_id=tenant_hdr or "default"
+        )
 
     def _send_json(self, data: Any, status: int = 200) -> None:
         payload = json.dumps(data).encode("utf-8")
@@ -118,11 +174,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
         origin = self.headers.get("Origin", "")
-        if origin and ("://localhost" in origin or "://127.0.0.1" in origin):
+        if _is_allowed_origin(origin):
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Access-Control-Allow-Credentials", "true")
         self.send_header(
-            "Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-ID"
+            "Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-ID, X-Audit-Token"
         )
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
@@ -134,7 +190,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
         origin = self.headers.get("Origin", "")
-        if origin and ("://localhost" in origin or "://127.0.0.1" in origin):
+        if _is_allowed_origin(origin):
             self.send_header("Access-Control-Allow-Origin", origin)
         self.end_headers()
         self.wfile.write(payload)
@@ -154,11 +210,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self) -> None:
         self.send_response(204)
         origin = self.headers.get("Origin", "")
-        if origin and ("://localhost" in origin or "://127.0.0.1" in origin):
+        if _is_allowed_origin(origin):
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Access-Control-Allow-Credentials", "true")
         self.send_header(
-            "Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-ID"
+            "Access-Control-Allow-Headers",
+            "Content-Type, Authorization, X-Tenant-ID, X-Audit-Token",
         )
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
@@ -205,9 +262,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/scorecard":
             try:
                 assert_permission(Permission.READ_EVIDENCE)
-                scorecard = compute_compliance_scorecard(
-                    self.server.output_base / "evidence"
-                )
+                base = self._get_tenant_base(get_current_tenant_id())
+                scorecard = compute_compliance_scorecard(base / "evidence")
                 self._send_json(scorecard.to_dict())
             except PermissionError as pe:
                 self._send_json({"error": str(pe)}, status=403)
@@ -219,7 +275,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/drift":
             try:
                 assert_permission(Permission.READ_EVIDENCE)
-                drift = detect_configuration_drift(self.server.output_base / "evidence")
+                base = self._get_tenant_base(get_current_tenant_id())
+                drift = detect_configuration_drift(base / "evidence")
                 self._send_json(drift.to_dict())
             except PermissionError as pe:
                 self._send_json({"error": str(pe)}, status=403)
@@ -243,7 +300,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/evidence":
             try:
                 assert_permission(Permission.READ_EVIDENCE)
-                ev_dir = self.server.output_base / "evidence"
+                base = self._get_tenant_base(get_current_tenant_id())
+                ev_dir = base / "evidence"
                 dates: list[str] = []
                 if ev_dir.exists():
                     dates = sorted(
@@ -268,9 +326,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     file_target = (
                         "/".join(parts[3:]) if len(parts) > 3 else "manifest.json"
                     )
-                    base_ev_dir = (self.server.output_base / "evidence").resolve()
+                    base = self._get_tenant_base(get_current_tenant_id())
+                    base_ev_dir = (base / "evidence").resolve()
                     target_file = (
-                        self.server.output_base / "evidence" / date_str / file_target
+                        base / "evidence" / date_str / file_target
                     ).resolve()
                     if not target_file.is_relative_to(base_ev_dir):
                         self._send_json(
@@ -306,7 +365,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/report/latest":
             try:
                 assert_permission(Permission.READ_REPORT)
-                ev_dir = self.server.output_base / "evidence"
+                base = self._get_tenant_base(get_current_tenant_id())
+                ev_dir = base / "evidence"
                 if not ev_dir.exists():
                     self._send_html(
                         "<h1>No evidence directories exist yet.</h1>", status=404
@@ -360,7 +420,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.send_header("Cache-Control", "no-cache")
                 self.send_header("Connection", "keep-alive")
                 origin = self.headers.get("Origin", "")
-                if origin and ("://localhost" in origin or "://127.0.0.1" in origin):
+                if _is_allowed_origin(origin):
                     self.send_header("Access-Control-Allow-Origin", origin)
                     self.send_header("Access-Control-Allow-Credentials", "true")
                 self.end_headers()
@@ -385,8 +445,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/live/metrics":
             try:
                 assert_permission(Permission.READ_REPORT)
+                base = self._get_tenant_base(get_current_tenant_id())
                 diag = diagnose_all_providers(self.server.config)
-                scorecard = compute_compliance_scorecard(self.server.output_base / "evidence")
+                scorecard = compute_compliance_scorecard(base / "evidence")
                 self._send_json({
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "overall_score": scorecard.overall_posture_score,
@@ -427,7 +488,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/vault/chain":
             try:
                 assert_permission(Permission.READ_EVIDENCE)
-                vault = EvidenceVault(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                vault = EvidenceVault(base)
                 tid = get_current_tenant_id()
                 verification = vault.verify_chain(tid)
                 blocks = [b.to_dict() for b in vault.read_chain(tid)]
@@ -439,7 +501,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/vendor-risk/vendors":
             try:
                 assert_permission(Permission.READ_CONFIG)
-                vrm = VendorRiskManager(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                vrm = VendorRiskManager(base)
                 self._send_json([v.to_dict() for v in vrm.list_vendors()])
             except PermissionError as pe:
                 self._send_json({"error": str(pe)}, status=403)
@@ -448,7 +511,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/vendor-risk/report":
             try:
                 assert_permission(Permission.READ_REPORT)
-                vrm = VendorRiskManager(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                vrm = VendorRiskManager(base)
                 self._send_json(vrm.generate_cc92_report())
             except PermissionError as pe:
                 self._send_json({"error": str(pe)}, status=403)
@@ -457,7 +521,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/access-review/campaigns":
             try:
                 assert_permission(Permission.READ_EVIDENCE)
-                uar = AccessReviewManager(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                uar = AccessReviewManager(base)
                 self._send_json([c.to_dict() for c in uar.list_campaigns()])
             except PermissionError as pe:
                 self._send_json({"error": str(pe)}, status=403)
@@ -465,7 +530,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         # Phase 3 Endpoints
         if path == "/trust-center":
-            tcm = TrustCenterManager(self.server.output_base)
+            base = self._get_tenant_base(get_current_tenant_id())
+            tcm = TrustCenterManager(base)
             html = tcm.generate_trust_center_html()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -476,7 +542,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         if path == "/api/trust-center":
             try:
-                tcm = TrustCenterManager(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                tcm = TrustCenterManager(base)
                 self._send_json(tcm.get_profile().to_dict())
             except Exception as e:
                 self._send_json({"error": str(e)}, status=500)
@@ -485,7 +552,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/dogfood":
             try:
                 assert_permission(Permission.READ_REPORT)
-                assessor = DogfoodAssessor(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                assessor = DogfoodAssessor(base)
                 dogfood_rep = assessor.run_assessment()
                 self._send_json(dogfood_rep.to_dict())
             except PermissionError as pe:
@@ -495,7 +563,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/audit-rooms":
             try:
                 assert_permission(Permission.READ_AUDIT)
-                arm = AuditRoomManager(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                arm = AuditRoomManager(base)
                 self._send_json([r.to_dict() for r in arm.list_rooms()])
             except PermissionError as pe:
                 self._send_json({"error": str(pe)}, status=403)
@@ -503,21 +572,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         if path.startswith("/api/audit-rooms/"):
             try:
-                assert_permission(Permission.READ_AUDIT)
                 r_id = path.replace("/api/audit-rooms/", "").strip()
-                # Sanitize room ID
                 r_id = re.sub(r"[^a-zA-Z0-9_\-]", "", r_id)
-                arm = AuditRoomManager(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                arm = AuditRoomManager(base)
                 room = arm.get_room(r_id)
                 if not room:
                     self._send_json(
                         {"error": f"Audit room '{r_id}' not found"}, status=404
                     )
                     return
-                # Check for auditor room token if provided in query or header
-                room_tok = query.get("token", [""])[0] or self.headers.get(
-                    "X-Audit-Token", ""
-                )
+                # Check for auditor room token in header first, then query
+                room_tok = self.headers.get("X-Audit-Token", "").strip() or query.get("token", [""])[0]
                 if room_tok:
                     valid, _ = arm.validate_access(
                         r_id,
@@ -531,6 +597,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
                             {"error": "Invalid or expired audit room token"}, status=403
                         )
                         return
+                else:
+                    assert_permission(Permission.READ_AUDIT)
+
                 crosswalk = arm.build_control_crosswalk(room)
                 self._send_json({"room": room.to_dict(), "crosswalk": crosswalk})
             except PermissionError as pe:
@@ -540,19 +609,23 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path.startswith("/api/download/"):
             try:
                 assert_permission(Permission.READ_REPORT)
-                fname = path.replace("/api/download/", "")
-                base_dir = self.server.output_base.resolve()
-                target_path = (self.server.output_base / "evidence" / fname).resolve()
-                if (
-                    not target_path.is_relative_to(base_dir)
-                    or not target_path.exists()
-                    or not target_path.is_file()
-                ):
-                    target_path = (self.server.output_base / fname).resolve()
-                if not target_path.is_relative_to(base_dir):
+                fname = path.replace("/api/download/", "").strip()
+                if ".." in fname or fname.startswith("/") or fname.startswith("\\"):
                     self._send_json({"error": "Path traversal prohibited"}, status=403)
                     return
-                if target_path.exists() and target_path.is_file():
+                base = self._get_tenant_base(get_current_tenant_id())
+                allowed_roots = [
+                    (base / "evidence").resolve(),
+                    (base / "audit_packages").resolve(),
+                ]
+                target_path = None
+                for root in allowed_roots:
+                    candidate = (root / fname).resolve()
+                    if candidate.is_relative_to(root) and candidate.exists() and candidate.is_file():
+                        target_path = candidate
+                        break
+
+                if target_path and target_path.exists() and target_path.is_file():
                     self.send_response(200)
                     content_type, _ = mimetypes.guess_type(str(target_path))
                     self.send_header(
@@ -589,7 +662,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 if not date_str:
                     self._send_json({"error": "Missing 'date' parameter"}, status=400)
                     return
-                target_dir = self.server.output_base / "evidence" / date_str
+                base = self._get_tenant_base(get_current_tenant_id())
+                target_dir = base / "evidence" / date_str
                 if not target_dir.exists():
                     self._send_json(
                         {
@@ -704,8 +778,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 if not date_str:
                     self._send_json({"error": "Missing date parameter"}, status=400)
                     return
-                ev_dir = self.server.output_base / "evidence" / date_str
-                vault = EvidenceVault(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                ev_dir = base / "evidence" / date_str
+                vault = EvidenceVault(base)
                 block = vault.seal_run(ev_dir)
 
                 TELEMETRY.emit(
@@ -750,7 +825,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     soc2_valid_until=v_data.get("soc2_valid_until"),
                     questionnaire=q,
                 )
-                vrm = VendorRiskManager(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                vrm = VendorRiskManager(base)
                 saved = vrm.save_vendor(vendor)
 
                 TELEMETRY.emit(
@@ -776,7 +852,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 decision_str = body.get("decision", "MAINTAIN").upper()
                 notes = body.get("notes", "")
 
-                uar = AccessReviewManager(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                uar = AccessReviewManager(base)
                 camp = uar.get_campaign(camp_id) if camp_id else None
                 if not camp:
                     self._send_json(
@@ -820,7 +897,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 camp_id = body.get("campaign_id")
                 signatory = body.get("signatory", get_current_user().user_id)
 
-                uar = AccessReviewManager(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                uar = AccessReviewManager(base)
                 camp = uar.get_campaign(camp_id) if camp_id else None
                 if not camp:
                     self._send_json(
@@ -902,7 +980,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 exp_days = int(body.get("expires_days", 90))
                 notes = body.get("notes", "")
 
-                arm = AuditRoomManager(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                arm = AuditRoomManager(base)
                 room = arm.create_room(
                     room_id=r_id,
                     title=title,
@@ -929,7 +1008,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 assert_permission(Permission.MANAGE_USER)
                 r_id = body.get("room_id", "")
                 r_id = re.sub(r"[^a-zA-Z0-9_\-]", "", r_id)
-                arm = AuditRoomManager(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                arm = AuditRoomManager(base)
                 revoked = arm.revoke_room(r_id)
                 if not revoked:
                     self._send_json(
@@ -952,7 +1032,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 assert_permission(Permission.READ_REPORT)
                 r_id = body.get("room_id", "")
                 r_id = re.sub(r"[^a-zA-Z0-9_\-]", "", r_id)
-                arm = AuditRoomManager(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                arm = AuditRoomManager(base)
                 try:
                     zip_path = arm.export_audit_package_zip(r_id)
                     TELEMETRY.emit(
@@ -980,11 +1061,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             try:
                 target = body.get("target", "NDJSON_FILE").upper()
                 limit = int(body.get("limit", 200))
-                exporter = SIEMExporter(self.server.output_base)
+                base = self._get_tenant_base(get_current_tenant_id())
+                exporter = SIEMExporter(base)
 
                 if target == "NDJSON_FILE":
                     assert_permission(Permission.READ_AUDIT)
-                    out_path = self.server.output_base / "siem_export.ndjson"
+                    out_path = base / "siem_export.ndjson"
                     cnt = exporter.export_to_ndjson_file(out_path, limit=limit)
                     self._send_json(
                         {
@@ -1045,9 +1127,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 assert_permission(Permission.TRIGGER_COLLECTION)
                 provider_name = body.get("provider", "aws")
                 collector_req = body.get("collector", "all")
-                enc_key = body.get("encryption_key")
-                if enc_key:
-                    os.environ["SENTINEL_EVIDENCE_KEY"] = enc_key
+                base = self._get_tenant_base(get_current_tenant_id())
 
                 try:
                     prov = get_provider(provider_name, self.server.config)
@@ -1072,7 +1152,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     try:
                         written_path = fn(
                             provider=prov,
-                            base=self.server.output_base,
+                            base=base,
                             control_id=ctrl_id,
                             config=self.server.config,
                         )
@@ -1102,7 +1182,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                             }
                         )
 
-                ev_dir = self.server.output_base / "evidence"
+                ev_dir = base / "evidence"
                 dirs = (
                     sorted(
                         [
@@ -1139,7 +1219,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/export":
             try:
                 assert_permission(Permission.READ_REPORT)
-                ev_dir = self.server.output_base / "evidence"
+                base = self._get_tenant_base(get_current_tenant_id())
+                ev_dir = base / "evidence"
                 dirs_list: list[Path] = (
                     sorted(
                         [
@@ -1185,7 +1266,6 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self._send_json({"error": str(pe)}, status=403)
                 return
             except Exception as exc:
-                logger.error("Audit pack export error: %s", exc, exc_info=True)
                 self._send_json({"status": "error", "error": str(exc)}, status=500)
                 return
 

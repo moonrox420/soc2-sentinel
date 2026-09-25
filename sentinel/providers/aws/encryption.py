@@ -104,10 +104,12 @@ def encryption_snapshot(ctx: AwsClients) -> dict[str, Any]:
                 else:
                     pending_rotation += 1
 
+    certs_checked = 0
+    expired_certs = 0
     certs_resp = ctx.call("acm", "aws_acm_list_certs", lambda: acm.list_certificates())
     if certs_resp:
         for summary in certs_resp.get("CertificateSummaryList", []):
-            tls_checked += 1
+            certs_checked += 1
             arn = summary["CertificateArn"]
             detail_resp = ctx.call(
                 "acm",
@@ -118,18 +120,43 @@ def encryption_snapshot(ctx: AwsClients) -> dict[str, Any]:
                 cert = detail_resp.get("Certificate", {})
                 not_after = cert.get("NotAfter")
                 if not_after and not_after < datetime.now(timezone.utc):
-                    weak_tls += 1
+                    expired_certs += 1
                     findings.append({"resource": arn, "issue": "expired certificate"})
 
-    ssl_resp = ctx.call(
-        "elbv2", "aws_elb_ssl_policies", lambda: elbv2.describe_ssl_policies()
+    elbs_resp = ctx.call(
+        "elbv2",
+        "aws_elbv2_describe_load_balancers",
+        lambda: elbv2.describe_load_balancers(),
     )
-    if ssl_resp:
-        for policy in ssl_resp.get("SslPolicies", []):
-            tls_checked += 1
-            name = policy.get("Name", "")
-            if "2016" in name or "2015" in name:
-                weak_tls += 1
+    if elbs_resp:
+        for lb in elbs_resp.get("LoadBalancers", []):
+            lb_arn = lb.get("LoadBalancerArn")
+            if not lb_arn:
+                continue
+            listeners_resp = ctx.call(
+                "elbv2",
+                "aws_elbv2_describe_listeners",
+                lambda a=lb_arn: elbv2.describe_listeners(LoadBalancerArn=a),
+            )
+            if listeners_resp:
+                for listener in listeners_resp.get("Listeners", []):
+                    protocol = listener.get("Protocol", "").upper()
+                    if protocol in ("HTTPS", "TLS"):
+                        tls_checked += 1
+                        ssl_policy = listener.get("SslPolicy", "")
+                        if any(
+                            weak in ssl_policy
+                            for weak in ["2016", "2015", "TLS-1-0", "TLS-1-1"]
+                        ):
+                            weak_tls += 1
+                            findings.append(
+                                {
+                                    "resource": listener.get(
+                                        "ListenerArn", lb_arn
+                                    ),
+                                    "issue": f"weak TLS policy: {ssl_policy}",
+                                }
+                            )
 
     unencrypted = len([r for r in resources if not r.get("encrypted")])
 
@@ -143,6 +170,8 @@ def encryption_snapshot(ctx: AwsClients) -> dict[str, Any]:
             "keys_pending_rotation": pending_rotation,
             "tls_endpoints_checked": tls_checked,
             "weak_cipher_endpoints": weak_tls,
+            "certificates_checked": certs_checked,
+            "expired_certificates": expired_certs,
             "findings": findings,
         },
         ctx.errors,

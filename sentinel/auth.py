@@ -27,6 +27,7 @@ class Role(str, enum.Enum):
     AUDITOR = "auditor"
     SYSTEM_USER = "system_user"
     VIEWER = "viewer"
+    UNAUTHENTICATED = "unauthenticated"
 
 
 class Permission(str, enum.Enum):
@@ -102,6 +103,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.READ_EVIDENCE,
         Permission.READ_REPORT,
     },
+    Role.UNAUTHENTICATED: set(),
 }
 
 
@@ -146,7 +148,7 @@ class UserIdentity:
     def anonymous(cls, tenant_id: str = "default") -> UserIdentity:
         return cls(
             user_id="anonymous",
-            role=Role.VIEWER,
+            role=Role.UNAUTHENTICATED,
             email="anonymous@sentinel.local",
             tenant_id=tenant_id,
         )

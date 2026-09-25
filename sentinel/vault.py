@@ -123,6 +123,30 @@ class EvidenceVault:
                 logger.warning("Corrupt block in evidence chain: %s (%s)", line, ex)
         return blocks
 
+    def _compute_evidence_merkle_root(
+        self, date_path: Path
+    ) -> tuple[Optional[str], int]:
+        if not date_path.exists():
+            return None, 0
+        leaf_hashes: List[str] = []
+        collector_count = 0
+        for sub in sorted(date_path.iterdir()):
+            if sub.is_dir() and sub.name != "manifests":
+                rep_file = sub / "report.json"
+                if not rep_file.exists():
+                    rep_file = sub / "evidence.json"
+                if rep_file.exists():
+                    leaf_hashes.append(sha256_file(rep_file))
+                    collector_count += 1
+        if collector_count == 0:
+            for json_file in sorted(date_path.rglob("*.json")):
+                if json_file.name in {"report.json", "evidence.json"}:
+                    leaf_hashes.append(sha256_file(json_file))
+                    collector_count += 1
+        if collector_count == 0 or not leaf_hashes:
+            return None, 0
+        return MerkleTree(leaf_hashes).root, collector_count
+
     def seal_run(
         self,
         evidence_date_dir: Path | str,
@@ -143,30 +167,12 @@ class EvidenceVault:
             if alt_path.exists():
                 date_path = alt_path
 
-        # Collect hashes of all evidence JSON files (report.json or evidence.json)
-        leaf_hashes: List[str] = []
-        collector_count = 0
-        if date_path.exists():
-            for sub in sorted(date_path.iterdir()):
-                if sub.is_dir() and sub.name != "manifests":
-                    rep_file = sub / "report.json"
-                    if not rep_file.exists():
-                        rep_file = sub / "evidence.json"
-                    if rep_file.exists():
-                        leaf_hashes.append(sha256_file(rep_file))
-                        collector_count += 1
-            if collector_count == 0:
-                for json_file in sorted(date_path.rglob("*.json")):
-                    if json_file.name in {"report.json", "evidence.json"}:
-                        leaf_hashes.append(sha256_file(json_file))
-                        collector_count += 1
-
-        if collector_count == 0:
+        merkle_root, collector_count = self._compute_evidence_merkle_root(date_path)
+        if collector_count == 0 or merkle_root is None:
             raise ValueError(
                 f"No valid evidence files (report.json or evidence.json) found to seal in {evidence_date_dir}"
             )
 
-        merkle_root = MerkleTree(leaf_hashes).root
         timestamp = datetime.now(timezone.utc).isoformat()
         evidence_date = date_path.name
 
@@ -191,7 +197,7 @@ class EvidenceVault:
             block_hash=block_hash,
             collector_count=collector_count,
             signatory=signer,
-            details={"leaf_count": len(leaf_hashes)},
+            details={"leaf_count": collector_count},
         )
 
         chain_file = self._get_chain_file(tid)
@@ -201,7 +207,7 @@ class EvidenceVault:
         return block
 
     def verify_chain(self, tenant_id: Optional[str] = None) -> dict[str, Any]:
-        """Verify the cryptographic continuity and hash integrity of the entire chain."""
+        """Verify cryptographic continuity and hash integrity of the chain and disk evidence."""
         tid = tenant_id or get_current_tenant_id()
         chain = self.read_chain(tid)
         if not chain:
@@ -209,6 +215,7 @@ class EvidenceVault:
 
         errors: List[str] = []
         expected_prev_hash = self.GENESIS_HASH
+        evidence_base = self.evidence_dir
 
         for idx, block in enumerate(chain):
             # Check block index continuity
@@ -238,6 +245,16 @@ class EvidenceVault:
                 errors.append(
                     f"Hash tamper detected at block {idx}: recorded '{block.block_hash}', calculated '{recomputed}'"
                 )
+
+            # Recompute Merkle root from disk evidence if available
+            date_dir = evidence_base / block.evidence_date
+            if date_dir.exists():
+                disk_root, _ = self._compute_evidence_merkle_root(date_dir)
+                if disk_root is not None and disk_root != block.merkle_root:
+                    errors.append(
+                        f"Evidence tamper detected at block {idx} (date {block.evidence_date}): "
+                        f"recorded Merkle root '{block.merkle_root}', recomputed from disk '{disk_root}'"
+                    )
 
             expected_prev_hash = block.block_hash
 

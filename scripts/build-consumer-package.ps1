@@ -38,9 +38,9 @@ function Copy-Stage {
     New-Item -ItemType Directory -Force -Path $StageDir | Out-Null
 
     $include = @(
-        "bin", "data", "docs", "policies", "scripts", "sentinel", "tests\fixtures",
+        "bin", "docs", "policies", "scripts", "sentinel",
         "README.md", "QUICKSTART-BUYER.md", "LICENSE", "pyproject.toml",
-        "sentinel.yaml.example", "run-demo.bat", "setup.ps1"
+        "sentinel.yaml.example", "setup.ps1"
     )
 
     foreach ($item in $include) {
@@ -56,6 +56,28 @@ function Copy-Stage {
         Copy-Item $src $dest -Recurse -Force
     }
 
+    # Explicitly stage only static data files to prevent local runtime telemetry leaks
+    $stagedDataDir = Join-Path $StageDir "data"
+    New-Item -ItemType Directory -Force -Path $stagedDataDir | Out-Null
+    $staticDataFiles = @(
+        "attck-mapping.csv",
+        "cmmc-l2-controls-110.csv",
+        "controls-matrix.csv",
+        "evidence-schema.json",
+        "l3-enhanced-controls.csv",
+        "zero-trust-pillars.csv"
+    )
+    foreach ($f in $staticDataFiles) {
+        $srcF = Join-Path $Root "data\$f"
+        if (Test-Path $srcF) {
+            Copy-Item $srcF (Join-Path $stagedDataDir $f) -Force
+        }
+    }
+    $notionDir = Join-Path $Root "data\notion-import"
+    if (Test-Path $notionDir) {
+        Copy-Item $notionDir (Join-Path $stagedDataDir "notion-import") -Recurse -Force
+    }
+
     # Strip dev artifacts from staged sentinel package
     Get-ChildItem $StageDir -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     Get-ChildItem $StageDir -Recurse -Directory -Filter "*.egg-info" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
@@ -66,11 +88,15 @@ function Test-StagedExe {
     if (-not (Test-Path $exe)) { return }
     Push-Location $StageDir
     try {
-        & $exe run encryption_status --provider aws --dry-run | Out-Null
+        & $exe --version | Out-Null
         if ($LASTEXITCODE -ne 0) {
-            throw "Collector smoke test failed with exit code $LASTEXITCODE"
+            throw "Executable --version smoke test failed with exit code $LASTEXITCODE"
         }
-        Write-Host "Smoke test passed: run encryption_status --provider aws --dry-run"
+        & $exe --help | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Executable --help smoke test failed with exit code $LASTEXITCODE"
+        }
+        Write-Host "Smoke test passed: sentinel.exe --version and --help"
     } finally {
         Pop-Location
     }

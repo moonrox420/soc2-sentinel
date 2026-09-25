@@ -38,11 +38,23 @@ def zt_verification_snapshot(ctx: AwsClients) -> dict[str, Any]:
 
     data_score = 100.0 if unencrypted == 0 else max(0, 100 - unencrypted * 10)
 
+    total_identities = iam.get("total_identities", len(iam.get("users", [])))
+    if total_identities == 0:
+        identity_level = "Not Assessed"
+    else:
+        identity_level = _pillar_level(identity_score)
+
+    total_confidential = enc.get("total_confidential_resources", 0)
+    if total_confidential == 0:
+        data_level = "Not Assessed"
+    else:
+        data_level = _pillar_level(data_score)
+
     merged = merge_results(iam, enc, cfg)
     merged.update(
         {
             "iam_review_days_ago": iam.get("days_since_last_review"),
-            "encryption_status": "green" if unencrypted == 0 else "red",
+            "encryption_status": "green" if (unencrypted == 0 and total_confidential > 0) else ("yellow" if total_confidential == 0 else "red"),
             "orphaned_accounts": orphaned,
             "unencrypted_resources": unencrypted,
             "mfa_enforcement_percent": mfa_pct,
@@ -55,11 +67,11 @@ def zt_verification_snapshot(ctx: AwsClients) -> dict[str, Any]:
             "session_timeout_compliant": None,
             "privileged_standing_count": standing,
             "pillar_scores": {
-                "Identity": _pillar_level(identity_score),
+                "Identity": identity_level,
                 "Device": "Not Assessed",
                 "Network": "Not Assessed",
                 "Application": "Not Assessed",
-                "Data": _pillar_level(data_score),
+                "Data": data_level,
                 "Analytics": "Not Assessed",
                 "Governance": "Not Assessed",
             },

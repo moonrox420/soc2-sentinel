@@ -111,19 +111,34 @@ TSC_CRITERIA_CATALOG: dict[str, dict[str, Any]] = {
     },
 }
 
+COLLECTOR_PRIMARY_CONTROL: dict[str, str] = {
+    "iam_access_review": "CC6.1",
+    "identity_iam": "CC6.1",
+    "config_drift": "CC6.2",
+    "configuration_drift": "CC6.2",
+    "log_aggregator": "CC7.1",
+    "logging_monitoring": "CC7.1",
+    "encryption_status": "C1.2",
+    "retention_check": "C1.4",
+    "retention_schedule": "C1.4",
+    "resilience_testing": "A1.2",
+    "resilience_status": "A1.2",
+    "zt_continuous_verification": "ZT-1",
+}
+
 COLLECTOR_ALIASES: dict[str, list[str]] = {
-    "identity_iam": ["iam_access_review", "identity_iam"],
-    "iam_access_review": ["iam_access_review", "identity_iam"],
-    "logging_monitoring": ["log_aggregator", "logging_monitoring"],
-    "log_aggregator": ["log_aggregator", "logging_monitoring"],
-    "configuration_drift": ["config_drift", "configuration_drift"],
-    "config_drift": ["config_drift", "configuration_drift"],
-    "encryption_status": ["encryption_status"],
-    "resilience_status": ["resilience_testing", "resilience_status"],
-    "resilience_testing": ["resilience_testing", "resilience_status"],
-    "retention_schedule": ["retention_check", "retention_schedule"],
-    "retention_check": ["retention_check", "retention_schedule"],
-    "zt_continuous_verification": ["zt_continuous_verification"],
+    "identity_iam": ["iam_access_review", "identity_iam", "CC6.1"],
+    "iam_access_review": ["iam_access_review", "identity_iam", "CC6.1"],
+    "logging_monitoring": ["log_aggregator", "logging_monitoring", "CC7.1"],
+    "log_aggregator": ["log_aggregator", "logging_monitoring", "CC7.1"],
+    "configuration_drift": ["config_drift", "configuration_drift", "CC6.2"],
+    "config_drift": ["config_drift", "configuration_drift", "CC6.2"],
+    "encryption_status": ["encryption_status", "C1.2"],
+    "resilience_status": ["resilience_testing", "resilience_status", "A1.2"],
+    "resilience_testing": ["resilience_testing", "resilience_status", "A1.2"],
+    "retention_schedule": ["retention_check", "retention_schedule", "C1.4"],
+    "retention_check": ["retention_check", "retention_schedule", "C1.4"],
+    "zt_continuous_verification": ["zt_continuous_verification", "ZT-1"],
 }
 
 
@@ -344,6 +359,7 @@ class AuditRoomManager:
 
     def build_control_crosswalk(self, room: AuditRoom) -> list[dict[str, Any]]:
         """Generate bi-directional matrix linking SOC 2 controls to evidence artifacts."""
+        from sentinel.integrity import verify_manifest
         crosswalk: list[dict[str, Any]] = []
 
         for control_id in room.controls_in_scope:
@@ -356,45 +372,66 @@ class AuditRoomManager:
                 },
             )
             evidence_artifacts: list[dict[str, str]] = []
+            satisfied_collectors: set[str] = set()
 
             for date_str in room.evidence_dates:
                 day_dir = self.evidence_dir / date_str
                 if not day_dir.exists():
                     continue
                 for req_col in meta["required_collectors"]:
-                    candidate_names = COLLECTOR_ALIASES.get(req_col, [req_col])
+                    candidate_dirs = [
+                        COLLECTOR_PRIMARY_CONTROL.get(req_col, req_col),
+                        req_col,
+                        *COLLECTOR_ALIASES.get(req_col, []),
+                    ]
                     found_file: Path | None = None
-                    for c_name in candidate_names:
-                        # Try <day_dir>/<c_name>/report.json
-                        candidate1 = day_dir / c_name / "report.json"
-                        if candidate1.exists() and candidate1.is_file():
-                            found_file = candidate1
+                    for c_name in candidate_dirs:
+                        cand1 = day_dir / c_name / "report.json"
+                        if cand1.exists() and cand1.is_file():
+                            found_file = cand1
                             break
-                        # Try <day_dir>/<c_name>/evidence.json
-                        candidate2 = day_dir / c_name / "evidence.json"
-                        if candidate2.exists() and candidate2.is_file():
-                            found_file = candidate2
-                            break
-                        # Try <day_dir>/<c_name>.json
-                        candidate3 = day_dir / f"{c_name}.json"
-                        if candidate3.exists() and candidate3.is_file():
-                            found_file = candidate3
+                        cand2 = day_dir / c_name / "evidence.json"
+                        if cand2.exists() and cand2.is_file():
+                            found_file = cand2
                             break
 
                     if found_file is not None:
+                        # Verify manifest integrity of the evidence directory
+                        is_valid, _ = verify_manifest(found_file.parent)
+                        is_complete = True
                         try:
-                            f_hash = sha256_file(found_file)
+                            ev_json = json.loads(found_file.read_text(encoding="utf-8"))
+                            if ev_json.get("collection_quality") == "failed":
+                                is_complete = False
                         except Exception:
-                            f_hash = "UNKNOWN"
-                        rel_path = found_file.relative_to(self.evidence_dir).as_posix()
-                        evidence_artifacts.append(
-                            {
-                                "date": date_str,
-                                "collector": req_col,
-                                "file_name": rel_path,
-                                "sha256": f_hash,
-                            }
-                        )
+                            pass
+
+                        if is_valid and is_complete:
+                            try:
+                                f_hash = sha256_file(found_file)
+                            except Exception:
+                                f_hash = "UNKNOWN"
+                            rel_path = found_file.relative_to(self.evidence_dir).as_posix()
+                            evidence_artifacts.append(
+                                {
+                                    "date": date_str,
+                                    "collector": req_col,
+                                    "file_name": rel_path,
+                                    "sha256": f_hash,
+                                }
+                            )
+                            satisfied_collectors.add(req_col)
+
+            req_set = set(meta["required_collectors"])
+            if req_set:
+                if req_set.issubset(satisfied_collectors):
+                    ev_status = "SATISFIED"
+                elif satisfied_collectors:
+                    ev_status = "PARTIAL_EVIDENCE"
+                else:
+                    ev_status = "NO_EVIDENCE_IN_WINDOW"
+            else:
+                ev_status = "SATISFIED" if evidence_artifacts else "NO_EVIDENCE_IN_WINDOW"
 
             crosswalk.append(
                 {
@@ -402,9 +439,7 @@ class AuditRoomManager:
                     "title": meta["title"],
                     "category": meta["category"],
                     "evidence_count": len(evidence_artifacts),
-                    "evidence_status": (
-                        "SATISFIED" if evidence_artifacts else "NO_EVIDENCE_IN_WINDOW"
-                    ),
+                    "evidence_status": ev_status,
                     "artifacts": evidence_artifacts,
                 }
             )
@@ -599,15 +634,28 @@ class AuditRoomManager:
             # 3. HTML Executive Report
             zf.writestr("AUDIT_EXECUTIVE_SUMMARY.html", summary_html)
 
-            # 4. Include Raw Evidence Files in scope recursively (handles nested <date>/<control>/report.json)
-            for date_str in room.evidence_dates:
-                day_dir = self.evidence_dir / date_str
-                if day_dir.exists():
-                    for ev_file in day_dir.rglob("*.json"):
-                        if ev_file.is_file():
-                            rel_name = ev_file.relative_to(self.evidence_dir).as_posix()
-                            arcname = f"evidence/{rel_name}"
-                            zf.write(ev_file, arcname)
+            # 4. Include only Crosswalk-selected, manifest-verified artifacts and their manifests
+            written_arcnames: set[str] = set()
+            for entry in crosswalk:
+                for art in entry.get("artifacts", []):
+                    rel_fname = art.get("file_name")
+                    if not rel_fname:
+                        continue
+                    full_p = self.evidence_dir / rel_fname
+                    if full_p.exists() and full_p.is_file():
+                        arcname = f"evidence/{rel_fname}"
+                        if arcname not in written_arcnames:
+                            zf.write(full_p, arcname)
+                            written_arcnames.add(arcname)
+
+                        # Also include the containing directory's manifest.json
+                        man_p = full_p.parent / "manifest.json"
+                        if man_p.exists() and man_p.is_file():
+                            man_rel = man_p.relative_to(self.evidence_dir).as_posix()
+                            man_arc = f"evidence/{man_rel}"
+                            if man_arc not in written_arcnames:
+                                zf.write(man_p, man_arc)
+                                written_arcnames.add(man_arc)
 
             # 5. Include Vault Chain Proofs if available
             ledger_file = self.vault._get_chain_file("default")

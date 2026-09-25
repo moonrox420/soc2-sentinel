@@ -12,6 +12,7 @@ logger = logging.getLogger("sentinel.providers.gcp.retention")
 
 def retention_snapshot(ctx: GcpContext) -> dict[str, Any]:
     logger.info("collecting GCP retention snapshot")
+    repositories_checked = 0
     missing_lifecycle = 0
     findings: list[dict[str, str]] = []
 
@@ -24,6 +25,7 @@ def retention_snapshot(ctx: GcpContext) -> dict[str, Any]:
             lambda: list(client.list_buckets()), operation="gcp_list_buckets"
         )
         ctx.succeed()
+        repositories_checked = len(buckets)
         for bucket in buckets:
             bucket.reload()
             if not bucket.lifecycle_rules:
@@ -36,10 +38,12 @@ def retention_snapshot(ctx: GcpContext) -> dict[str, Any]:
 
     return finalize_snapshot(
         {
+            "repositories_checked": repositories_checked,
+            "repositories_missing_lifecycle": missing_lifecycle,
             "buckets_missing_lifecycle": missing_lifecycle,
             "objects_past_retention": None,
             "findings": findings,
-            "notes": "Evaluated bucket-level lifecycle expiration rules across active GCS buckets.",
+            "notes": "Evaluated repository-level lifecycle expiration rules across active GCS buckets.",
         },
         ctx.errors,
         checks_attempted=ctx._checks_attempted,

@@ -271,6 +271,8 @@ class TrustCenterManager:
 
         co_name = html.escape(profile.company_name)
         mon_stat = html.escape(profile.continuous_monitoring_status)
+        enc_rest = html.escape(profile.encryption_at_rest)
+        enc_transit = html.escape(profile.encryption_in_transit)
 
         html_out = f"""<!DOCTYPE html>
 <html lang="en">
@@ -336,9 +338,9 @@ class TrustCenterManager:
                 <div style="font-size: 12px; color: var(--muted);">Automated Polling Engine</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">Encryption Standard</div>
-                <div class="metric-val" style="font-size: 20px; color: #f8fafc; margin: 18px 0 10px;">AES-256-GCM</div>
-                <div style="font-size: 12px; color: var(--muted);">KMS Envelope Protection</div>
+                <div class="metric-label">Data Protection Status</div>
+                <div class="metric-val" style="font-size: 20px; color: #f8fafc; margin: 18px 0 10px;">{enc_rest}</div>
+                <div style="font-size: 12px; color: var(--muted);">Transit: {enc_transit}</div>
             </div>
             <div class="metric-card">
                 <div class="metric-label">Subprocessor Reviews</div>
@@ -347,12 +349,12 @@ class TrustCenterManager:
             </div>
         </div>
 
-        <div class="section-title">Compliance Frameworks & Certifications</div>
+        <div class="section-title">Framework Monitoring & Posture Tracking</div>
         <div class="badges-grid">
             {badges_html}
         </div>
 
-        <div class="section-title">Verified Core Security Controls</div>
+        <div class="section-title">Automated Control Evaluation Matrix</div>
         <div class="controls-list">
             {controls_html}
         </div>

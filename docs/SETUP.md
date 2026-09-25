@@ -1,7 +1,7 @@
 # SOC2 Sentinel — Setup Guide
 
-**Version:** 1.6.0  
-**Last updated:** June 2026
+**Version:** 2.5.0  
+**Last updated:** September 2026
 
 > **Disclaimer:** SOC2 Sentinel automates evidence collection to support compliance readiness. It does not provide legal advice, perform audits, or guarantee SOC 2, CMMC, or NIST 800-171 certification.
 
@@ -9,7 +9,7 @@
 
 - **Python 3.10+**
 - **Git** (optional, for cloning)
-- **Cloud credentials** only when using `aws`, `gcp`, or `azure` providers (see provider-specific guides)
+- **Cloud credentials** for your target provider (`aws`, `gcp`, or `azure`)
 
 ## Installation
 
@@ -33,17 +33,11 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Install in editable mode
+### 3. Install dependencies
 
 ```bash
+pip install -r requirements.txt
 pip install -e .
-```
-
-For development and tests:
-
-```bash
-pip install -e ".[dev]"
-pytest
 ```
 
 ### 4. Verify CLI
@@ -52,34 +46,40 @@ pytest
 sentinel --help
 ```
 
-Expected subcommands: `run`, `run-all`, `report`.
+## Quick start (live validation)
 
-## Quick start (mock provider)
-
-Run all collectors against built-in mock data—no cloud credentials required:
+Validate your configured cloud provider credentials:
 
 ```bash
-sentinel run-all --provider mock
+sentinel validate --provider aws
 ```
 
-Output is JSON mapping collector names to evidence file paths:
+Run all automated evidence collectors:
+
+```bash
+sentinel run-all --provider aws
+```
+
+Output maps collector names to evidence file paths:
 
 ```json
 {
-  "iam_access_review": "evidence/2026-06-17/CC6.1/report.json",
-  "log_aggregator": "evidence/2026-06-17/CC7.1/report.json",
-  "config_drift": "evidence/2026-06-17/CC6.2/report.json",
-  "encryption_status": "evidence/2026-06-17/C1.2/report.json",
-  "retention_check": "evidence/2026-06-17/C1.4/report.json"
+  "iam_access_review": "evidence/2026-09-25/CC6.1/report.json",
+  "log_aggregator": "evidence/2026-09-25/CC7.1/report.json",
+  "config_drift": "evidence/2026-09-25/CC6.2/report.json",
+  "encryption_status": "evidence/2026-09-25/C1.2/report.json",
+  "retention_check": "evidence/2026-09-25/C1.4/report.json",
+  "resilience_testing": "evidence/2026-09-25/A1.2/report.json",
+  "zt_continuous_verification": "evidence/2026-09-25/ZT-1/report.json"
 }
 ```
 
-Evidence is written under `evidence/<YYYY-MM-DD>/<CONTROL_ID>/` with `report.json` and supporting CSVs.
+Evidence is written under `evidence/<YYYY-MM-DD>/<CONTROL_ID>/` with `report.json`, `manifest.json`, and supporting artifacts.
 
 ## Running individual collectors
 
 ```bash
-sentinel run iam_access_review --provider mock
+sentinel run iam_access_review --provider aws
 sentinel run log_aggregator --provider aws
 sentinel run config_drift --provider gcp --control-id CC6.2
 sentinel run encryption_status --provider azure
@@ -89,7 +89,7 @@ sentinel run retention_check --provider aws
 Override output directory:
 
 ```bash
-sentinel run-all --provider mock --output-base C:\compliance\evidence
+sentinel run-all --provider aws --output-base C:\compliance\evidence
 ```
 
 ## Collector → control mapping
@@ -101,6 +101,8 @@ sentinel run-all --provider mock --output-base C:\compliance\evidence
 | `config_drift` | CC6.2 | Authentication, Change Management |
 | `encryption_status` | C1.2 | Encryption, Data Classification |
 | `retention_check` | C1.4 | Data Retention & Disposal |
+| `resilience_testing` | A1.2 | Backup & Business Continuity |
+| `zt_continuous_verification` | ZT-1 | Zero Trust Architecture |
 
 ## Generate controls data
 
@@ -136,7 +138,7 @@ All `report.json` files validate against `data/evidence-schema.json` fields:
 | Issue | Resolution |
 |-------|------------|
 | `sentinel: command not found` | Re-activate venv; confirm `pip install -e .` completed |
-| AWS `NoCredentialsError` | Configure profile or use `--provider mock` |
+| AWS `NoCredentialsError` | Configure AWS_PROFILE or environment credentials |
 | GCP `GOOGLE_CLOUD_PROJECT` missing | Set env var per GCP_SETUP.md |
 | Azure `AZURE_SUBSCRIPTION_ID` missing | Set env var per AZURE_SETUP.md |
 | Schema validation error | Upgrade toolkit; check collector output format |

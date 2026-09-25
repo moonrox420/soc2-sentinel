@@ -27,7 +27,6 @@ a = Analysis(
         "sentinel.providers.aws",
         "sentinel.providers.azure",
         "sentinel.providers.gcp",
-        "sentinel.providers.mock",
         "sentinel.dashboard",
         "sentinel.dashboard.server",
         "sentinel.dashboard.assets",

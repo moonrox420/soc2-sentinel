@@ -18,9 +18,12 @@ def retention_snapshot(ctx: AwsClients) -> dict[str, Any]:
     missing_lifecycle = 0
     findings: list[dict[str, str]] = []
 
+    repositories_checked = 0
     buckets_resp = ctx.call("s3", "aws_s3_list_buckets", lambda: s3.list_buckets())
     if buckets_resp:
-        for bucket in buckets_resp.get("Buckets", []):
+        buckets_list = buckets_resp.get("Buckets", [])
+        repositories_checked = len(buckets_list)
+        for bucket in buckets_list:
             name = bucket["Name"]
             ctx.attempt()
             try:
@@ -56,11 +59,13 @@ def retention_snapshot(ctx: AwsClients) -> dict[str, Any]:
 
     return finalize_snapshot(
         {
+            "repositories_checked": repositories_checked,
+            "repositories_missing_lifecycle": missing_lifecycle,
             "buckets_missing_lifecycle": missing_lifecycle,
             "objects_past_retention": None,
             "retention_policy_cutoff": cutoff.isoformat().replace("+00:00", "Z"),
             "findings": findings,
-            "notes": "Evaluated bucket-level lifecycle expiration policies across active storage buckets.",
+            "notes": "Evaluated repository-level lifecycle expiration policies across active storage repositories.",
         },
         ctx.errors,
         checks_attempted=ctx._checks_attempted,

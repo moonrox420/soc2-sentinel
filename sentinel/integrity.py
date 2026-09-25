@@ -71,6 +71,15 @@ def verify_manifest(out_dir: Path) -> tuple[bool, list[str]]:
             continue
         if sha256_file(file_path) != expected:
             issues.append(f"hash mismatch: {name}")
+
+    # Integrity verification: report any unexpected unlisted files
+    expected_files = set(artifacts.keys())
+    allowed_files = {"manifest.json", ".lock"}
+    actual_files = {p.name for p in out_dir.iterdir() if p.is_file()}
+    unlisted = actual_files - expected_files - allowed_files
+    if unlisted:
+        issues.append(f"unexpected unlisted files: {sorted(unlisted)}")
+
     hmac_key = os.environ.get("SENTINEL_HMAC_KEY", "").strip()
     stored = manifest.get("hmac_sha256")
     if hmac_key:

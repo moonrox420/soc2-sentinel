@@ -17,30 +17,38 @@ logger = logging.getLogger("sentinel.reporting")
 def generate_executive_html_report(
     scorecard: ComplianceScorecard, evidence_dir: Path
 ) -> str:
-    """Generate a self-contained, printable, executive-ready HTML audit report."""
-    manifest_file = evidence_dir / "manifest.json"
-    manifest_data: dict[str, Any] = {}
-    if manifest_file.exists():
-        try:
-            manifest_data = json.loads(manifest_file.read_text(encoding="utf-8"))
-        except Exception:
-            pass
+    # Aggregate per-control manifests
+    manifest_entries: dict[str, str] = {}
+    has_hmac = False
+    if evidence_dir.exists():
+        for child in sorted(evidence_dir.iterdir()):
+            if child.is_dir() and child.name != "manifests":
+                c_manifest = child / "manifest.json"
+                if c_manifest.exists():
+                    try:
+                        m_data = json.loads(c_manifest.read_text(encoding="utf-8"))
+                        if m_data.get("hmac_sha256"):
+                            has_hmac = True
+                        for art_name, art_hash in m_data.get("artifacts", {}).items():
+                            manifest_entries[f"{child.name}/{art_name}"] = art_hash
+                    except Exception:
+                        pass
 
     # Run cryptographic verification on the evidence directory
     tree_res = verify_evidence_tree(evidence_dir)
     verified_files = len(tree_res.get("verified", []))
     failed_files = len(tree_res.get("failed", []))
     integrity_valid = (verified_files > 0) and (failed_files == 0)
-    status_badge_color = (
-        "#10b981"
-        if integrity_valid
-        else ("#f59e0b" if verified_files == 0 else "#ef4444")
-    )
-    status_badge_text = (
-        "VERIFIED TAMPER-EVIDENT"
-        if integrity_valid
-        else ("NO EVIDENCE VERIFIED" if verified_files == 0 else "INTEGRITY WARNING")
-    )
+
+    if not integrity_valid:
+        status_badge_color = "#ef4444" if failed_files > 0 else "#f59e0b"
+        status_badge_text = "INTEGRITY WARNING" if failed_files > 0 else "NO EVIDENCE VERIFIED"
+    elif has_hmac:
+        status_badge_color = "#10b981"
+        status_badge_text = "HMAC VERIFIED"
+    else:
+        status_badge_color = "#10b981"
+        status_badge_text = "SHA-256 VERIFIED"
 
     score = scorecard.overall_posture_score
     score_color = (
@@ -115,7 +123,6 @@ def generate_executive_html_report(
     frameworks_section = "\n".join(fw_cards)
 
     # Manifest files
-    manifest_entries = manifest_data.get("files", {})
     manifest_rows = []
     for fname, fhash in sorted(manifest_entries.items()):
         manifest_rows.append(
@@ -285,7 +292,7 @@ def generate_executive_html_report(
       </div>
       <div class="hero-meta">
         <h2>Executive Posture Summary</h2>
-        <p>This report represents an automated, cryptographic evaluation of security controls spanning SOC 2 Type II Trust Services Criteria, NIST SP 800-171, CMMC 2.0 Level 2, and Zero Trust continuous verification. All findings reflect live cloud infrastructure telemetry collected under SHA-256 and HMAC integrity enforcement.</p>
+        <p>This report represents an automated, cryptographic evaluation of security controls spanning SOC 2 Type II Trust Services Criteria, NIST SP 800-171, CMMC 2.0 Level 2, and Zero Trust continuous verification. All findings reflect live cloud infrastructure telemetry collected under SHA-256 cryptographic verification.</p>
       </div>
     </div>
 
@@ -315,7 +322,7 @@ def generate_executive_html_report(
     <div class="section-card">
       <h2>Cryptographic Chain of Custody & Evidence Manifest</h2>
       <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
-        The SHA-256 digests below prove tamper-evident immutability for all raw evidence artifacts collected during this audit window.
+        The SHA-256 digests below record cryptographic identity for all raw evidence artifacts collected during this audit window.
       </p>
       <table>
         <thead>
@@ -350,6 +357,13 @@ def export_audit_pack(
     if not evidence_dir.exists():
         raise FileNotFoundError(f"Evidence directory does not exist: {evidence_dir}")
 
+    # Verify cryptographic integrity of all control manifests before packaging
+    tree_res = verify_evidence_tree(evidence_dir)
+    if tree_res.get("failed"):
+        raise ValueError(
+            f"Evidence integrity verification failed for {evidence_dir}: {tree_res['failed']}"
+        )
+
     dest_dir = output_dir or evidence_dir.parent
     dest_dir.mkdir(parents=True, exist_ok=True)
 
@@ -374,7 +388,7 @@ Generated: {datetime.now(timezone.utc).isoformat()}
 CONTENTS:
 1. SOC2-Sentinel-Executive-Report-{date_str}.html (Printable Executive Report)
 2. <control_id>/report.json (Raw evidence payloads)
-3. manifest.json (SHA-256 digests of all evidence artifacts)
+3. <control_id>/manifest.json (Cryptographic SHA-256 digests for each control's evidence)
 
 VERIFICATION INSTRUCTIONS:
 To verify the cryptographic integrity of this evidence tree:
@@ -382,15 +396,40 @@ $ sentinel verify evidence/{date_str}
 
 All files in this archive were generated deterministically by SOC2 Sentinel v2.5.0.
 """
-    (evidence_dir / "AUDITOR_README.txt").write_text(readme_content, encoding="utf-8")
+    readme_path = evidence_dir / "AUDITOR_README.txt"
+    readme_path.write_text(readme_content, encoding="utf-8")
 
-    # 3. Create Audit Pack ZIP
+    # 3. Create Audit Pack ZIP with manifest-verified files only
     zip_path = dest_dir / f"SOC2-Sentinel-AuditPack-{date_str}.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
-        for file_path in evidence_dir.rglob("*"):
-            if file_path.is_file() and not file_path.name.endswith(".tmp"):
-                archive_name = file_path.relative_to(evidence_dir.parent)
-                archive.write(file_path, arcname=str(archive_name))
+        # Include executive report and readme
+        archive.write(html_path, arcname=f"{date_str}/{html_path.name}")
+        archive.write(readme_path, arcname=f"{date_str}/{readme_path.name}")
+
+        # Include each control directory's manifest and listed artifacts
+        for child in sorted(evidence_dir.iterdir()):
+            if not child.is_dir() or child.name == "manifests":
+                continue
+            manifest_p = child / "manifest.json"
+            if manifest_p.exists():
+                archive.write(
+                    manifest_p, arcname=f"{date_str}/{child.name}/manifest.json"
+                )
+                try:
+                    m_data = json.loads(manifest_p.read_text(encoding="utf-8"))
+                    for art_name in m_data.get("artifacts", {}):
+                        art_file = child / art_name
+                        if art_file.exists() and art_file.is_file():
+                            archive.write(
+                                art_file,
+                                arcname=f"{date_str}/{child.name}/{art_name}",
+                            )
+                except Exception as exc:
+                    logger.warning(
+                        "Error reading manifest %s for packaging: %s",
+                        manifest_p,
+                        exc,
+                    )
 
     logger.info("Created Executive Audit Pack at %s", zip_path)
     return zip_path

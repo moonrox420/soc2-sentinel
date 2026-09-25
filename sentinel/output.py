@@ -106,6 +106,20 @@ def write_evidence(
         out_dir.mkdir(parents=True, exist_ok=True)
         safe_file_mode(out_dir, is_dir=True)
 
+        # Back up existing manifest before cleaning up directory
+        if cfg.evidence.manifest_backup:
+            _backup_manifest(
+                out_dir, run_day=run_day, safe_base=safe_base, control_id=control_id
+            )
+
+        # Clean existing regular files except .lock to prevent stale evidence contamination
+        for child in out_dir.iterdir():
+            if child.is_file() and child.name != ".lock":
+                try:
+                    child.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
         written_files: list[str] = []
         artifacts_written: list[str] = []
 

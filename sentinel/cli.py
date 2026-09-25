@@ -1121,6 +1121,7 @@ def main() -> None:
                         {
                             "campaign_id": camp_target.campaign_id,
                             "sign_off_hash": sig_hash,
+                            "sign_off_scheme": camp_target.sign_off_scheme,
                             "status": "COMPLETED",
                         },
                         indent=2,

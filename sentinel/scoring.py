@@ -589,23 +589,37 @@ def _eval_retention(data: dict[str, Any] | None) -> ControlScore:
 
     metrics = data.get("metrics", {})
     past_retention = _safe_int(metrics.get("objects_past_retention", 0))
-    buckets = _safe_int(
-        metrics.get("policies_checked", metrics.get("buckets_checked", 0))
+    repos = _safe_int(
+        metrics.get(
+            "repositories_checked",
+            metrics.get("policies_checked", metrics.get("buckets_checked", 0)),
+        )
     )
-    missing_lc = _safe_int(metrics.get("buckets_missing_lifecycle", 0))
+    missing_lc = _safe_int(
+        metrics.get(
+            "repositories_missing_lifecycle",
+            metrics.get(
+                "buckets_missing_lifecycle",
+                metrics.get("accounts_missing_lifecycle", 0),
+            ),
+        )
+    )
     compliant = _safe_int(
-        metrics.get("compliant_buckets", max(0, buckets - missing_lc))
+        metrics.get(
+            "compliant_repositories",
+            metrics.get("compliant_buckets", max(0, repos - missing_lc)),
+        )
     )
     deletion_valid = bool(
         metrics.get(
             "deletion_certificates_valid",
-            True if (buckets > 0 and past_retention == 0) else False,
+            True if (repos > 0 and past_retention == 0) else False,
         )
     )
 
     score = 100.0
     findings = []
-    if buckets == 0:
+    if repos == 0:
         score -= 40.0
         findings.append(
             "No data storage repositories evaluated for lifecycle retention policies"
@@ -615,11 +629,11 @@ def _eval_retention(data: dict[str, Any] | None) -> ControlScore:
         findings.append(
             f"{past_retention} objects past retention window awaiting secure deletion"
         )
-    if buckets > 0 and compliant < buckets:
-        ratio = (compliant / buckets) * 100.0
+    if repos > 0 and compliant < repos:
+        ratio = (compliant / repos) * 100.0
         score -= (100.0 - ratio) * 0.7
         findings.append(
-            f"{buckets - compliant}/{buckets} data storage locations lack enforced lifecycle retention rules"
+            f"{repos - compliant}/{repos} data storage locations lack enforced lifecycle retention rules"
         )
     if not deletion_valid:
         score -= 20.0
@@ -642,7 +656,7 @@ def _eval_retention(data: dict[str, Any] | None) -> ControlScore:
         score=score,
         evidence_quality=quality,
         findings=findings,
-        metrics_summary={"policies_checked": buckets, "compliant_policies": compliant},
+        metrics_summary={"repositories_checked": repos, "compliant_repositories": compliant},
         frameworks={
             "soc2": "C1.4",
             "nist": "MP-7, SI-12",
@@ -950,7 +964,18 @@ def _compute_framework_summary(
     passed = sum(1 for s in scores if s.status == "PASS")
     partial = sum(1 for s in scores if s.status == "PARTIAL")
     failed = sum(1 for s in scores if s.status in {"FAIL", "NOT_ASSESSED"})
-    overall = sum(s.score for s in scores) / len(scores)
+
+    pillar_scores: dict[str, float] = {}
+    for pillar, c_ids in pillar_mapping.items():
+        matched = [s.score for s in scores if s.control_id in c_ids]
+        pillar_scores[pillar] = (
+            round(sum(matched) / len(matched), 1) if matched else 0.0
+        )
+
+    if pillar_scores:
+        overall = sum(pillar_scores.values()) / len(pillar_scores)
+    else:
+        overall = sum(s.score for s in scores) / len(scores) if scores else 0.0
 
     if overall >= 85.0:
         readiness = "Audit Ready"
@@ -960,13 +985,6 @@ def _compute_framework_summary(
         readiness = "Remediation Required"
     else:
         readiness = "Critical Gaps"
-
-    pillar_scores: dict[str, float] = {}
-    for pillar, c_ids in pillar_mapping.items():
-        matched = [s.score for s in scores if s.control_id in c_ids]
-        pillar_scores[pillar] = (
-            round(sum(matched) / len(matched), 1) if matched else 0.0
-        )
 
     critical_findings: list[str] = []
     for s in scores:
@@ -1023,7 +1041,7 @@ def compute_compliance_scorecard(
 
     soc2_summary = _compute_framework_summary(
         "soc2",
-        "SOC 2 Type II (Trust Services Criteria)",
+        "SOC 2 Type II (Automated Scope / Posture)",
         all_controls,
         {
             "Security": ["CC6.1", "CC6.2", "CC7.1", "ZT-1"],
@@ -1034,7 +1052,7 @@ def compute_compliance_scorecard(
 
     nist_summary = _compute_framework_summary(
         "nist-800-171",
-        "NIST SP 800-171 / 800-172 (Automated Scope)",
+        "NIST SP 800-171 / 800-172 (Automated Scope / Posture)",
         all_controls,
         {
             "Access Control (AC)": ["CC6.1", "ZT-1"],
@@ -1048,7 +1066,7 @@ def compute_compliance_scorecard(
 
     cmmc_summary = _compute_framework_summary(
         "cmmc-l2",
-        "CMMC 2.0 Level 2 (Automated Scope)",
+        "CMMC 2.0 Level 2 (Automated Scope / Posture)",
         all_controls,
         {
             "Access Control": ["CC6.1", "ZT-1"],
@@ -1062,7 +1080,7 @@ def compute_compliance_scorecard(
 
     zt_summary = _compute_framework_summary(
         "zero-trust",
-        "CISA Zero Trust Maturity Model",
+        "CISA Zero Trust Maturity (Automated Scope / Posture)",
         all_controls,
         {
             "Identity Pillar": ["CC6.1", "ZT-1"],

@@ -38,3 +38,31 @@ jobs:
           python -m sentinel.cli trust-center view
           python -m sentinel.cli vault verify
           python -m sentinel.cli access-review list
+
+  build-windows:
+    name: Windows Package Build & Smoke Test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies & PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pyinstaller
+
+      - name: Build & Smoke Test Consumer Package
+        shell: powershell
+        run: |
+          .\scripts\build-consumer-package.ps1
+
+      - name: Upload Windows Distribution Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOC2-Sentinel-Toolkit-Windows
+          path: dist/*.zip
+          if-no-files-found: error

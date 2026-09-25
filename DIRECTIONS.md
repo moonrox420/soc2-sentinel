@@ -30,8 +30,8 @@
 1. Extract the release ZIP archive `dist/SOC2-Sentinel-Toolkit-v2.5.0-Windows.zip`.
 2. Launch the interactive menu or run directly:
 ```powershell
-# Run instantaneous offline demo across all 7 collectors
-.\bin\sentinel.exe run-all --provider mock
+# Validate cloud credentials
+.\bin\sentinel.exe validate --provider aws
 
 # Launch real-time web dashboard & daemon
 .\bin\sentinel.exe serve --port 8443
@@ -63,7 +63,7 @@ sentinel serve
 sentinel serve [--port 8443] [--host 127.0.0.1]
 
 # Run automated evidence collection across all 7 collectors
-sentinel run-all --provider [mock|aws|gcp|azure] [--tenant-id default]
+sentinel run-all --provider [aws|gcp|azure] [--tenant-id default]
 
 # Compute multi-framework compliance posture (SOC 2, NIST, CMMC, Zero Trust)
 sentinel scorecard [--evidence-dir evidence/] [--json]
@@ -75,102 +75,96 @@ sentinel drift [--baseline evidence/] [--current evidence/]
 sentinel onboarding --provider [aws|gcp|azure]
 
 # Cryptographically verify evidence SHA-256 manifests and HMAC signatures
-sentinel verify [evidence/]
+sentinel verify [evidence/2026-09-25]
 
 # Generate 1-click executive HTML report and signed audit pack ZIP
-sentinel audit-pack [evidence/] [--output-dir ./audit_packs]
+sentinel audit-pack [evidence/2026-09-25] [--output-dir ./audit_packs]
 ```
 
 ### Merkle Evidence Vault
 
 ```powershell
-# Ingest evidence files into append-only cryptographic Merkle vault
-sentinel vault ingest evidence/ [--tenant-id default]
+# Seal evidence files into append-only cryptographic Merkle vault
+sentinel vault seal --date 2026-09-25 [--tenant-id default]
 
-# Generate and verify cryptographic inclusion proofs against Merkle root
-sentinel vault verify [--evidence-id <hash>]
-
-# Inspect vault status, total leaves, and current root hash
-sentinel vault status
+# Verify cryptographic continuity of the ledger and evidence hashes
+sentinel vault verify
 ```
 
 ### Vendor Risk Management (CC9.2)
 
 ```powershell
 # Register a third-party vendor with risk tiering and compliance metadata
-sentinel vendor-risk add --name "AWS" --tier 1 --soc2-status "Valid" --soc2-expiry "2027-12-31" --notes "Primary cloud IaaS"
+sentinel vendor-risk add --vendor-id "v-aws" --name "AWS" --tier 1 --status ACTIVE
 
 # List all registered vendors
 sentinel vendor-risk list
 
-# Scan for upcoming vendor compliance expirations
-sentinel vendor-risk check-expirations --within-days 90
-
-# Calculate vendor risk assessment score
-sentinel vendor-risk assess --name "AWS"
+# Generate CC9.2 third-party risk report
+sentinel vendor-risk report
 ```
 
 ### User Access Reviews (CC6.1–CC6.3)
 
 ```powershell
 # Create a new quarterly entitlement access review campaign
-sentinel access-review create --title "Q3 2026 Admin Privilege Review" --deadline "2026-10-31"
+sentinel access-review start --id "uar-2026-q3" --title "Q3 2026 Admin Privilege Review" --period "2026-Q3" --due-date "2026-10-31"
 
 # List active campaigns
 sentinel access-review list
 
-# Record reviewer approval / revocation on an entitlement
-sentinel access-review review --campaign-id "<id>" --user "alice@example.com" --action approve --reviewer "ciso@company.com"
+# Record reviewer decision on an entitlement
+sentinel access-review decide --id "uar-2026-q3" --item-id "item-001" --decision MAINTAIN --notes "Approved"
 
 # Close and finalize an access review campaign with tamper-evident sign-off
-sentinel access-review finalize --campaign-id "<id>"
+sentinel access-review signoff --id "uar-2026-q3" --signer "CISO" --secret "secure-sign-key"
 ```
 
 ### Multi-Channel Notifications
 
 ```powershell
-# Send test notification to configured Slack/Teams/PagerDuty channels
-sentinel notify test --channel slack
-
-# Dispatch high-severity compliance alert
-sentinel notify send --severity critical --title "Open SSH Port Detected" --message "Port 22 open on 0.0.0.0/0 in prod VPC"
+# Dispatch compliance notification alert
+sentinel notify --channel generic --webhook-url "https://hooks.slack.com/services/..." --title "Compliance Alert" --message "Verification check complete"
 ```
 
 ### Auditor Rooms & Evidence Export
 
 ```powershell
 # Create a time-bounded auditor room (e.g. 30 days)
-sentinel audit-room create --name "FY26 SOC 2 Audit" --auditor "Assessor Corp" --email "lead@assessor.com" --days 30
+sentinel audit-room create --id "room_2026" --title "FY26 SOC 2 Audit" --email "lead@assessor.com" --days 30
 
 # List active audit rooms
 sentinel audit-room list
 
 # Generate 1-click complete auditor evidence ZIP package
-sentinel audit-room export-package --room-id "<id>" --output ./audit_package.zip
+sentinel audit-room export --id "room_2026"
 ```
 
 ### Dogfooding Self-Attestation Engine
 
 ```powershell
 # Run continuous self-attestation against SOC2-Sentinel's codebase and architecture
-sentinel dogfood run [--json]
+sentinel dogfood
 ```
 
 ### Public & Auditor Trust Center
 
 ```powershell
+# View trust center profile summary
+sentinel trust-center view
+
 # Generate standalone self-contained Trust Center HTML file
-sentinel trust-center export --output ./trust_center.html
+sentinel trust-center export-html --output ./trust_center.html
 ```
 
 ### SIEM Event Streaming & Forwarding
 
 ```powershell
-# Export audit logs to NDJSON in Elastic Common Schema (ECS) format
-sentinel siem export --format ecs --output ./siem_logs.ndjson
+# Export audit logs to NDJSON
+sentinel siem export --format ECS --output ./siem_logs.ndjson
 
-# Forward logs via RFC 5424 Syslog / Splunk HEC / Datadog
-sentinel siem forward --target splunk --url "https://splunk.corp:8088" --token "$SPLUNK_HEC_TOKEN"
+# Forward logs to SIEM endpoint
+sentinel siem forward --target SPLUNK_HEC --endpoint "https://splunk.corp:8088/services/collector" --token "$SPLUNK_HEC_TOKEN"
 ```
 
 ---
@@ -186,10 +180,9 @@ Launch the dashboard with `sentinel serve`. Key endpoints:
 | `/api/scorecard` | `GET` | Real-time multi-framework compliance posture |
 | `/api/drift` | `GET` | Baseline configuration & access drift detection |
 | `/api/audit-rooms` | `GET, POST` | Manage auditor rooms and time-bounded access |
-| `/api/dogfood` | `GET, POST` | Self-attestation scoring & evidence evaluation |
+| `/api/dogfood` | `GET` | Self-attestation scoring & evidence evaluation |
 | `/api/trust-center` | `GET` | Live Trust Center JSON metadata & profile |
 | `/api/siem/export` | `POST` | Export security audit logs formatted for SIEMs |
-| `/api/siem/forward` | `POST` | Stream security logs to Splunk / Datadog / Webhook |
 
 ---
 
@@ -204,14 +197,11 @@ Launch the dashboard with `sentinel serve`. Key endpoints:
 ## 5. Quality Assurance & Verification Suite
 
 ```powershell
-# Run 239 unit & integration tests with coverage
-pytest --cov=sentinel --cov-report=term-missing
-
 # Static type analysis (Mypy)
-mypy sentinel
+mypy sentinel --ignore-missing-imports
 
 # Linting and style (Ruff)
-ruff check sentinel tests
+ruff check sentinel
 
 # Security AST scanner (Bandit)
 bandit -r sentinel -ll

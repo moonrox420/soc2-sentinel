@@ -12,6 +12,7 @@ logger = logging.getLogger("sentinel.providers.azure.retention")
 
 def retention_snapshot(ctx: AzureContext) -> dict[str, Any]:
     logger.info("collecting Azure retention snapshot")
+    repositories_checked = 0
     missing_lifecycle = 0
     findings: list[dict[str, str]] = []
 
@@ -22,6 +23,7 @@ def retention_snapshot(ctx: AzureContext) -> dict[str, Any]:
             operation="azure_list_storage_accounts",
         )
         ctx.succeed()
+        repositories_checked = len(accounts)
         for account in accounts:
             rg = account.id.split("/")[4]
             mgmt = call_with_retry(
@@ -38,7 +40,10 @@ def retention_snapshot(ctx: AzureContext) -> dict[str, Any]:
 
     return finalize_snapshot(
         {
+            "repositories_checked": repositories_checked,
+            "repositories_missing_lifecycle": missing_lifecycle,
             "accounts_missing_lifecycle": missing_lifecycle,
+            "buckets_missing_lifecycle": missing_lifecycle,
             "objects_past_retention": None,
             "findings": findings,
             "notes": "Evaluated storage account management policies for retention rules.",

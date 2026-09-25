@@ -23,11 +23,18 @@ def zt_verification_snapshot(ctx: AzureContext) -> dict[str, Any]:
     mfa_registered_pct = cfg.get("mfa_registered_percent")
     orphaned = iam.get("orphaned_accounts")
 
+    total_confidential = enc.get("total_confidential_resources", 0)
+    data_level = (
+        "Not Assessed"
+        if total_confidential == 0
+        else ("Managed" if unencrypted == 0 else "Developing")
+    )
+
     merged = merge_results(iam, enc, cfg)
     merged.update(
         {
             "iam_review_days_ago": iam.get("days_since_last_review"),
-            "encryption_status": "green" if unencrypted == 0 else "red",
+            "encryption_status": "green" if (unencrypted == 0 and total_confidential > 0) else ("yellow" if total_confidential == 0 else "red"),
             "orphaned_accounts": orphaned,
             "unencrypted_resources": unencrypted,
             "mfa_enforcement_percent": mfa_pct,
@@ -40,7 +47,7 @@ def zt_verification_snapshot(ctx: AzureContext) -> dict[str, Any]:
                 "Device": "Not Assessed",
                 "Network": "Not Assessed",
                 "Application": "Not Assessed",
-                "Data": "Managed" if unencrypted == 0 else "Developing",
+                "Data": data_level,
                 "Analytics": "Not Assessed",
                 "Governance": "Not Assessed",
             },

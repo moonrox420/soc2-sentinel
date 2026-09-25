@@ -6,19 +6,21 @@ No Python install required. Unzip anywhere (e.g. `C:\SOC2-Sentinel`).
 
 Double-click **`bin\sentinel.exe`**. The Windows executable opens an interactive menu where you can:
 
-- Run the built-in mock demo
-- Validate AWS, GCP, Azure, or mock credentials
-- Run all evidence collectors
+- Validate AWS, GCP, or Azure credentials
+- Launch the interactive Web Dashboard & REST API
+- Run evidence collectors across all 7 domains
 - View command-line help
 
 The executable stays open until you choose Exit.
 
-For a one-click mock run, `run-demo.bat` is also included as an optional convenience.
-
 From PowerShell, the same executable can be used directly:
 
 ```powershell
-.\bin\sentinel.exe run-all --provider mock
+# Validate credentials
+.\bin\sentinel.exe validate --provider aws
+
+# Run all collectors
+.\bin\sentinel.exe run-all --provider aws
 ```
 
 Evidence appears under `evidence\<today>\<control_id>\report.json`.
@@ -27,7 +29,13 @@ Evidence appears under `evidence\<today>\<control_id>\report.json`.
 
 ```powershell
 # Single collector
-.\bin\sentinel.exe run encryption_status --provider mock
+.\bin\sentinel.exe run encryption_status --provider aws
+
+# Multi-framework compliance scorecard
+.\bin\sentinel.exe scorecard
+
+# Detect configuration drift
+.\bin\sentinel.exe drift
 
 # CMMC L2 self-assessment roll-up (110 practices)
 .\bin\sentinel.exe report --input data\cmmc-l2-controls-110.csv --mode cmmc
@@ -39,8 +47,9 @@ Evidence appears under `evidence\<today>\<control_id>\report.json`.
 ## 3. Validate before first cloud run
 
 ```powershell
-.\bin\sentinel.exe validate --provider mock
 .\bin\sentinel.exe validate --provider aws   # after credentials configured
+.\bin\sentinel.exe validate --provider gcp
+.\bin\sentinel.exe validate --provider azure
 ```
 
 ## 4. AWS (when ready)
@@ -58,7 +67,7 @@ Copy `sentinel.yaml.example` to `sentinel.yaml` to tune thresholds, opt-in encry
 
 Security details: `docs\SECURITY.md`
 
-## 5. Optional: add to PATH
+## 6. Optional: add to PATH
 
 Run once as your user (not admin required):
 
@@ -68,15 +77,16 @@ Run once as your user (not admin required):
 
 Then open a **new** terminal and use `sentinel` from any folder (still run from toolkit root for relative paths like `data\`).
 
-## 6. Python developers
+## 7. Python developers
 
 If you prefer a venv instead of the bundled exe:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 pip install -e .
-sentinel run-all --provider mock
+sentinel validate --provider aws
 ```
 
 ## 7. Support files

@@ -42,6 +42,9 @@ def encryption_snapshot(ctx: GcpContext) -> dict[str, Any]:
     except Exception as exc:
         ctx.record_error("storage", exc)
 
+    keys_with_rotation = 0
+    pending_rotation = 0
+
     try:
         from google.cloud import kms
 
@@ -55,7 +58,7 @@ def encryption_snapshot(ctx: GcpContext) -> dict[str, Any]:
         ctx.succeed()
         for key in keys:
             if key.rotation_period:
-                fips_keys += 1
+                keys_with_rotation += 1
             else:
                 pending_rotation += 1
     except Exception as exc:
@@ -68,8 +71,9 @@ def encryption_snapshot(ctx: GcpContext) -> dict[str, Any]:
             "total_confidential_resources": len(resources),
             "encrypted_at_rest": len(resources) - unencrypted,
             "unencrypted_cui_count": unencrypted,
-            "fips_compliant_keys": fips_keys,
+            "keys_with_rotation": keys_with_rotation,
             "keys_pending_rotation": pending_rotation,
+            "fips_compliant_keys": None,
             "tls_endpoints_checked": 0,
             "weak_cipher_endpoints": 0,
             "findings": findings,

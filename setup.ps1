@@ -18,7 +18,7 @@ if ($entries -contains $Bin) {
     $newPath = ($entries + $Bin) -join ";"
     [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
     Write-Host "Added to user PATH: $Bin"
-    Write-Host "Open a new terminal, then run: sentinel run-all --provider mock"
+    Write-Host "Open a new terminal, then run: sentinel --help"
 }
 
 Write-Host ""

@@ -85,6 +85,7 @@ class AccessCampaign:
     completed_at: Optional[str] = None
     signatory: Optional[str] = None
     sign_off_hash: Optional[str] = None
+    sign_off_scheme: Optional[str] = None
     items: List[AccessReviewItem] = field(default_factory=list)
 
     @property
@@ -134,10 +135,12 @@ class AccessCampaign:
             + ";".join(summary_lines)
         )
         if signing_secret:
+            self.sign_off_scheme = "HMAC_SHA256"
             self.sign_off_hash = hmac.new(
                 signing_secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
             ).hexdigest()
         else:
+            self.sign_off_scheme = "SHA256_DIGEST"
             self.sign_off_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         return self.sign_off_hash
 
@@ -152,6 +155,7 @@ class AccessCampaign:
             "completed_at": self.completed_at,
             "signatory": self.signatory,
             "sign_off_hash": self.sign_off_hash,
+            "sign_off_scheme": self.sign_off_scheme,
             "total_items": self.total_items,
             "pending_count": self.pending_count,
             "maintained_count": self.maintained_count,
@@ -216,6 +220,7 @@ class AccessReviewManager:
                     completed_at=data.get("completed_at"),
                     signatory=data.get("signatory"),
                     sign_off_hash=data.get("sign_off_hash"),
+                    sign_off_scheme=data.get("sign_off_scheme"),
                     items=items,
                 )
                 campaigns.append(camp)
