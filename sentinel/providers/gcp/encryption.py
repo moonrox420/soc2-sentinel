@@ -14,7 +14,6 @@ def encryption_snapshot(ctx: GcpContext) -> dict[str, Any]:
     logger.info("collecting GCP encryption snapshot")
     resources: list[dict[str, Any]] = []
     findings: list[dict[str, str]] = []
-    fips_keys = 0
     pending_rotation = 0
 
     try:

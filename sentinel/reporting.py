@@ -6,7 +6,6 @@ import logging
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from sentinel.integrity import verify_evidence_tree
 from sentinel.scoring import ComplianceScorecard, compute_compliance_scorecard
